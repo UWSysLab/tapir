@@ -1,0 +1,22 @@
+package specpaxos.latency.format;
+
+message LatencyDist
+{
+    required uint32 type = 1;
+    required uint64 min = 2;
+    required uint64 max = 3;
+    required uint64 total = 4;
+    required uint64 count = 5;
+    repeated uint32 buckets = 6;
+}
+
+message Latency
+{
+    required string name = 1;
+    repeated LatencyDist dists = 2;
+}
+
+message LatencyFile
+{
+    repeated Latency latencies = 1;
+}

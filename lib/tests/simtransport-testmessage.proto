@@ -1,0 +1,5 @@
+package specpaxos.test;
+
+message TestMessage {
+    required string test = 1;
+}
