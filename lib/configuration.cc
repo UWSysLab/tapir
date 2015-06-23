@@ -38,7 +38,7 @@
 #include <string>
 #include <string.h>
 
-namespace specpaxos {
+namespace transport {
 
 ReplicaAddress::ReplicaAddress(const string &host, const string &port)
     : host(host), port(port)
@@ -213,4 +213,4 @@ Configuration::operator==(const Configuration &other) const
     return true;
 }
 
-} // namespace specpaxos
+} // namespace transport

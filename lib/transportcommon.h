@@ -70,7 +70,7 @@ public:
     SendMessageToReplica(TransportReceiver *src, int replicaIdx,
                          const Message &m)
     {
-        const specpaxos::Configuration *cfg = configurations[src];
+        const transport::Configuration *cfg = configurations[src];
         ASSERT(cfg != NULL);
 
         if (!replicaAddressesInitialized) {
@@ -86,7 +86,7 @@ public:
     virtual bool
     SendMessageToAll(TransportReceiver *src, const Message &m)
     {
-        const specpaxos::Configuration *cfg = configurations[src];
+        const transport::Configuration *cfg = configurations[src];
         ASSERT(cfg != NULL);
 
         if (!replicaAddressesInitialized) {
@@ -117,25 +117,25 @@ protected:
                                      const ADDR &dst,
                                      const Message &m,
                                      bool multicast = false) = 0;
-    virtual ADDR LookupAddress(const specpaxos::Configuration &cfg,
+    virtual ADDR LookupAddress(const transport::Configuration &cfg,
                                int replicaIdx) = 0;
     virtual const ADDR *
-    LookupMulticastAddress(const specpaxos::Configuration *cfg) = 0;
+    LookupMulticastAddress(const transport::Configuration *cfg) = 0;
 
-    std::unordered_map<specpaxos::Configuration,
-                       specpaxos::Configuration *> canonicalConfigs;
+    std::unordered_map<transport::Configuration,
+                       transport::Configuration *> canonicalConfigs;
     std::map<TransportReceiver *,
-             specpaxos::Configuration *> configurations;
-    std::map<const specpaxos::Configuration *,
+             transport::Configuration *> configurations;
+    std::map<const transport::Configuration *,
              std::map<int, ADDR> > replicaAddresses;
-    std::map<const specpaxos::Configuration *,
+    std::map<const transport::Configuration *,
              std::map<int, TransportReceiver *> > replicaReceivers;
-    std::map<const specpaxos::Configuration *, ADDR> multicastAddresses;
+    std::map<const transport::Configuration *, ADDR> multicastAddresses;
     bool replicaAddressesInitialized;
 
-    virtual specpaxos::Configuration *
+    virtual transport::Configuration *
     RegisterConfiguration(TransportReceiver *receiver,
-                          const specpaxos::Configuration &config,
+                          const transport::Configuration &config,
                           int replicaIdx)
     {
         ASSERT(receiver != NULL);
@@ -144,10 +144,10 @@ protected:
         // pointer to the canonical copy; if not, create one. This
         // allows us to use that pointer as a key in various
         // structures. 
-        specpaxos::Configuration *canonical
+        transport::Configuration *canonical
             = canonicalConfigs[config];
         if (canonical == NULL) {
-            canonical = new specpaxos::Configuration(config);
+            canonical = new transport::Configuration(config);
             canonicalConfigs[config] = canonical;
         }
 
@@ -177,7 +177,7 @@ protected:
         // For every configuration, look up all addresses and cache
         // them.
         for (auto &kv : canonicalConfigs) {
-            specpaxos::Configuration *cfg = kv.second;
+            transport::Configuration *cfg = kv.second;
 
             for (int i = 0; i < cfg->n; i++) {
                 const ADDR addr = LookupAddress(*cfg, i);

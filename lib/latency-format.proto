@@ -1,4 +1,4 @@
-package specpaxos.latency.format;
+package transport.latency.format;
 
 message LatencyDist
 {

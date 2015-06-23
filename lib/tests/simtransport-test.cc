@@ -35,7 +35,7 @@
 
 #include <gtest/gtest.h>
 
-using namespace specpaxos::test;
+using namespace transport::test;
 using ::google::protobuf::Message;
 
 
@@ -67,11 +67,11 @@ TestReceiver::ReceiveMessage(const TransportAddress &src,
 class SimTransportTest : public testing::Test
 {
 protected:
-    std::vector<specpaxos::ReplicaAddress> replicaAddrs =
+    std::vector<transport::ReplicaAddress> replicaAddrs =
     { { "localhost", "12345" },
       { "localhost", "12346" },
       { "localhost", "12347" }};
-    specpaxos::Configuration config{3, 1, replicaAddrs};
+    transport::Configuration config{3, 1, replicaAddrs};
 
     TestReceiver *receiver0;
     TestReceiver *receiver1;

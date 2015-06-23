@@ -328,10 +328,10 @@ Latency_FlushTo(const char *fname)
 {
     std::ofstream outfile(fname);
     Latency_t *l = latencyHead;
-    ::specpaxos::latency::format::LatencyFile out;
+    ::transport::latency::format::LatencyFile out;
     
     for (; l; l = l->next) {
-        ::specpaxos::latency::format::Latency lout;
+        ::transport::latency::format::Latency lout;
         Latency_Put(l, lout);
         *(out.add_latencies()) = lout;
     }
@@ -356,14 +356,14 @@ Latency_Flush(void)
 }
 
 void
-Latency_Put(Latency_t *l, ::specpaxos::latency::format::Latency &out)
+Latency_Put(Latency_t *l, ::transport::latency::format::Latency &out)
 {
     out.Clear();
     out.set_name(l->name);
     
     for (int i = 0; i < l->distPoolNext; ++i) {
         Latency_Dist_t *d = &l->distPool[i];
-        ::specpaxos::latency::format::LatencyDist *outd = out.add_dists();
+        ::transport::latency::format::LatencyDist *outd = out.add_dists();
         outd->set_type(d->type);
         outd->set_min(d->min);
         outd->set_max(d->max);
@@ -377,12 +377,12 @@ Latency_Put(Latency_t *l, ::specpaxos::latency::format::Latency &out)
 }
 
 bool
-Latency_TryGet(const ::specpaxos::latency::format::Latency &in, Latency_t *l)
+Latency_TryGet(const ::transport::latency::format::Latency &in, Latency_t *l)
 {
     LatencyInit(l, strdup(in.name().c_str())); // XXX Memory leak
     l->distPoolNext = in.dists_size();
     for (int i = 0; i < l->distPoolNext; ++i) {
-        const ::specpaxos::latency::format::LatencyDist &ind =
+        const ::transport::latency::format::LatencyDist &ind =
             in.dists(i);
         Latency_Dist_t *d = &l->distPool[i];
         d->type = ind.type();

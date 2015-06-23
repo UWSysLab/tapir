@@ -67,7 +67,7 @@ public:
     SimulatedTransport();
     ~SimulatedTransport();
     void Register(TransportReceiver *receiver,
-                  const specpaxos::Configuration &config,
+                  const transport::Configuration &config,
                   int replicaIdx);
     void Run();
     void AddFilter(int id, filter_t filter);
@@ -83,9 +83,9 @@ protected:
                              bool multicast);
     
     SimulatedTransportAddress
-    LookupAddress(const specpaxos::Configuration &cfg, int idx);
+    LookupAddress(const transport::Configuration &cfg, int idx);
     const SimulatedTransportAddress *
-    LookupMulticastAddress(const specpaxos::Configuration *cfg);
+    LookupMulticastAddress(const transport::Configuration *cfg);
     
 private:
     struct QueuedMessage {

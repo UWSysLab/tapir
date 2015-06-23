@@ -75,7 +75,7 @@ SimulatedTransport::~SimulatedTransport()
 
 void
 SimulatedTransport::Register(TransportReceiver *receiver,
-                             const specpaxos::Configuration &config,
+                             const transport::Configuration &config,
                              int replicaIdx)
 {
     // Allocate an endpoint
@@ -137,7 +137,7 @@ SimulatedTransport::SendMessageInternal(TransportReceiver *src,
 }
 
 SimulatedTransportAddress
-SimulatedTransport::LookupAddress(const specpaxos::Configuration &cfg,
+SimulatedTransport::LookupAddress(const transport::Configuration &cfg,
                                   int idx)
 {
     // Check every registered replica to see if its configuration and
@@ -162,7 +162,7 @@ SimulatedTransport::LookupAddress(const specpaxos::Configuration &cfg,
 }
 
 const SimulatedTransportAddress *
-SimulatedTransport::LookupMulticastAddress(const specpaxos::Configuration *cfg)
+SimulatedTransport::LookupMulticastAddress(const transport::Configuration *cfg)
 {
     return NULL;
 }

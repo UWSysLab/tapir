@@ -74,7 +74,7 @@ protected:
 public:
     virtual ~Transport() {}
     virtual void Register(TransportReceiver *receiver,
-                          const specpaxos::Configuration &config,
+                          const transport::Configuration &config,
                           int replicaIdx) = 0;
     virtual bool SendMessage(TransportReceiver *src, const TransportAddress &dst,
                              const Message &m) = 0;

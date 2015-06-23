@@ -32,7 +32,7 @@
 
 #include <gtest/gtest.h>
 
-using namespace specpaxos;
+using namespace transport;
 using std::vector;
 
 TEST(Configuration, Basic)

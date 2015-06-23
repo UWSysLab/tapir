@@ -32,7 +32,7 @@
 #ifndef _LIB_CONFIGURATION_H_
 #define _LIB_CONFIGURATION_H_
 
-#include "replication/vr/viewstamp.h"
+#include "replication/common/viewstamp.h"
 
 #include <fstream>
 #include <stdbool.h>
@@ -41,7 +41,7 @@
 
 using std::string;
 
-namespace specpaxos {
+namespace transport {
 
 struct ReplicaAddress
 {
@@ -82,12 +82,12 @@ private:
     bool hasMulticast;
 };
 
-}      // namespace specpaxos
+}      // namespace replication
 
 namespace std {
-template <> struct hash<specpaxos::ReplicaAddress>
+template <> struct hash<transport::ReplicaAddress>
 {
-    size_t operator()(const specpaxos::ReplicaAddress & x) const
+    size_t operator()(const transport::ReplicaAddress & x) const
         {
             return hash<string>()(x.host) * 37 + hash<string>()(x.port);
         }
@@ -95,15 +95,15 @@ template <> struct hash<specpaxos::ReplicaAddress>
 }
 
 namespace std {
-template <> struct hash<specpaxos::Configuration>
+template <> struct hash<transport::Configuration>
 {
-    size_t operator()(const specpaxos::Configuration & x) const
+    size_t operator()(const transport::Configuration & x) const
         {
             size_t out = 0;
             out = x.n * 37 + x.f;
             for (int i = 0; i < x.n; i++) {
                 out *= 37;
-                out += hash<specpaxos::ReplicaAddress>()(x.replica(i));
+                out += hash<transport::ReplicaAddress>()(x.replica(i));
             }
             return out;
         }

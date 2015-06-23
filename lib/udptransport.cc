@@ -83,7 +83,7 @@ bool operator<(const UDPTransportAddress &a, const UDPTransportAddress &b)
 }
 
 UDPTransportAddress
-UDPTransport::LookupAddress(const specpaxos::ReplicaAddress &addr)
+UDPTransport::LookupAddress(const replication::ReplicaAddress &addr)
 {
     int res;
     struct addrinfo hints;
@@ -106,15 +106,15 @@ UDPTransport::LookupAddress(const specpaxos::ReplicaAddress &addr)
 }
 
 UDPTransportAddress
-UDPTransport::LookupAddress(const specpaxos::Configuration &config,
+UDPTransport::LookupAddress(const replication::Configuration &config,
                             int idx)
 {
-    const specpaxos::ReplicaAddress &addr = config.replica(idx);
+    const replication::ReplicaAddress &addr = config.replica(idx);
     return LookupAddress(addr);
 }
 
 const UDPTransportAddress *
-UDPTransport::LookupMulticastAddress(const specpaxos::Configuration
+UDPTransport::LookupMulticastAddress(const replication::Configuration
                                      *config)
 {
     if (!config->multicast()) {
@@ -232,7 +232,7 @@ UDPTransport::~UDPTransport()
 }
 
 void
-UDPTransport::ListenOnMulticastPort(const specpaxos::Configuration
+UDPTransport::ListenOnMulticastPort(const replication::Configuration
                                     *canonicalConfig)
 {
     if (!canonicalConfig->multicast()) {
@@ -298,13 +298,13 @@ UDPTransport::ListenOnMulticastPort(const specpaxos::Configuration
 
 void
 UDPTransport::Register(TransportReceiver *receiver,
-                       const specpaxos::Configuration &config,
+                       const replication::Configuration &config,
                        int replicaIdx)
 {
     ASSERT(replicaIdx < config.n);
     struct sockaddr_in sin;
 
-    const specpaxos::Configuration *canonicalConfig =
+    const replication::Configuration *canonicalConfig =
         RegisterConfiguration(receiver, config, replicaIdx);
 
     // Create socket
@@ -624,7 +624,7 @@ UDPTransport::OnReadable(int fd)
             // If so, deliver the message to all replicas for that
             // config, *except* if that replica was the sender of the
             // message.
-            const specpaxos::Configuration *cfg = it->second;
+            const replication::Configuration *cfg = it->second;
             for (auto &kv : replicaReceivers[cfg]) {
                 TransportReceiver *receiver = kv.second;
                 const UDPTransportAddress &raddr = 

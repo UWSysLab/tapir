@@ -108,8 +108,8 @@ void Latency_FlushTo(const char *fname);
 void Latency_Flush(void);
 
 void Latency_Put(Latency_t *l,
-                 ::specpaxos::latency::format::Latency &out);
-bool Latency_TryGet(const ::specpaxos::latency::format::Latency &in,
+                 ::transport::latency::format::Latency &out);
+bool Latency_TryGet(const ::transport::latency::format::Latency &in,
                     Latency_t *l);
 
 static inline void

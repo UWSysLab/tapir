@@ -69,7 +69,7 @@ public:
                  int dscp = 0, event_base *evbase = nullptr);
     virtual ~UDPTransport();
     void Register(TransportReceiver *receiver,
-                  const specpaxos::Configuration &config,
+                  const replication::Configuration &config,
                   int replicaIdx);
     void Run();
     void Stop();
@@ -106,8 +106,8 @@ private:
     std::vector<event *> signalEvents;
     std::map<int, TransportReceiver*> receivers; // fd -> receiver
     std::map<TransportReceiver*, int> fds; // receiver -> fd
-    std::map<const specpaxos::Configuration *, int> multicastFds;
-    std::map<int, const specpaxos::Configuration *> multicastConfigs;
+    std::map<const replication::Configuration *, int> multicastFds;
+    std::map<int, const replication::Configuration *> multicastConfigs;
     int lastTimerId;
     std::map<int, UDPTransportTimerInfo *> timers;
     uint64_t lastFragMsgId;
@@ -122,13 +122,13 @@ private:
                              const UDPTransportAddress &dst,
                              const Message &m, bool multicast = false);
     UDPTransportAddress
-    LookupAddress(const specpaxos::ReplicaAddress &addr);
+    LookupAddress(const replication::ReplicaAddress &addr);
     UDPTransportAddress
-    LookupAddress(const specpaxos::Configuration &cfg,
+    LookupAddress(const replication::Configuration &cfg,
                   int replicaIdx);
     const UDPTransportAddress *
-    LookupMulticastAddress(const specpaxos::Configuration *cfg);
-    void ListenOnMulticastPort(const specpaxos::Configuration
+    LookupMulticastAddress(const replication::Configuration *cfg);
+    void ListenOnMulticastPort(const replication::Configuration
                                *canonicalConfig);
     void OnReadable(int fd);
     void OnTimer(UDPTransportTimerInfo *info);
