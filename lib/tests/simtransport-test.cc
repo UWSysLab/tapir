@@ -67,11 +67,9 @@ TestReceiver::ReceiveMessage(const TransportAddress &src,
 class SimTransportTest : public testing::Test
 {
 protected:
-    std::vector<transport::ReplicaAddress> replicaAddrs =
-    { { "localhost", "12345" },
-      { "localhost", "12346" },
-      { "localhost", "12347" }};
-    transport::Configuration config{3, 1, replicaAddrs};
+    std::vector<transport::ReplicaAddress> replicaAddrs;
+    
+    transport::Configuration *config;
 
     TestReceiver *receiver0;
     TestReceiver *receiver1;
@@ -80,14 +78,19 @@ protected:
     SimulatedTransport *transport;
 
     virtual void SetUp() {
+	replicaAddrs.push_back(*(new transport::ReplicaAddress("localhost", "12345")));
+	replicaAddrs.push_back(*(new transport::ReplicaAddress("localhost", "12346")));
+	replicaAddrs.push_back(*(new transport::ReplicaAddress("localhost", "12347")));
+
         receiver0 = new TestReceiver();
         receiver1 = new TestReceiver();
         receiver2  = new TestReceiver();
 
+	config = new transport::Configuration(3, 1, replicaAddrs);
         transport = new SimulatedTransport();
-        transport->Register(receiver0, config, 0);
-        transport->Register(receiver1, config, 1);
-        transport->Register(receiver2, config, 2);
+        transport->Register(receiver0, *config, 0);
+        transport->Register(receiver1, *config, 1);
+        transport->Register(receiver2, *config, 2);
     }
     
     virtual void TearDown() {

@@ -61,12 +61,12 @@ class VRApp : public AppReplica {
 public:
     VRApp(std::vector<string> *o, std::vector<string> *u) : ops(o), unloggedOps(u) { }
     
-    void ReplicaUpcall(Replica *r, opnum_t opnum, const string &req, string &reply) {
+    void ReplicaUpcall(opnum_t opnum, const string &req, string &reply) {
         ops->push_back(req);
         reply = "reply: " + req;
     }
 
-    void UnloggedUpcall(Replica *r, const string &req, string &reply) {
+    void UnloggedUpcall(const string &req, string &reply) {
         unloggedOps->push_back(req);
         reply = "unlreply: " + req;
     }

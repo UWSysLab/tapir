@@ -56,7 +56,9 @@ Replica::~Replica()
 void
 Replica::LeaderUpcall(opnum_t opnum, const string &op, bool &replicate, string &res)
 {
+    Debug("Making leader upcall for operation %s", op.c_str());
     app->LeaderUpcall(opnum, op, replicate, res);
+    Debug("Upcall result: %s %s", replicate ? "yes":"no", res.c_str());
 }
 
 void
