@@ -4,7 +4,9 @@
  * latency.h:
  *   latency profiling functions
  *
- * Copyright 2013 Dan R. K. Ports  <drkp@cs.washington.edu>
+ * Copyright 2013-2015 Irene Zhang <iyzhang@cs.washington.edu>
+ *                     Naveen Kr. Sharma <nksharma@cs.washington.edu>
+ *                     Dan R. K. Ports  <drkp@cs.washington.edu>
  * Copyright 2009-2012 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person
@@ -32,7 +34,7 @@
 #ifndef _LIB_LATENCY_H_
 #define _LIB_LATENCY_H_
 
-#include "paxos-lib/lib/latency-format.pb.h"
+#include "lib/latency-format.pb.h"
 
 #include <stdbool.h>
 #include <stdint.h>
