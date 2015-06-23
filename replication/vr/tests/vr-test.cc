@@ -53,6 +53,25 @@ using namespace replication;
 using namespace replication::vr;
 using namespace replication::vr::proto;
 
+class VRApp : public AppReplica {
+
+    std::vector<string> *ops;
+    std::vector<string> *unloggedOps;
+
+public:
+    VRApp(std::vector<string> *o, std::vector<string> *u) : ops(o), unloggedOps(u) { }
+    
+    void ReplicaUpcall(Replica *r, opnum_t opnum, const string &req, string &reply) {
+        ops->push_back(req);
+        reply = "reply: " + req;
+    }
+
+    void UnloggedUpcall(Replica *r, const string &req, string &reply) {
+        unloggedOps->push_back(req);
+        reply = "unlreply: " + req;
+    }
+};
+    
 class VRTest : public  ::testing::TestWithParam<int>
 {
 protected:
@@ -77,15 +96,7 @@ protected:
         unloggedOps.resize(config->n);
 
         for (int i = 0; i < config->n; i++) {
-            replicas.push_back(new VRReplica(*config, i, transport, GetParam(),
-                                             [i,this](Replica *r, opnum_t opnum, const string &req, string &reply) {
-                                                 ops[i].push_back(req);
-                                                 reply = "reply: " + req;
-                                             },
-                                   [i,this](Replica *r, const string &req, string &reply) {
-                                                 unloggedOps[i].push_back(req);
-                                                 reply = "unlreply: " + req;
-                                             }));
+            replicas.push_back(new VRReplica(*config, i, transport, GetParam(), new VRApp(&ops[i], &unloggedOps[i])));
         }
 
         client = new VRClient(*config, transport);
@@ -174,7 +185,7 @@ TEST_P(VRTest, Unlogged)
     ClientSendNextUnlogged(1, upcall, timeout);
     transport->Run();
 
-    for (int i = 0; i < ops.size(); i++) {
+    for (unsigned int i = 0; i < ops.size(); i++) {
         EXPECT_EQ(0, ops[i].size());
         EXPECT_EQ((i == 1 ? 1 : 0), unloggedOps[i].size());
     }
@@ -210,7 +221,7 @@ TEST_P(VRTest, UnloggedTimeout)
     ClientSendNextUnlogged(1, upcall, timeout);
     transport->Run();
 
-    for (int i = 0; i < ops.size(); i++) {
+    for (unsigned int i = 0; i < ops.size(); i++) {
         EXPECT_EQ(0, ops[i].size());
         EXPECT_EQ(0, unloggedOps[i].size());
     }

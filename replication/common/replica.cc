@@ -34,7 +34,7 @@
 #include "replication/common/log.h"
 #include "replication/common/replica.h"
 
-#include "replication/lib/message.h"
+#include "lib/message.h"
 
 #include <stdlib.h>
 

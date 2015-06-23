@@ -37,7 +37,7 @@
 
 namespace replication {
     
-Client::Client(const Configuration &config, Transport *transport,
+Client::Client(const transport::Configuration &config, Transport *transport,
                uint64_t clientid)
     : config(config), transport(transport)
 {

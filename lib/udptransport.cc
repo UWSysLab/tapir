@@ -29,10 +29,10 @@
  *
  **********************************************************************/
 
-#include "paxos-lib/lib/assert.h"
-#include "paxos-lib/lib/configuration.h"
-#include "paxos-lib/lib/message.h"
-#include "paxos-lib/lib/udptransport.h"
+#include "lib/assert.h"
+#include "lib/configuration.h"
+#include "lib/message.h"
+#include "lib/udptransport.h"
 
 #include <google/protobuf/message.h>
 #include <event2/event.h>
@@ -83,7 +83,7 @@ bool operator<(const UDPTransportAddress &a, const UDPTransportAddress &b)
 }
 
 UDPTransportAddress
-UDPTransport::LookupAddress(const replication::ReplicaAddress &addr)
+UDPTransport::LookupAddress(const transport::ReplicaAddress &addr)
 {
     int res;
     struct addrinfo hints;
@@ -106,15 +106,15 @@ UDPTransport::LookupAddress(const replication::ReplicaAddress &addr)
 }
 
 UDPTransportAddress
-UDPTransport::LookupAddress(const replication::Configuration &config,
+UDPTransport::LookupAddress(const transport::Configuration &config,
                             int idx)
 {
-    const replication::ReplicaAddress &addr = config.replica(idx);
+    const transport::ReplicaAddress &addr = config.replica(idx);
     return LookupAddress(addr);
 }
 
 const UDPTransportAddress *
-UDPTransport::LookupMulticastAddress(const replication::Configuration
+UDPTransport::LookupMulticastAddress(const transport::Configuration
                                      *config)
 {
     if (!config->multicast()) {
@@ -232,7 +232,7 @@ UDPTransport::~UDPTransport()
 }
 
 void
-UDPTransport::ListenOnMulticastPort(const replication::Configuration
+UDPTransport::ListenOnMulticastPort(const transport::Configuration
                                     *canonicalConfig)
 {
     if (!canonicalConfig->multicast()) {
@@ -298,13 +298,13 @@ UDPTransport::ListenOnMulticastPort(const replication::Configuration
 
 void
 UDPTransport::Register(TransportReceiver *receiver,
-                       const replication::Configuration &config,
+                       const transport::Configuration &config,
                        int replicaIdx)
 {
     ASSERT(replicaIdx < config.n);
     struct sockaddr_in sin;
 
-    const replication::Configuration *canonicalConfig =
+    const transport::Configuration *canonicalConfig =
         RegisterConfiguration(receiver, config, replicaIdx);
 
     // Create socket
@@ -624,7 +624,7 @@ UDPTransport::OnReadable(int fd)
             // If so, deliver the message to all replicas for that
             // config, *except* if that replica was the sender of the
             // message.
-            const replication::Configuration *cfg = it->second;
+            const transport::Configuration *cfg = it->second;
             for (auto &kv : replicaReceivers[cfg]) {
                 TransportReceiver *receiver = kv.second;
                 const UDPTransportAddress &raddr = 

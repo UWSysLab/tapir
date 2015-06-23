@@ -28,7 +28,7 @@
  *
  **********************************************************************/
 
-#include "replicationcommon/log.h"
+#include "replication/common/log.h"
 #include "replication/common/request.pb.h"
 #include "lib/assert.h"
 

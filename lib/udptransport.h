@@ -32,9 +32,9 @@
 #ifndef _LIB_UDPTRANSPORT_H_
 #define _LIB_UDPTRANSPORT_H_
 
-#include "paxos-lib/lib/configuration.h"
-#include "paxos-lib/lib/transport.h"
-#include "paxos-lib/lib/transportcommon.h"
+#include "lib/configuration.h"
+#include "lib/transport.h"
+#include "lib/transportcommon.h"
 
 #include <event2/event.h>
 
@@ -69,7 +69,7 @@ public:
                  int dscp = 0, event_base *evbase = nullptr);
     virtual ~UDPTransport();
     void Register(TransportReceiver *receiver,
-                  const replication::Configuration &config,
+                  const transport::Configuration &config,
                   int replicaIdx);
     void Run();
     void Stop();
@@ -106,8 +106,8 @@ private:
     std::vector<event *> signalEvents;
     std::map<int, TransportReceiver*> receivers; // fd -> receiver
     std::map<TransportReceiver*, int> fds; // receiver -> fd
-    std::map<const replication::Configuration *, int> multicastFds;
-    std::map<int, const replication::Configuration *> multicastConfigs;
+    std::map<const transport::Configuration *, int> multicastFds;
+    std::map<int, const transport::Configuration *> multicastConfigs;
     int lastTimerId;
     std::map<int, UDPTransportTimerInfo *> timers;
     uint64_t lastFragMsgId;
@@ -122,13 +122,13 @@ private:
                              const UDPTransportAddress &dst,
                              const Message &m, bool multicast = false);
     UDPTransportAddress
-    LookupAddress(const replication::ReplicaAddress &addr);
+    LookupAddress(const transport::ReplicaAddress &addr);
     UDPTransportAddress
-    LookupAddress(const replication::Configuration &cfg,
+    LookupAddress(const transport::Configuration &cfg,
                   int replicaIdx);
     const UDPTransportAddress *
-    LookupMulticastAddress(const replication::Configuration *cfg);
-    void ListenOnMulticastPort(const replication::Configuration
+    LookupMulticastAddress(const transport::Configuration *cfg);
+    void ListenOnMulticastPort(const transport::Configuration
                                *canonicalConfig);
     void OnReadable(int fd);
     void OnTimer(UDPTransportTimerInfo *info);
