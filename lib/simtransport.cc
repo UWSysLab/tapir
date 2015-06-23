@@ -4,7 +4,9 @@
  * simtransport.cc:
  *   simulated message-passing interface for testing use
  *
- * Copyright 2013 Dan R. K. Ports  <drkp@cs.washington.edu>
+ * Copyright 2013-2015 Irene Zhang <iyzhang@cs.washington.edu>
+ *                     Naveen Kr. Sharma <nksharma@cs.washington.edu>
+ *                     Dan R. K. Ports  <drkp@cs.washington.edu>
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -28,9 +30,9 @@
  *
  **********************************************************************/
 
-#include "paxos-lib/lib/assert.h"
-#include "paxos-lib/lib/message.h"
-#include "paxos-lib/lib/simtransport.h"
+#include "lib/assert.h"
+#include "lib/message.h"
+#include "lib/simtransport.h"
 #include <google/protobuf/message.h>
 
 SimulatedTransportAddress::SimulatedTransportAddress(int addr)

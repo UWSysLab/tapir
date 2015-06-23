@@ -32,7 +32,7 @@
 #ifndef _LIB_CONFIGURATION_H_
 #define _LIB_CONFIGURATION_H_
 
-#include "paxos-lib/lib/viewstamp.h"
+#include "replication/vr/viewstamp.h"
 
 #include <fstream>
 #include <stdbool.h>

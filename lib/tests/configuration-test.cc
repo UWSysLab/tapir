@@ -28,7 +28,7 @@
  *
  **********************************************************************/
 
-#include "paxos-lib/lib/configuration.h"
+#include "lib/configuration.h"
 
 #include <gtest/gtest.h>
 

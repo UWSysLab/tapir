@@ -4,7 +4,9 @@
  * latency.cc:
  *   latency profiling functions
  *
- * Copyright 2013 Dan R. K. Ports  <drkp@cs.washington.edu>
+ * Copyright 2013-2015 Irene Zhang <iyzhang@cs.washington.edu>
+ *                     Naveen Kr. Sharma <nksharma@cs.washington.edu>
+ *                     Dan R. K. Ports  <drkp@cs.washington.edu>
  * Copyright 2009-2012 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person
@@ -40,8 +42,8 @@
 #include <iostream>
 #include <fstream>
 
-#include "paxos-lib/lib/message.h"
-#include "paxos-lib/lib/latency-format.pb.h"
+#include "lib/message.h"
+#include "lib/latency-format.pb.h"
 
 static struct Latency_t *latencyHead;
 

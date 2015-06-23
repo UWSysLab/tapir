@@ -29,9 +29,9 @@
  *
  **********************************************************************/
 
-#include "paxos-lib/lib/assert.h"
-#include "paxos-lib/lib/configuration.h"
-#include "paxos-lib/lib/message.h"
+#include "lib/assert.h"
+#include "lib/configuration.h"
+#include "lib/message.h"
 
 #include <iostream>
 #include <fstream>

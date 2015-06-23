@@ -28,10 +28,10 @@
  *
  **********************************************************************/
 
-#include "paxos-lib/lib/configuration.h"
-#include "paxos-lib/lib/message.h"
-#include "paxos-lib/lib/simtransport.h"
-#include "paxos-lib/lib/tests/simtransport-testmessage.pb.h"
+#include "lib/configuration.h"
+#include "lib/message.h"
+#include "lib/simtransport.h"
+#include "lib/tests/simtransport-testmessage.pb.h"
 
 #include <gtest/gtest.h>
 
