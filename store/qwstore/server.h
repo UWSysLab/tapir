@@ -3,20 +3,19 @@
 /***********************************************************************
  *
  * qwstore/server.h:
- *   QWStore storage server
+ *   QWStore storage server executable and dispatch code
  *
  **********************************************************************/
 
 #ifndef _QW_SERVER_H_
 #define _QW_SERVER_H_
 
-#include "paxos-lib/lib/assert.h"
-#include "paxos-lib/lib/message.h"
-#include "paxos-lib/lib/udptransport.h"
-#include "paxos-lib/lib/configuration.h"
-#include "common/timestamp.h"
-#include "common/transaction.h"
-#include "common/txnstore.h"
+#include "lib/assert.h"
+#include "lib/message.h"
+#include "lib/udptransport.h"
+#include "lib/configuration.h"
+#include "store/common/timestamp.h"
+#include "store/common/transaction.h"
 #include "qwstore/qwstore.h"
 #include "qwstore/qw-proto.pb.h"
 
@@ -53,6 +52,7 @@ public:
     void Load(const std::string &key, const std::string &value);
 
 };
+
 
 } // namespace qwstore
 

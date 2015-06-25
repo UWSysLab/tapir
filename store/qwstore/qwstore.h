@@ -10,12 +10,11 @@
 #ifndef _QW_STORE_H_
 #define _QW_STORE_H_
 
-#include "paxos-lib/lib/assert.h"
-#include "paxos-lib/lib/message.h"
-#include "common/kvstore.h"
-#include "common/timestamp.h"
-#include "common/transaction.h"
-#include "common/txnstore.h"
+#include "lib/assert.h"
+#include "lib/message.h"
+#include "store/common/backend/kvstore.h"
+#include "store/common/timestamp.h"
+#include "store/common/transaction.h"
 
 namespace qwstore {
 

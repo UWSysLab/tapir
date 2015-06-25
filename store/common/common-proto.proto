@@ -1,0 +1,20 @@
+message TimestampMessage {
+    required uint64 timestamp = 1;
+    required uint64 id = 2;
+}
+
+message ReadMessage {
+    required string key = 1;
+    required TimestampMessage readtime = 2;
+}
+
+message WriteMessage {
+    required string key = 1;
+    required string value = 2;
+}
+
+// A serialized transaction
+message TransactionMessage {
+    repeated ReadMessage readset = 1;
+    repeated WriteMessage writeset = 2;
+}

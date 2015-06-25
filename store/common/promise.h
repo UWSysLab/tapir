@@ -10,10 +10,10 @@
 #ifndef _PROMISE_H_
 #define _PROMISE_H_
 
-#include "paxos-lib/lib/assert.h"
-#include "paxos-lib/lib/message.h"
-#include "paxos-lib/lib/transport.h"
-#include "common/transaction.h"
+#include "lib/assert.h"
+#include "lib/message.h"
+#include "lib/transport.h"
+#include "store/common/transaction.h"
 #include <condition_variable>
 #include <mutex>
 
