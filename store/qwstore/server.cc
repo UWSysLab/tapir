@@ -6,7 +6,7 @@
  *
  **********************************************************************/
 
-#include "qwstore/server.h"
+#include "server.h"
 
 namespace qwstore {
 

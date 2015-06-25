@@ -10,12 +10,21 @@
 #ifndef _TRANSACTION_H_
 #define _TRANSACTION_H_
 
-#include "paxos-lib/lib/assert.h"
-#include "paxos-lib/lib/message.h"
-#include "common/timestamp.h"
-#include "common/common-proto.pb.h"
+#include "lib/assert.h"
+#include "lib/message.h"
+#include "timestamp.h"
+#include "store/common/common-proto.pb.h"
 
 #include <unordered_map>
+
+// Reply types
+#define REPLY_OK 0
+#define REPLY_FAIL 1
+#define REPLY_RETRY 2
+#define REPLY_ABSTAIN 3
+#define REPLY_TIMEOUT 4
+#define REPLY_NETWORK_FAILURE 5
+#define REPLY_MAX 6
 
 class Transaction {
 private:

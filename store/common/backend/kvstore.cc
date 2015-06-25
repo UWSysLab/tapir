@@ -7,7 +7,7 @@
  *
  **********************************************************************/
 
-#include "common/kvstore.h"
+#include "kvstore.h"
 
 using namespace std;
 

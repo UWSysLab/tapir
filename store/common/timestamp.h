@@ -10,9 +10,9 @@
 #ifndef _TIMESTAMP_H_
 #define _TIMESTAMP_H_
 
-#include "paxos-lib/lib/assert.h"
-#include "paxos-lib/lib/message.h"
-#include "common/common-proto.pb.h"
+#include "lib/assert.h"
+#include "lib/message.h"
+#include "store/common/common-proto.pb.h"
 
 class Timestamp
 {

@@ -7,7 +7,7 @@
  *
  **********************************************************************/
 
-#include "common/truetime.h"
+#include "truetime.h"
 
 using namespace std;
 

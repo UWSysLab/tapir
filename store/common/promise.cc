@@ -7,7 +7,7 @@
  *
  **********************************************************************/
 
-#include "store/common/promise.h"
+#include "promise.h"
 
 using namespace std;
 

@@ -10,8 +10,8 @@
 #ifndef _LOCK_SERVER_H_
 #define _LOCK_SERVER_H_
 
-#include "paxos-lib/lib/assert.h"
-#include "paxos-lib/lib/message.h"
+#include "lib/assert.h"
+#include "lib/message.h"
 #include <sys/time.h>
 #include <map>
 #include <queue>

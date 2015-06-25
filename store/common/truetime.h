@@ -10,7 +10,7 @@
 #ifndef _TRUETIME_H_
 #define _TRUETIME_H_
 
-#include "paxos-lib/lib/message.h"
+#include "lib/message.h"
 
 #include <sys/time.h>
 #include <stdlib.h>

@@ -6,7 +6,8 @@
  *   Simple quorum write key-value store implementation
  *
  **********************************************************************/
-#include "qwstore/qwstore.h"
+
+#include "qwstore.h"
 
 using namespace std;
 

@@ -7,7 +7,7 @@
  *
  **********************************************************************/
 
-#include "spanstore/lockserver.h"
+#include "lockserver.h"
 
 using namespace std;
 

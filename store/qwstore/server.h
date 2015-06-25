@@ -16,8 +16,8 @@
 #include "lib/configuration.h"
 #include "store/common/timestamp.h"
 #include "store/common/transaction.h"
-#include "qwstore/qwstore.h"
-#include "qwstore/qw-proto.pb.h"
+#include "qwstore.h"
+#include "store/qwstore/qw-proto.pb.h"
 
 namespace qwstore {
 

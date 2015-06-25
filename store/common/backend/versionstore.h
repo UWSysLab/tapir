@@ -12,9 +12,9 @@
 #ifndef _VERSIONED_KV_STORE_H_
 #define _VERSIONED_KV_STORE_H_
 
-#include "paxos-lib/lib/assert.h"
-#include "paxos-lib/lib/message.h"
-#include "common/timestamp.h"
+#include "lib/assert.h"
+#include "lib/message.h"
+#include "store/common/timestamp.h"
 
 #include <set>
 #include <map>

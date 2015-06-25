@@ -7,7 +7,7 @@
  *
  **********************************************************************/
 
-#include "common/transaction.h"
+#include "transaction.h"
 
 using namespace std;
 
