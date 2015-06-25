@@ -28,7 +28,7 @@
  *
  **********************************************************************/
 
-#include "store/common/backend/versionstore.h"
+#include "store/common/backend/lockserver.h"
 
 #include <gtest/gtest.h>
 
@@ -36,16 +36,16 @@ TEST(LockServer, ReadLock)
 {
     LockServer s;
 
-    EXPECT_TRUE(s.LockForRead("x", 1));
-    EXPECT_TRUE(s.LockForRead("x", 2));   
-    EXPECT_FALSE(s.LockForWrite("x", 3));
+    EXPECT_TRUE(s.lockForRead("x", 1));
+    EXPECT_TRUE(s.lockForRead("x", 2));   
+    EXPECT_FALSE(s.lockForWrite("x", 3));
 }
 
 TEST(LockServer, WriteLock)
 {
     LockServer s;
     
-    EXPECT_TRUE(s.LockForWrite("x", 1));
-    EXPECT_FALSE(s.LockForRead("x", 2));   
-    EXPECT_FALSE(s.LockForWrite("x", 3));    
+    EXPECT_TRUE(s.lockForWrite("x", 1));
+    EXPECT_FALSE(s.lockForRead("x", 2));   
+    EXPECT_FALSE(s.lockForWrite("x", 3));    
 }

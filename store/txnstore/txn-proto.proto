@@ -1,4 +1,4 @@
-import "../common/common-proto.proto";
+import "store/common/common-proto.proto";
 
 package spanstore.proto;
 

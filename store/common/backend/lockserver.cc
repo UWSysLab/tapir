@@ -11,8 +11,6 @@
 
 using namespace std;
 
-namespace spanstore {
-
 LockServer::LockServer()
 {
     readers = 0;
@@ -280,4 +278,3 @@ LockServer::releaseForWrite(const string &lock, uint64_t holder)
     }
 }
 
-} // namespace spanstore

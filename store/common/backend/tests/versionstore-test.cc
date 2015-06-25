@@ -32,53 +32,26 @@
 
 #include <gtest/gtest.h>
 
-TEST(VersionedKVStore, Put)
-{
-    VersionedKVStore store;
-
-    EXPECT_TRUE(store.put("test1", "abc"));
-    EXPECT_TRUE(store.put("test2", "def"));
-    EXPECT_TRUE(store.put("test1", "xyz"));
-    EXPECT_TRUE(store.put("test3", "abc"));
-}
-
 TEST(VersionedKVStore, Get)
 {
     VersionedKVStore store;
-    pair<Timestamp, std::string> val;
+    std::pair<Timestamp, std::string> val;
 
-    EXPECT_TRUE(store.put("test1", "abc"));
+    store.put("test1", "abc", Timestamp(10));
     EXPECT_TRUE(store.get("test1", val));
-    EXPECT_EQ(val[1], "abc");
+    EXPECT_EQ(val.second, "abc");
+    EXPECT_EQ(Timestamp(10), val.first); 
 
-    EXPECT_TRUE(store.put("test2", "def"));
+    store.put("test2", "def", Timestamp(10));
     EXPECT_TRUE(store.get("test2", val));
-    EXPECT_EQ(val[1], "def");
+    EXPECT_EQ(val.second, "def");
+    EXPECT_EQ(Timestamp(10), val.first); 
 
-    EXPECT_TRUE(store.put("test1", "xyz"));
+    store.put("test1", "xyz", Timestamp(11));
     EXPECT_TRUE(store.get("test1", val));
-    EXPECT_EQ(val[1], "xyz");
-}
-
-TEST(VersionedKVStore, VersionedGet)
-{
-    VersionedKVStore store;
-    Timestamp time;
-    Timestamp time2;
-    std::string val;
-
-    EXPECT_TRUE(store.put("test1", "abc", time));
-    EXPECT_TRUE(store.get("test1", val, time));
-    EXPECT_EQ(val, "abc");
-
-    EXPECT_TRUE(store.put("test2", "def", time2));
-    EXPECT_TRUE(store.get("test2", val, time2));
-    EXPECT_EQ(val, "def");
-
-    EXPECT_TRUE(store.put("test1", "xyz", time2));
-    EXPECT_TRUE(store.get("test1", val, time2));
-    EXPECT_EQ(val, "xyz");
+    EXPECT_EQ(val.second, "xyz");
+    EXPECT_EQ(Timestamp(11), val.first); 
     
-    EXPECT_TRUE(store.get("test1", val, time));
-    EXPECT_EQ(val, "abc");
+    EXPECT_TRUE(store.get("test1", Timestamp(10), val));
+    EXPECT_EQ(val.second, "abc");
 }
