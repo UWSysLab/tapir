@@ -1,7 +1,7 @@
 // -*- mode: c++; c-file-style: "k&r"; c-basic-offset: 4 -*-
 /***********************************************************************
  *
- * vr/client.h:
+ * replication/vr/client.h:
  *   dummy implementation of replication interface that just uses a
  *   single replica and passes commands directly to it
  *

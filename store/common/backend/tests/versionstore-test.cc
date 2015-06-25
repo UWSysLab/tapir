@@ -1,8 +1,8 @@
 // -*- mode: c++; c-file-style: "k&r"; c-basic-offset: 4 -*-
 /***********************************************************************
  *
- * kvstore-test.cc:
- *   test cases for simple key-value store class
+ * store/common/backend/tests/versionstore-test.cc
+ *   test cases for simple versioned key-value store class
  *
  * Copyright 2015 Irene Zhang  <iyzhang@cs.washington.edu>
  *

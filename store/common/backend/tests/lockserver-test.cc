@@ -1,8 +1,8 @@
 // -*- mode: c++; c-file-style: "k&r"; c-basic-offset: 4 -*-
 /***********************************************************************
  *
- * kvstore-test.cc:
- *   test cases for simple key-value store class
+ * store/common/backend/tests/lockserver-test.cc:
+ *   test cases for simple lock server class
  *
  * Copyright 2015 Irene Zhang  <iyzhang@cs.washington.edu>
  *
