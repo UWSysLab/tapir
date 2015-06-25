@@ -28,14 +28,14 @@ private:
     QWStore *store;
 
     // Configuration of replicas.
-    specpaxos::Configuration configuration;
+    transport::Configuration configuration;
 
     // Index of 'this' replica, and handle to transport layer.
     int myIdx;
     Transport *transport;
 
 public:
-    Server(const specpaxos::Configuration &configuration, int myIdx,
+    Server(const transport::Configuration &configuration, int myIdx,
            Transport *transport, QWStore *store);
     ~Server();
 

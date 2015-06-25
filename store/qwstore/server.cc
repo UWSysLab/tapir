@@ -12,7 +12,7 @@ namespace qwstore {
 
 using namespace proto;
 
-Server::Server(const specpaxos::Configuration &configuration, int myIdx,
+Server::Server(const transport::Configuration &configuration, int myIdx,
                Transport *transport, QWStore *store)
     : store(store), configuration(configuration), myIdx(myIdx), transport(transport)
 {
@@ -80,6 +80,8 @@ Server::Load(const string &key, const string &value)
     store->Load(key, value);
 }
 
+} // namespace qwstore
+
 static void Usage(const char *progName)
 {
     fprintf(stderr, "usage: %s -c conf-file -i replica-index\n",
@@ -141,7 +143,7 @@ main(int argc, char **argv)
                 configPath);
         Usage(argv[0]);
     }
-    specpaxos::Configuration config(configStream);
+    transport::Configuration config(configStream);
 
     if (index >= config.n) {
         fprintf(stderr, "replica index %d is out of bounds; "
@@ -150,13 +152,13 @@ main(int argc, char **argv)
     }
 
     UDPTransport transport(0.0, 0.0, 0);
-    Server *server;
+    qwstore::Server *server;
 
-    server = new Server(config, index, &transport, new QWStore());
+    server = new qwstore::Server(config, index, &transport, new qwstore::QWStore());
 
     if (keyPath) {
         string key;
-        ifstream in;
+	std::ifstream in;
         in.open(keyPath);
         if (!in) {
             fprintf(stderr, "Could not read keys from: %s\n", keyPath);
@@ -173,5 +175,3 @@ main(int argc, char **argv)
 
     return 0;
 }
-
-} // namespace qwstore
