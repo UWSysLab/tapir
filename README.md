@@ -22,3 +22,8 @@ The repo is structured as follows:
   transactional storage system, designed to work with VR
   - /qwstore - implementation of an eventually consistent storage
     system, using quorum writes for replication
+
+## Compiling & Running
+You can compile all of the TAPIR executables by running make in the root directory
+
+TAPIR depends on protobufs and libevent, so you will need those development libraries installed on your machine. On Linux, this can be done through apt.
