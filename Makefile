@@ -125,7 +125,7 @@ include lib/Rules.mk
 include replication/common/Rules.mk
 include replication/vr/Rules.mk
 include store/common/Rules.mk
-#include store/txnstore/Rules.mk
+include store/txnstore/Rules.mk
 include store/qwstore/Rules.mk
 
 ##################################################################

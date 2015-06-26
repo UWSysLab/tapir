@@ -42,8 +42,6 @@
 #include <unordered_map>
 #include <unordered_set>
 
-namespace spanstore {
-
 #define LOCK_WAIT_TIMEOUT 5000
 
 class LockServer
@@ -99,7 +97,5 @@ private:
     uint64_t readers;
     uint64_t writers;
 };
-
-} // namespace spanstore
 
 #endif /* _LOCK_SERVER_H_ */
