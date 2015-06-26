@@ -2,10 +2,11 @@
 // vim: set ts=4 sw=4:
 /***********************************************************************
  *
- * store/qwstore/shardclient.h:
- *   Single shard QWStore client interface.
+ * store/txnstore/shardclient.h:
+ *   Single shard transactional client interface.
  *
  * Copyright 2015 Irene Zhang <iyzhang@cs.washington.edu>
+ *                Naveen Kr. Sharma <naveenks@cs.washington.edu>
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -29,24 +30,24 @@
  *
  **********************************************************************/
 
-#ifndef _SPAN_TXN_CLIENT_H_
-#define _SPAN_TXN_CLIENT_H_
+#ifndef _TXN_CLIENT_H_
+#define _TXN_CLIENT_H_
 
-#include "paxos-lib/lib/assert.h"
-#include "paxos-lib/lib/message.h"
-#include "paxos-lib/lib/transport.h"
-#include "paxos-lib/common/client.h"
-#include "paxos-lib/vr/client.h"
-#include "common/txnclient.h"
-#include "common/timestamp.h"
-#include "common/transaction.h"
-#include "spanstore/span-proto.pb.h"
+#include "lib/assert.h"
+#include "lib/message.h"
+#include "lib/transport.h"
+#include "store/common/client.h"
+#include "replication/vr/client.h"
+#include "txnclient.h"
+#include "store/common/timestamp.h"
+#include "store/common/transaction.h"
+#include "store/txnstore/txn-proto.pb.h"
 
 #include <string>
 #include <mutex>
 #include <condition_variable>
 
-namespace spanstore {
+namespace txnstore {
 
 enum Mode {
     MODE_UNKNOWN,
@@ -117,6 +118,6 @@ private:
 
 };
 
-} // namespace spanstore
+} // namespace txnstore
 
-#endif /* _SPAN_TXN_CLIENT_H_ */
+#endif /* _TXN_CLIENT_H_ */

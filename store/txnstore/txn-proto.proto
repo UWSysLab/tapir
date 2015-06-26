@@ -1,6 +1,6 @@
 import "store/common/common-proto.proto";
 
-package spanstore.proto;
+package txnstore.proto;
 
 message GetMessage {
     required string key = 1;

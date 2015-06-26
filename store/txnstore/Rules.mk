@@ -1,18 +1,22 @@
 d := $(dir $(lastword $(MAKEFILE_LIST)))
 
 SRCS += $(addprefix $(d), \
-	client.cc spanclient.cc lockserver.cc \
-	occstore.cc lockstore.cc server.cc)
+	client.cc shardclient.cc server.cc)
 
 PROTOS += $(addprefix $(d), txn-proto.proto)
 
-OBJS-span-store := $(LIB-message) $(LIB-store) $(LIB-common) $(o)server.o \
-  $(o)occstore.o $(o)lockstore.o $(o)lockserver.o $(o)span-proto.o
+OBJS-txn-store := $(LIB-message) $(LIB-common) \
+$(LIB-backend) $(o)server.o \
+$(o)txn-proto.o
 
-OBJS-span-client := $(LIB-udptransport) $(LIB-request) $(LIB-common) \
-  $(LIB-latency) $(OBJS-vr-client) $(o)span-proto.o $(o)spanclient.o $(o)client.o
+OBJS-txn-client := $(o)txn-proto.o $(o)shardclient.o $(o)client.o
 
-$(d)server: $(LIB-udptransport) $(OBJS-span-store) \
-  $(OBJS-vr-replica) $(OBJS-span-store)
+include $(d)lib/Rules.mk
+
+$(d)client: $(LIB-udptransport) $(LIB-request) $(LIB-common) \
+  $(LIB-latency) $(OBJS-vr-client) $(OBJS-txn-client)
+
+$(d)server: $(LIB-udptransport) $(LIB-txnstore) \
+  $(OBJS-vr-replica) $(OBJS-txn-store)
 
 BINS += $(d)server

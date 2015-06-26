@@ -2,16 +2,39 @@
 // vim: set ts=4 sw=4:
 /***********************************************************************
  *
- * spanstore/server.cc:
- *   Implementation of a single SpanStore server.
+ * store/txnstore/server.cc:
+ *   Implementation of a single transactional key-value server.
+ *
+ * Copyright 2015 Irene Zhang <iyzhang@cs.washington.edu>
+ *                Naveen Kr. Sharma <nksharma@cs.washington.edu>
+ *
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use, copy,
+ * modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  *
  **********************************************************************/
 
-#include "spanstore/server.h"
+#include "server.h"
 
 using namespace std;
 
-namespace spanstore {
+namespace txnstore {
 
 using namespace proto;
 
@@ -22,11 +45,11 @@ Server::Server(Mode mode, uint64_t skew, uint64_t error) : mode(mode)
     switch (mode) {
     case MODE_LOCK:
     case MODE_SPAN_LOCK:
-        store = new spanstore::LockStore();
+        store = new txnstore::LockStore();
         break;
     case MODE_OCC:
     case MODE_SPAN_OCC:
-        store = new spanstore::OCCStore();
+        store = new txnstore::OCCStore();
         break;
     default:
         NOT_REACHABLE();
@@ -50,7 +73,7 @@ Server::LeaderUpcall(opnum_t opnum, const string &str1, bool &replicate, string 
     request.ParseFromString(str1);
 
     switch (request.op()) {
-    case spanstore::proto::Request::GET:
+    case txnstore::proto::Request::GET:
         if (request.get().has_timestamp()) {
             pair<Timestamp, string> val;
             status = store->Get(request.txnid(), request.get().key(),
@@ -70,7 +93,7 @@ Server::LeaderUpcall(opnum_t opnum, const string &str1, bool &replicate, string 
         reply.set_status(status);
         reply.SerializeToString(&str2);
         break;
-    case spanstore::proto::Request::PREPARE:
+    case txnstore::proto::Request::PREPARE:
         // Prepare is the only case that is conditionally run at the leader
         status = store->Prepare(request.txnid(),
                                 Transaction(request.prepare().txn()));
@@ -90,11 +113,11 @@ Server::LeaderUpcall(opnum_t opnum, const string &str1, bool &replicate, string 
             reply.SerializeToString(&str2);
         }
         break;
-    case spanstore::proto::Request::COMMIT:
+    case txnstore::proto::Request::COMMIT:
         replicate = true;
         str2 = str1;
         break;
-    case spanstore::proto::Request::ABORT:
+    case txnstore::proto::Request::ABORT:
         replicate = true;
         str2 = str1;
         break;
@@ -122,9 +145,9 @@ Server::ReplicaUpcall(opnum_t opnum,
     request.ParseFromString(str1);
 
     switch (request.op()) {
-    case spanstore::proto::Request::GET:
+    case txnstore::proto::Request::GET:
         return;
-    case spanstore::proto::Request::PREPARE:
+    case txnstore::proto::Request::PREPARE:
         // get a prepare timestamp and return to client
         store->Prepare(request.txnid(),
                        Transaction(request.prepare().txn()));
@@ -132,10 +155,10 @@ Server::ReplicaUpcall(opnum_t opnum,
             reply.set_timestamp(request.prepare().timestamp());
         }
         break;
-    case spanstore::proto::Request::COMMIT:
+    case txnstore::proto::Request::COMMIT:
         store->Commit(request.txnid(), request.commit().timestamp());
         break;
-    case spanstore::proto::Request::ABORT:
+    case txnstore::proto::Request::ABORT:
         store->Abort(request.txnid(), Transaction(request.abort().txn()));
         break;
     default:
@@ -154,7 +177,7 @@ Server::UnloggedUpcall(const string &str1, string &str2)
     
     request.ParseFromString(str1);
 
-    ASSERT(request.op() == spanstore::proto::Request::GET);
+    ASSERT(request.op() == txnstore::proto::Request::GET);
 
     if (request.get().has_timestamp()) {
         pair<Timestamp, string> val;
@@ -182,7 +205,7 @@ Server::Load(const string &key, const string &value, const Timestamp timestamp)
     store->Load(key, value, timestamp);
 }
 
-} // namespace spanstore
+} // namespace txnstore
 
 int
 main(int argc, char **argv)
@@ -192,7 +215,7 @@ main(int argc, char **argv)
     const char *configPath = NULL;
     const char *keyPath = NULL;
     uint64_t skew = 0, error = 0;
-    spanstore::Mode mode;
+    txnstore::Mode mode;
 
     // Parse arguments
     int opt;
@@ -216,13 +239,13 @@ main(int argc, char **argv)
         case 'm':
         {
             if (strcasecmp(optarg, "lock") == 0) {
-                mode = spanstore::MODE_LOCK;
+                mode = txnstore::MODE_LOCK;
             } else if (strcasecmp(optarg, "occ") == 0) {
-                mode = spanstore::MODE_OCC;
+                mode = txnstore::MODE_OCC;
             } else if (strcasecmp(optarg, "span-lock") == 0) {
-                mode = spanstore::MODE_SPAN_LOCK;
+                mode = txnstore::MODE_SPAN_LOCK;
             } else if (strcasecmp(optarg, "span-occ") == 0) {
-                mode = spanstore::MODE_SPAN_OCC;
+                mode = txnstore::MODE_SPAN_OCC;
             } else {
                 fprintf(stderr, "unknown mode '%s'\n", optarg);
             }
@@ -305,7 +328,7 @@ main(int argc, char **argv)
         fprintf(stderr, "option -i is required\n");
     }
 
-    if (mode == spanstore::MODE_UNKNOWN) {
+    if (mode == txnstore::MODE_UNKNOWN) {
         fprintf(stderr, "option -m is required\n");
     }
 
@@ -314,7 +337,7 @@ main(int argc, char **argv)
     if (configStream.fail()) {
         fprintf(stderr, "unable to read configuration file: %s\n", configPath);
     }
-    specpaxos::Configuration config(configStream);
+    transport::Configuration config(configStream);
 
     if (index >= config.n) {
         fprintf(stderr, "replica index %d is out of bounds; "
@@ -323,8 +346,8 @@ main(int argc, char **argv)
 
     UDPTransport transport(0.0, 0.0, 0);
 
-    spanstore::Server server(mode, skew, error);
-    specpaxos::vr::VRReplica replica(config, index, &transport, 1, &server);
+    txnstore::Server server(mode, skew, error);
+    replication::vr::VRReplica replica(config, index, &transport, 1, &server);
     
     if (keyPath) {
         string key;

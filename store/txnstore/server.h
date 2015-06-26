@@ -2,25 +2,46 @@
 // vim: set ts=4 sw=4:
 /***********************************************************************
  *
- * spanstore/replica.h:
- *   A single SpanStore server replica.
+ * store/txnstore/server.h:
+ *   A single transactional server replica.
+ *
+ * Copyright 2015 Irene Zhang <iyzhang@cs.washington.edu>
+ *                Naveen Kr. Sharma <nksharma@cs.washington.edu>
+ *
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use, copy,
+ * modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  *
  **********************************************************************/
 
-#ifndef _SPAN_SERVER_H_
-#define _SPAN_SERVER_H_
+#ifndef _TXN_SERVER_H_
+#define _TXN_SERVER_H_
 
-#include "paxos-lib/lib/configuration.h"
-#include "paxos-lib/common/replica.h"
-#include "paxos-lib/lib/udptransport.h"
-#include "paxos-lib/vr/replica.h"
-#include "common/truetime.h"
-#include "common/txnstore.h"
-#include "spanstore/occstore.h"
-#include "spanstore/lockstore.h"
-#include "spanstore/span-proto.pb.h"
+//#include "lib/configuration.h"
+#include "lib/udptransport.h"
+#include "replication/vr/replica.h"
+#include "store/common/truetime.h"
+#include "store/txnstore/lib/occstore.h"
+#include "store/txnstore/lib/lockstore.h"
+#include "store/txnstore/txn-proto.pb.h"
 
-namespace spanstore {
+namespace txnstore {
 
 enum Mode {
     MODE_UNKNOWN,
@@ -30,7 +51,7 @@ enum Mode {
     MODE_SPAN_LOCK
 };
 
-class Server : public specpaxos::AppReplica
+class Server : public replication::AppReplica
 {
 public:
     Server(Mode mode, uint64_t skew, uint64_t error);
@@ -47,6 +68,6 @@ private:
     TrueTime timeServer;
 };
 
-} // namespace spanstore
+} // namespace txnstore
 
-#endif /* _SPAN_SERVER_H_ */
+#endif /* _TXN_SERVER_H_ */
