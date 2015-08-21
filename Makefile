@@ -7,13 +7,13 @@ CXX = g++
 LD = g++
 EXPAND = lib/tmpl/expand
 
-CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -levent_pthreads -O2 -DNASSERT
-#CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -levent_pthreads
+#CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -levent_pthreads -O2 -DNASSERT
+CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -levent_pthreads
 CXXFLAGS := -g -std=c++0x -levent_pthreads
 LDFLAGS := -levent_pthreads
 ## Debian package: check
-# CHECK_CFLAGS := $(shell pkg-config --cflags check)
-# CHECK_LDFLAGS := $(shell pkg-config --cflags --libs check)
+#CHECK_CFLAGS := $(shell pkg-config --cflags check)
+#CHECK_LDFLAGS := $(shell pkg-config --cflags --libs check)
 # Debian package: libprotobuf-dev
 PROTOBUF_CFLAGS := $(shell pkg-config --cflags protobuf)
 PROTOBUF_LDFLAGS := $(shell pkg-config --cflags --libs protobuf)
@@ -26,8 +26,8 @@ LIBEVENT_LDFLAGS := $(shell pkg-config --libs libevent)
 CFLAGS += $(LIBEVENT_CFLAGS)
 LDFLAGS += $(LIBEVENT_LDFLAGS)
 # Debian package: libssl-dev
-LIBSSL_CFLAGS := $(shell pkg-config --cflags libssl)
-LIBSSL_LDFLAGS := $(shell pkg-config --libs libssl)
+LIBSSL_CFLAGS := $(shell pkg-config --cflags openssl)
+LIBSSL_LDFLAGS := $(shell pkg-config --libs openssl)
 CFLAGS += $(LIBSSL_CFLAGS)
 LDFLAGS += $(LIBSSL_LDFLAGS)
 
@@ -124,6 +124,7 @@ endef
 include lib/Rules.mk
 include replication/common/Rules.mk
 include replication/vr/Rules.mk
+include replication/ir/Rules.mk
 include store/common/Rules.mk
 include store/txnstore/Rules.mk
 include store/qwstore/Rules.mk

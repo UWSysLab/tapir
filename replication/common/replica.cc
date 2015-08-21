@@ -71,27 +71,6 @@ Replica::ReplicaUpcall(opnum_t opnum, const string &op, string &res)
 }
 
 void
-Replica::Rollback(opnum_t current, opnum_t to, Log &log)
-{
-    Debug("Making rollback-upcall from " FMT_OPNUM " to " FMT_OPNUM,
-          current, to);
-
-    std::map<opnum_t, string> reqs;
-    for (opnum_t x = current; x > to; x--) {
-        reqs.insert(std::pair<opnum_t, string>(x,
-                                                log.Find(x)->request.op()));
-    }
-    
-    app->RollbackUpcall(current, to, reqs);
-}
-
-void
-Replica::Commit(opnum_t op)
-{
-    app->CommitUpcall(op);        
-}
-
-void
 Replica::UnloggedUpcall(const string &op, string &res)
 {
     app->UnloggedUpcall(op, res);

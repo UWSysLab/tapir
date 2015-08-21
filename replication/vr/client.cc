@@ -185,17 +185,8 @@ VRClient::HandleReply(const TransportAddress &remote,
     PendingRequest *req = pendingRequest;
     pendingRequest = NULL;
 
-#if CLIENT_NETWORK_DELAY
-    transport->Timer(CLIENT_NETWORK_DELAY, [=]() {
-            req->continuation(req->request, msg.reply());
-            delete req;
-        });
-#else
     req->continuation(req->request, msg.reply());
     delete req;
-#endif
-
-
 }
 
 void
@@ -214,15 +205,8 @@ VRClient::HandleUnloggedReply(const TransportAddress &remote,
     PendingRequest *req = pendingUnloggedRequest;
     pendingUnloggedRequest = NULL;
     
-#if READ_AT_LEADER
-    transport->Timer(CLIENT_NETWORK_DELAY, [=]() {
-            req->continuation(req->request, msg.reply());
-            delete req;
-        });
-#else
     req->continuation(req->request, msg.reply());
     delete req;
-#endif
 }
 
 void
