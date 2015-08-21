@@ -1,0 +1,52 @@
+import "replication/common/request.proto";
+
+package replication.vr.proto;
+
+message OpID {
+    required uint64 clientid = 1;
+    required uint64 clientreqid = 2;
+}
+
+message ProposeInconsistentMessage {
+    required replication.Request req = 1;
+}
+
+message ReplyInconsistentMessage {
+    required uint64 view = 1;
+    required uint32 replicaIdx = 2;
+    required OpID opid = 3;
+}
+
+message FinalizeInconsistentMessage {
+    required OpID opid = 1;
+}
+
+message ConfirmMessage {
+    required uint64 view = 1;
+    required uint32 replicaIdx = 2;
+    required OpID opid = 3;
+}
+
+message ProposeConsensusMessage {
+    required replication.Request req = 1;
+}
+
+message ReplyConsensusMessage {
+    required uint64 view = 1;
+    required uint32 replicaIdx = 2;
+    required OpID opid = 3;
+    required bytes reply = 4;
+}
+
+message FinalizeConsensusMessage {
+    required OpID opid = 1;
+    required bytes reply = 2;
+}
+
+message UnloggedRequestMessage {
+    required replication.UnloggedRequest req = 1;
+}
+
+message UnloggedReplyMessage {
+    required bytes reply = 1;
+}
