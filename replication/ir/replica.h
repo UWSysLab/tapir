@@ -21,17 +21,17 @@
 namespace replication {
 namespace ir {
 
-class IRAppReplica : public AppReplica
+class IRAppReplica
 {
 public:
     IRAppReplica() { };
     virtual ~IRAppReplica() { };
     // Invoke inconsistent operation, no return value
-    virtual void ExecInconsistentUpcall(const string &str1);
+    virtual void ExecInconsistentUpcall(const string &str1) { };
     // Invoke consensus operation
-    virtual void ExecConsensusUpcall(const string &str1, string &str2);
+    virtual void ExecConsensusUpcall(const string &str1, string &str2) { };
     // Invoke unreplicated operation
-    virtual void UnloggedUpcall(const string &str1, string &str2);
+    virtual void UnloggedUpcall(const string &str1, string &str2) { };
 };
 
     
