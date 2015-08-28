@@ -31,28 +31,33 @@
 #include "replication/ir/record.h"
 #include "lib/assert.h"
 
+namespace replication {
 namespace ir {
 
-Record::Record()
-{
-
-}
-
-
 RecordEntry &
-Record::Add(view_t view, opid_t opid, RecordEntryState state,
-            const Request &request, const string &reply)
+Record::Add(view_t view, opid_t opid, const Request &request,
+            RecordEntryState state)
 {
     RecordEntry entry;
-    entry.view = vs;
+    entry.view = view;
     entry.opid = opid;
-    entry.request = requet;
+    entry.request = request;
     entry.state = state;
 
     // Make sure this isn't a duplicate
     ASSERT(entries.count(opid) == 0);
     
     entries[opid] = entry;
+    return entries[opid];
+}
+
+RecordEntry &
+Record::Add(view_t view, opid_t opid, const Request &request,
+            RecordEntryState state, const string &result)
+{
+    RecordEntry entry = Add(view, opid, request, state);
+    entry.result = result;
+
     return entries[opid];
 }
 
@@ -65,13 +70,13 @@ Record::Find(opid_t opid)
     }
 
     RecordEntry *entry = &entries[opid];
-    ASSERT(entry->viewstamp.opid == opid);
+    ASSERT(entry->opid == opid);
     return entry;
 }
 
 
 bool
-Record::SetStatus(opnum_t op, RecordEntryState state)
+Record::SetStatus(opid_t op, RecordEntryState state)
 {
     RecordEntry *entry = Find(op);
     if (entry == NULL) {
@@ -83,7 +88,19 @@ Record::SetStatus(opnum_t op, RecordEntryState state)
 }
 
 bool
-Record::SetRequest(opnum_t op, const Request &req)
+Record::SetResult(opid_t op, const string &result)
+{
+    RecordEntry *entry = Find(op);
+    if (entry == NULL) {
+        return false;
+    }
+
+    entry->result = result;
+    return true;
+}
+
+bool
+Record::SetRequest(opid_t op, const Request &req)
 {
     RecordEntry *entry = Find(op);
     if (entry == NULL) {
@@ -106,4 +123,5 @@ Record::Empty() const
     return entries.empty();
 }
 
-} // ir
+} // namespace ir
+} // namespace replication

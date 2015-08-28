@@ -6,19 +6,23 @@
  *
  **********************************************************************/
 
-#include "replication/ir/replica.cc"
-#include "common/tracer.h"
+#include "replication/ir/replica.h"
 
+namespace replication {
 namespace ir {
 
 using namespace std;
 using namespace proto;
 
-IRReplica::IRReplica(const transport::Configuration &configuration, int myIdx,
-                     Transport *transport)
-    : store(store), configuration(configuration), myIdx(myIdx), transport(transport)
+IRReplica::IRReplica(transport::Configuration config, int myIdx,
+                     Transport *transport, IRAppReplica *app) :
+    view(0),
+    myIdx(myIdx),
+    transport(transport),
+    app(app),
+    status(STATUS_NORMAL)
 {
-    transport->Register(this, configuration, myIdx);
+    transport->Register(this, config, myIdx);
 }
 
 IRReplica::~IRReplica() { }
@@ -65,44 +69,165 @@ void
 IRReplica::HandleProposeInconsistent(const TransportAddress &remote,
                                      const ProposeInconsistentMessage &msg)
 {
-    // 1. Execute
+    uint64_t clientid = msg.req().clientid();
+    uint64_t clientreqid = msg.req().clientreqid();
 
-    // 2. Add to record as tentative
+    Debug("%lu:%lu Received inconsistent op: %s", clientid, clientreqid, (char *)msg.req().op().c_str());
+    
+    opid_t opid = make_pair(clientid, clientreqid);
+    
+    // Check record if we've already handled this request
+    RecordEntry *entry = record.Find(opid);
+    ReplyInconsistentMessage reply;
+    if (entry != NULL) {
+        // If we already have this op in our record, then just return it
+        reply.set_view(entry->view);
+        reply.set_replicaidx(myIdx);
+        reply.mutable_opid()->set_clientid(clientid);
+        reply.mutable_opid()->set_clientreqid(clientreqid);
+    } else {
+        // Otherwise, put it in our record as tentative
+        record.Add(view, opid, msg.req(), RECORD_STATE_TENTATIVE);
+    
+        // 3. Return Reply
+        reply.set_view(view);
+        reply.set_replicaidx(myIdx);
+        reply.mutable_opid()->set_clientid(clientid);
+        reply.mutable_opid()->set_clientreqid(clientreqid);
+    }
 
-    // 3. Return Reply
+    // Send the reply
+    transport->SendMessage(this, remote, reply);
+    
 }
     
 void
 IRReplica::HandleFinalizeInconsistent(const TransportAddress &remote,
                                       const FinalizeInconsistentMessage &msg)
 {
-    // 1. Mark as finalized
+    uint64_t clientid = msg.opid().clientid();
+    uint64_t clientreqid = msg.opid().clientreqid();
 
-    // 2. Return Confirm
+    Debug("%lu:%lu Received finalize inconsistent op", clientid, clientreqid);
+    
+    opid_t opid = make_pair(clientid, clientreqid);
+    
+    // Check record for the request
+    RecordEntry *entry = record.Find(opid);    
+    if (entry != NULL) {
+        // Mark entry as finalized
+        record.SetStatus(opid, RECORD_STATE_FINALIZED);
+
+        // Execute the operation
+        app->ExecInconsistentUpcall(entry->request.op());
+
+        // Send the reply
+        ConfirmMessage reply;
+        reply.set_view(view);
+        reply.set_replicaidx(myIdx);
+        *reply.mutable_opid() = msg.opid();
+
+        transport->SendMessage(this, remote, reply);
+    } else {
+        // Ignore?
+    }    
 }
 
 void
 IRReplica::HandleProposeConsensus(const TransportAddress &remote,
                                   const ProposeConsensusMessage &msg)
 {
-    // 1. Execute
+    uint64_t clientid = msg.req().clientid();
+    uint64_t clientreqid = msg.req().clientreqid();
 
-    // 2. Add to record as tentative with result
+    Debug("%lu:%lu Received consensus op: %s", clientid, clientreqid, (char *)msg.req().op().c_str());
+    
+    opid_t opid = make_pair(clientid, clientreqid);
+    
+    // Check record if we've already handled this request
+    RecordEntry *entry = record.Find(opid);
+    ReplyConsensusMessage reply;
+    if (entry != NULL) {
+        // If we already have this op in our record, then just return it
+        reply.set_view(entry->view);
+        reply.set_replicaidx(myIdx);
+        reply.mutable_opid()->set_clientid(clientid);
+        reply.mutable_opid()->set_clientreqid(clientreqid);
+        reply.set_result(entry->result);
+    } else {
+        // Execute op
+        string result;
 
-    // 3. Return Reply
+        app->ExecConsensusUpcall(msg.req().op(), result);
+
+        // Put it in our record as tentative
+        record.Add(view, opid, msg.req(), RECORD_STATE_TENTATIVE, result);
+
+        
+        // 3. Return Reply
+        reply.set_view(view);
+        reply.set_replicaidx(myIdx);
+        reply.mutable_opid()->set_clientid(clientid);
+        reply.mutable_opid()->set_clientreqid(clientreqid);
+        reply.set_result(result);
+    }
+
+    // Send the reply
+    transport->SendMessage(this, remote, reply);
 }
     
 void
 IRReplica::HandleFinalizeConsensus(const TransportAddress &remote,
                                    const FinalizeConsensusMessage &msg)
 {
-    // 1. Mark as finalized with result
+    uint64_t clientid = msg.opid().clientid();
+    uint64_t clientreqid = msg.opid().clientreqid();
+    
+    Debug("%lu:%lu Received finalize consensus op", clientid, clientreqid);
 
-    // 2. Return Confirm
+    opid_t opid = make_pair(clientid, clientreqid);
+    
+    // Check record for the request
+    RecordEntry *entry = record.Find(opid);    
+    if (entry != NULL) {
+        // Mark entry as finalized
+        record.SetStatus(opid, RECORD_STATE_FINALIZED);
+
+        if (msg.result() != entry->result) {
+            // Update the result
+            entry->result = msg.result();
+        }
+
+        // Send the reply
+        ConfirmMessage reply;
+        reply.set_view(view);
+        reply.set_replicaidx(myIdx);
+        *reply.mutable_opid() = msg.opid();
+
+        if (!transport->SendMessage(this, remote, reply)) {
+            Warning("Failed to send reply message");
+        }
+    } else {
+        // Ignore?
+        Warning("Finalize request for unknown consensus operation");
+    }
 }
     
-void HandleUnlogged(const TransportAddress &remote,
+void
+IRReplica::HandleUnlogged(const TransportAddress &remote,
                     const UnloggedRequestMessage &msg)
 {
-    // 1. Execute
+    UnloggedReplyMessage reply;
+    string res;
+    
+    Debug("Received unlogged request %s", (char *)msg.req().op().c_str());
+
+    app->UnloggedUpcall(msg.req().op(), res);
+    reply.set_reply(res);
+    
+    if (!(transport->SendMessage(this, remote, reply)))
+        Warning("Failed to send reply message");
 }
+
+} // namespace ir
+} // namespace replication

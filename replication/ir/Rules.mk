@@ -1,18 +1,18 @@
 d := $(dir $(lastword $(MAKEFILE_LIST)))
 
 SRCS += $(addprefix $(d), \
-	record.cc)
+		record.cc client.cc replica.cc)
 
 PROTOS += $(addprefix $(d), \
 	    ir-proto.proto)
 
-OBJS-ir-client :=  $(o)ir-proto.o \
+OBJS-ir-client :=  $(o)ir-proto.o $(o)client.o \
                    $(OBJS-client) $(LIB-message) \
                    $(LIB-configuration)
 
-OBJS-ir-replica := $(o)record.o $(o)ir-proto.o \
+OBJS-ir-replica := $(o)record.o $(o)replica.o $(o)ir-proto.o \
                    $(OBJS-replica) $(LIB-message) \
                    $(LIB-configuration)
 
-#include $(d)tests/Rules.mk
+include $(d)tests/Rules.mk
 

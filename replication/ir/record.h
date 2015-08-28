@@ -39,8 +39,9 @@
 
 #include <map>
 #include <string>
-#include <pair>
+#include <utility>
 
+namespace replication {
 namespace ir {
 
 enum RecordEntryState {
@@ -48,7 +49,7 @@ enum RecordEntryState {
     RECORD_STATE_FINALIZED
 };
 
-typedef pair<uint64_t, uint64_t> opid_t;
+typedef std::pair<uint64_t, uint64_t> opid_t;
     
 struct RecordEntry
 {
@@ -58,24 +59,26 @@ struct RecordEntry
     Request request;
     std::string result;
     
-    RecordEntry() { replyMessage = ""; }
+    RecordEntry() { result = ""; }
     RecordEntry(const RecordEntry &x)
         : view(x.view), opid(x.opid), state(x.state), request(x.request),
           result(x.result) { }
     RecordEntry(view_t view, opid_t opid, RecordEntryState state,
-                const Request &request, const std::string &reply)
+                const Request &request, const std::string &result)
         : view(view), opid(opid), state(state), request(request),
-          reply(reply) { }
+          result(result) { }
     virtual ~RecordEntry() { }
 };
 
 class Record
 {
 public:
-    Record();
-    RecordEntry & Add(view_t v, const Request &req, RecordEntryState state);
-    LogEntry * Find(opid_t opid);
+    Record() {};
+    RecordEntry & Add(view_t view, opid_t opid, const Request &request, RecordEntryState state);
+    RecordEntry & Add(view_t view, opid_t opid, const Request &request, RecordEntryState state, const std::string &result);
+    RecordEntry * Find(opid_t opid);
     bool SetStatus(opid_t opid, RecordEntryState state);
+    bool SetResult(opid_t opid, const std::string &result);
     bool SetRequest(opid_t opid, const Request &req);
     void Remove(opid_t opid);
     bool Empty() const;
@@ -86,5 +89,5 @@ private:
 };
 
 }      // namespace ir
-
+}      // namespace replication
 #endif  /* _IR_RECORD_H_ */

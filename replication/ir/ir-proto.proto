@@ -1,6 +1,6 @@
 import "replication/common/request.proto";
 
-package replication.vr.proto;
+package replication.ir.proto;
 
 message OpID {
     required uint64 clientid = 1;
@@ -35,12 +35,12 @@ message ReplyConsensusMessage {
     required uint64 view = 1;
     required uint32 replicaIdx = 2;
     required OpID opid = 3;
-    required bytes reply = 4;
+    required bytes result = 4;
 }
 
 message FinalizeConsensusMessage {
     required OpID opid = 1;
-    required bytes reply = 2;
+    required bytes result = 2;
 }
 
 message UnloggedRequestMessage {

@@ -14,20 +14,24 @@
 #include "lib/message.h"
 #include "lib/udptransport.h"
 #include "lib/configuration.h"
+#include "replication/ir/record.h"
+#include "replication/common/replica.h"
+#include "replication/ir/ir-proto.pb.h"
 
+namespace replication {
 namespace ir {
 
-class AppReplica
+class IRAppReplica : public AppReplica
 {
 public:
-    AppReplica() { };
-    virtual ~AppReplica() { };
+    IRAppReplica() { };
+    virtual ~IRAppReplica() { };
     // Invoke inconsistent operation, no return value
     virtual void ExecInconsistentUpcall(const string &str1);
     // Invoke consensus operation
-    virtual void ReplicaUpcall(const string &str1, string &str2) { };
-    // Invoke call back for unreplicated operations run on only one replica
-    virtual void UnloggedUpcall(const string &str1, string &str2) { };
+    virtual void ExecConsensusUpcall(const string &str1, string &str2);
+    // Invoke unreplicated operation
+    virtual void UnloggedUpcall(const string &str1, string &str2);
 };
 
     
@@ -41,9 +45,15 @@ private:
     int myIdx;
     Transport *transport;
 
+    IRAppReplica *app;
+    ReplicaStatus status;
+
+    // record for this replica
+    Record record;
+
 public:
-    IRReplica(const specpaxos::Configuration &configuration, int myIdx,
-              Transport *transport);
+    IRReplica(transport::Configuration config, int myIdx,
+              Transport *transport, IRAppReplica *app);
     ~IRReplica();
 
     void ReceiveMessage(const TransportAddress &remote,
@@ -62,12 +72,9 @@ public:
     void HandleUnlogged(const TransportAddress &remote,
                         const proto::UnloggedRequestMessage &msg);
 
-    
-    
-    void Load(const std::string &key, const std::string &value, const Timestamp &timestamp);
-
 };
 
 } // namespace ir
+} // namespace replication
 
 #endif /* _IR_REPLICA_H_ */
