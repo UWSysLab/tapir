@@ -43,6 +43,7 @@
 #include <stdio.h>
 #include <gtest/gtest.h>
 #include <vector>
+#include <set>
 #include <sstream>
 
 static string replicaLastOp;
@@ -78,7 +79,7 @@ public:
     }
 };
     
-class IRTest : public  ::testing::TestWithParam<int>
+class IRTest : public  ::testing::Test
 {
 protected:
     std::vector<IRReplica *> replicas;
@@ -161,29 +162,54 @@ protected:
     }
 };
 
-// TEST_P(IRTest, OneOp)
-// {
-//     auto upcall = [this](const string &req, const string &reply) {
-//         EXPECT_EQ(req, LastRequestOp());
-//         EXPECT_EQ(reply, "reply: "+LastRequestOp());
+TEST_F(IRTest, OneInconsistentOp)
+{
+    auto upcall = [this](const string &req, const string &reply) {
+        EXPECT_EQ(req, LastRequestOp());
 
-//         // Not guaranteed that any replicas except the leader have
-//         // executed this request.
-//         EXPECT_EQ(ops[0].back(), req);
-//         transport->CancelAllTimers();
-//     };
+        // Inconsistent ops do not return a value
+        EXPECT_EQ(reply, "");
+        
+        transport->CancelAllTimers();
+    };
     
-//     ClientSendNext(upcall);
-//     transport->Run();
+    ClientSendNextInconsistent(upcall);
+    transport->Run();
 
-//     // By now, they all should have executed the last request.
-//     for (int i = 0; i < config->n; i++) {
-//         EXPECT_EQ(ops[i].size(), 1);
-//         EXPECT_EQ(ops[i].back(),  LastRequestOp());
-//     }
-// }
+    // By now, they all should have executed the last request.
+    for (int i = 0; i < config->n; i++) {
+        EXPECT_EQ(iOps[i].size(), 1);
+        EXPECT_EQ(iOps[i].back(),  LastRequestOp());
+    }
+}
 
-TEST_P(IRTest, Unlogged)
+TEST_F(IRTest, OneConsensusOp)
+{
+    auto upcall = [this](const string &req, const string &reply) {
+        EXPECT_EQ(req, LastRequestOp());
+        EXPECT_EQ(reply, "reply: "+LastRequestOp());
+
+        transport->CancelAllTimers();
+    };
+
+    auto decide = [this](const std::set<string> &results) {
+        // shouldn't ever get called
+        EXPECT_FALSE(true);
+
+        return "";
+    };
+
+    ClientSendNextConsensus(upcall, decide);
+    transport->Run();
+
+    // By now, they all should have executed the last request.
+    for (int i = 0; i < config->n; i++) {
+        EXPECT_EQ(cOps[i].size(), 1);
+        EXPECT_EQ(cOps[i].back(),  LastRequestOp());
+    }
+}
+
+TEST_F(IRTest, Unlogged)
 {
     auto upcall = [this](const string &req, const string &reply) {
         EXPECT_EQ(req, LastRequestOp());
@@ -207,7 +233,7 @@ TEST_P(IRTest, Unlogged)
     EXPECT_EQ(0, timeouts);
 }
 
-TEST_P(IRTest, UnloggedTimeout)
+TEST_F(IRTest, UnloggedTimeout)
 {
     auto upcall = [this](const string &req, const string &reply) {
         FAIL();
@@ -244,7 +270,7 @@ TEST_P(IRTest, UnloggedTimeout)
 }
 
 
-// TEST_P(IRTest, ManyOps)
+// TEST_F(IRTest, ManyOps)
 // {
 //     Client::continuation_t upcall = [&](const string &req, const string &reply) {
 //         EXPECT_EQ(req, LastRequestOp());

@@ -46,7 +46,7 @@ namespace ir {
 class IRClient : public Client
 {
 public:
-    typedef std::function<string (const std::set<string>)> decide_t; 
+    typedef std::function<string (const std::set<string> &)> decide_t; 
     
     IRClient(const transport::Configuration &config,
              Transport *transport,
