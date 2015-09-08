@@ -70,7 +70,7 @@ public:
 
     void ExecConsensusUpcall(const string &req, string &reply) {
         cOps->push_back(req);
-        reply = "reply: " + req;
+        reply = "1";
     }
     
     void UnloggedUpcall(const string &req, string &reply) {
@@ -187,7 +187,7 @@ TEST_F(IRTest, OneConsensusOp)
 {
     auto upcall = [this](const string &req, const string &reply) {
         EXPECT_EQ(req, LastRequestOp());
-        EXPECT_EQ(reply, "reply: "+LastRequestOp());
+        EXPECT_EQ(reply, "1");
 
         transport->CancelAllTimers();
     };

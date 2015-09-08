@@ -49,8 +49,8 @@ IRClient::IRClient(const transport::Configuration &config,
     : Client(config, transport, clientid),
       view(0),
       lastReqId(0),
-      inconsistentReplyQuorum(config.QuorumSize()-1),
-      consensusReplyQuorum(config.QuorumSize() + ceil(0.5 * config.QuorumSize()) -1),
+      inconsistentReplyQuorum(config.QuorumSize()),
+      consensusReplyQuorum(config.QuorumSize() + ceil(0.5 * config.QuorumSize())),
       confirmQuorum(config.QuorumSize()-1)
 {
     pendingInconsistentRequest = NULL;
@@ -304,12 +304,12 @@ IRClient::HandleInconsistentReply(const TransportAddress &remote,
     }
     
     if (msg.opid().clientreqid() != pendingInconsistentRequest->clientReqId) {
-        Debug("Received reply for a different request");
+        Warning("Received reply for a different request");
         return;
     }
 
     
-    Debug("Client received reply: %lu", pendingInconsistentRequest->clientReqId);
+    Notice("Client received reply: %lu %i", pendingInconsistentRequest->clientReqId, inconsistentReplyQuorum.NumRequired());
 
     // Record replies
     viewstamp_t vs = { msg.view(), msg.opid().clientreqid() };
@@ -345,12 +345,12 @@ IRClient::HandleConsensusReply(const TransportAddress &remote,
     }
     
     if (msg.opid().clientreqid() != pendingConsensusRequest->clientReqId) {
-        Debug("Received reply for a different request");
+        Warning("Received reply for a different request");
         return;
     }
 
-    
-    Debug("Client received reply: %lu", pendingConsensusRequest->clientReqId);
+   
+     Notice("Client received reply: %lu %i", pendingConsensusRequest->clientReqId, consensusReplyQuorum.NumRequired());
 
     // Record replies
     viewstamp_t vs = { msg.view(), msg.opid().clientreqid() };
@@ -361,7 +361,11 @@ IRClient::HandleConsensusReply(const TransportAddress &remote,
         map<string, int> results;
         // count matching results
         for (auto &m : *msgs) {
-            results[m.second.result()] = results.count(m.second.result()) + 1;
+            if (results.count(m.second.result()) > 0) {
+                results[m.second.result()] = results[m.second.result()] + 1;
+            } else {
+                results[m.second.result()] = 1;
+            }
         }
 
         // Check that there are a quorum of *matching* results
@@ -400,7 +404,7 @@ IRClient::HandleConfirm(const TransportAddress &remote,
     }
     
     if (msg.opid().clientreqid() != pendingConsensusRequest->clientReqId) {
-        Debug("Received reply for a different request");
+        Warning("Received reply for a different request");
         return;
     }
 
@@ -428,7 +432,7 @@ IRClient::HandleUnloggedReply(const TransportAddress &remote,
         return;
     }
     
-    Debug("Client received unloggedReply");
+    Notice("Client received unloggedReply");
 
     unloggedRequestTimeout->Stop();
 
