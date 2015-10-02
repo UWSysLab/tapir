@@ -9,8 +9,6 @@
 
 #include "truetime.h"
 
-using namespace std;
-
 TrueTime::TrueTime() {
     simError = 0;
     simSkew = 0;

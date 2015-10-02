@@ -211,10 +211,10 @@ int
 main(int argc, char **argv)
 {
     int index = -1;
-    unsigned int myShard=0, maxShard=1, nKeys=1;
+    int myShard=0, maxShard=1, nKeys=1;
     const char *configPath = NULL;
     const char *keyPath = NULL;
-    uint64_t skew = 0, error = 0;
+    int64_t skew = 0, error = 0;
     txnstore::Mode mode;
 
     // Parse arguments

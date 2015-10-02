@@ -1,0 +1,18 @@
+package lockserver.proto;
+
+message Request {
+  required uint64 clientid = 1;
+  required string key = 2;
+  required bool type = 3;
+  // true = lock
+  // false = unlock
+}
+
+message Reply {
+  required string key = 1;
+  required int32 status = 2;
+  // 0 = Operation Success
+  // -1 = Held by someone else (for lock)
+  // -2 = Not held by you (for unlock)
+  // -3 = Invalid command
+}

@@ -68,7 +68,7 @@ public:
                                 const string &type, const string &data);
 
 protected:
-    int view;
+    uint64_t view;
     uint64_t lastReqId;
     QuorumSet<viewstamp_t, proto::ReplyInconsistentMessage> inconsistentReplyQuorum;
     QuorumSet<viewstamp_t, proto::ReplyConsensusMessage> consensusReplyQuorum;

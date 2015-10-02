@@ -53,7 +53,6 @@ private:
     transport::Configuration configuration;
 
     // Index of 'this' replica, and handle to transport layer.
-    int myIdx;
     Transport *transport;
 
 public:

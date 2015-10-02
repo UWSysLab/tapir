@@ -2,14 +2,14 @@
 # Top-level makefile for OR-2PC
 #
 
-CC = gcc
-CXX = g++
-LD = g++
+CC = clang
+CXX = clang++
+LD = clang++
 EXPAND = lib/tmpl/expand
 
 #CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -levent_pthreads -O2 -DNASSERT
-CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -levent_pthreads
-CXXFLAGS := -g -std=c++0x -levent_pthreads
+CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized 
+CXXFLAGS := -g -std=c++0x
 LDFLAGS := -levent_pthreads
 ## Debian package: check
 #CHECK_CFLAGS := $(shell pkg-config --cflags check)
@@ -128,6 +128,7 @@ include replication/ir/Rules.mk
 include store/common/Rules.mk
 include store/txnstore/Rules.mk
 include store/qwstore/Rules.mk
+include lockserver/Rules.mk
 
 ##################################################################
 # General rules

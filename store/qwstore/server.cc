@@ -37,7 +37,7 @@ using namespace proto;
 
 Server::Server(const transport::Configuration &configuration, int myIdx,
                Transport *transport, QWStore *store)
-    : store(store), configuration(configuration), myIdx(myIdx), transport(transport)
+    : store(store), configuration(configuration), transport(transport)
 {
     transport->Register(this, configuration, myIdx);
 }

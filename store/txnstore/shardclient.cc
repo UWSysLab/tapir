@@ -31,7 +31,6 @@
  **********************************************************************/
 
 #include "txnclient.h"
-#include "store/common/transaction.h"
 
 namespace spanstore {
 
