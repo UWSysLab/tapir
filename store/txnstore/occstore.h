@@ -1,9 +1,8 @@
 // -*- mode: c++; c-file-style: "k&r"; c-basic-offset: 4 -*-
 /***********************************************************************
  *
- * store/txnstore/lib/txnstore.h:
- *   Interface for a single node transactional store serving as a
- *   server-side backend
+ * store/txnstore/lib/occstore.h:
+ *   Key-value store with support for transactions using OCC.
  *
  * Copyright 2013-2015 Irene Zhang <iyzhang@cs.washington.edu>
  *                     Naveen Kr. Sharma <naveenks@cs.washington.edu>
@@ -31,67 +30,47 @@
  *
  **********************************************************************/
 
-#include "txnstore.h"
+#ifndef _OCC_STORE_H_
+#define _OCC_STORE_H_
+
+#include "lib/assert.h"
+#include "lib/message.h"
+#include "store/common/backend/versionstore.h"
+#include "store/common/backend/txnstore.h"
+#include "store/common/transaction.h"
+
+#include <vector>
+#include <unordered_map>
+#include <set>
+#include <map>
+#include <list>
 
 namespace txnstore {
 
-using namespace std;
-
-TxnStore::TxnStore() {}
-TxnStore::~TxnStore() {}
-
-int
-TxnStore::Get(uint64_t id, const string &key, pair<Timestamp, string> &value)
+class OCCStore : public TxnStore
 {
-    Panic("Unimplemented GET");
-    return 0;
-}
+public:
+    OCCStore();
+    ~OCCStore();
 
-int
-TxnStore::Get(uint64_t id, const string &key, const Timestamp &timestamp,
-    pair<Timestamp, string> &value)
-{
-    Panic("Unimplemented GET");
-    return 0;
-}
+    // Overriding from TxnStore.
+    int Get(uint64_t id, const std::string &key, std::pair<Timestamp, std::string> &value);
+    int Get(uint64_t id, const std::string &key, const Timestamp &timestamp, std::pair<Timestamp, std::string> &value);
+    int Prepare(uint64_t id, const Transaction &txn);
+    void Commit(uint64_t id, uint64_t timestamp);
+    void Abort(uint64_t id, const Transaction &txn = Transaction());
+    void Load(const std::string &key, const std::string &value, const Timestamp &timestamp);
 
-int
-TxnStore::Put(uint64_t id, const string &key, const string &value)
-{
-    Panic("Unimplemented PUT");
-    return 0;
-}
+private:
+    // Data store.
+    VersionedKVStore store;
 
-int
-TxnStore::Prepare(uint64_t id, const Transaction &txn)
-{
-    Panic("Unimplemented PREPARE");
-    return 0;
-}
+    std::map<uint64_t, Transaction> prepared;
 
-int
-TxnStore::Prepare(uint64_t id, const Transaction &txn,
-    const Timestamp &timestamp, Timestamp &proposed)
-{
-    Panic("Unimplemented PREPARE");
-    return 0;
-}
+    std::set<std::string> getPreparedWrites();
+    std::set<std::string> getPreparedReadWrites();
+};
 
-void
-TxnStore::Commit(uint64_t id, uint64_t timestamp)
-{
-    Panic("Unimplemented COMMIT");
-}
+} // namespace spanstore
 
-void
-TxnStore::Abort(uint64_t id, const Transaction &txn)
-{
-    Panic("Unimplemented ABORT");
-}
-
-void
-TxnStore::Load(const string &key, const string &value, const Timestamp &timestamp)
-{
-    Panic("Unimplemented LOAD");
-}
-} // namespace txnstore
+#endif /* _OCC_STORE_H_ */

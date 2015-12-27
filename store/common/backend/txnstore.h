@@ -48,8 +48,6 @@
 #define REPLY_NETWORK_FAILURE 5
 #define REPLY_MAX 6
 
-namespace txnstore {
-
 class TxnStore
 {
 public:
@@ -84,5 +82,5 @@ public:
     virtual void Load(const std::string &key, const std::string &value,
         const Timestamp &timestamp);
 };
-} // namespace txnstore
+
 #endif /* _TXN_STORE_H_ */

@@ -37,8 +37,8 @@
 #include "lib/udptransport.h"
 #include "replication/vr/replica.h"
 #include "store/common/truetime.h"
-#include "store/txnstore/lib/occstore.h"
-#include "store/txnstore/lib/lockstore.h"
+#include "store/txnstore/occstore.h"
+#include "store/txnstore/lockstore.h"
 #include "store/txnstore/txn-proto.pb.h"
 
 namespace txnstore {

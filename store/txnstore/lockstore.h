@@ -1,8 +1,9 @@
 // -*- mode: c++; c-file-style: "k&r"; c-basic-offset: 4 -*-
 /***********************************************************************
  *
- * store/txnstore/lib/occstore.h:
- *   Key-value store with support for transactions using OCC.
+ * store/txnstore/lib/lockstore.h:
+ *    Single-node Key-value store with support for 2PC locking-based
+ *    transactions using S2PL
  *
  * Copyright 2013-2015 Irene Zhang <iyzhang@cs.washington.edu>
  *                     Naveen Kr. Sharma <naveenks@cs.washington.edu>
@@ -30,47 +31,54 @@
  *
  **********************************************************************/
 
-#ifndef _OCC_STORE_H_
-#define _OCC_STORE_H_
+#ifndef _LOCK_STORE_H_
+#define _LOCK_STORE_H_
 
 #include "lib/assert.h"
 #include "lib/message.h"
-#include "store/common/backend/versionstore.h"
-#include "txnstore.h"
 #include "store/common/transaction.h"
+#include "store/common/backend/kvstore.h"
+#include "store/common/backend/txnstore.h"
+#include "store/common/backend/lockserver.h"
 
-#include <vector>
-#include <unordered_map>
 #include <set>
 #include <map>
 #include <list>
+#include <vector>
+#include <unordered_map>
 
 namespace txnstore {
 
-class OCCStore : public TxnStore
+class LockStore : public TxnStore
 {
 public:
-    OCCStore();
-    ~OCCStore();
+    LockStore();
+    ~LockStore();
 
     // Overriding from TxnStore.
-    int Get(uint64_t id, const std::string &key, std::pair<Timestamp, std::string> &value);
-    int Get(uint64_t id, const std::string &key, const Timestamp &timestamp, std::pair<Timestamp, std::string> &value);
+    int Get(uint64_t id, const std::string &key,
+        std::pair<Timestamp, std::string> &value);
+    int Get(uint64_t id, const std::string &key, const Timestamp &timestamp,
+        std::pair<Timestamp, std::string> &value);
     int Prepare(uint64_t id, const Transaction &txn);
     void Commit(uint64_t id, uint64_t timestamp);
-    void Abort(uint64_t id, const Transaction &txn = Transaction());
-    void Load(const std::string &key, const std::string &value, const Timestamp &timestamp);
+    void Abort(uint64_t id, const Transaction &txn);
+    void Load(const std::string &key, const std::string &value,
+        const Timestamp &timestamp);
 
 private:
     // Data store.
-    VersionedKVStore store;
+    KVStore store;
+
+    // Locks manager.
+    LockServer locks;
 
     std::map<uint64_t, Transaction> prepared;
 
-    std::set<std::string> getPreparedWrites();
-    std::set<std::string> getPreparedReadWrites();
+    void dropLocks(uint64_t id, const Transaction &txn);
+    bool getLocks(uint64_t id, const Transaction &txn);
 };
 
-} // namespace spanstore
+} // namespace txnstore
 
-#endif /* _OCC_STORE_H_ */
+#endif /* _LOCK_STORE_H_ */

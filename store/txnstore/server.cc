@@ -211,7 +211,7 @@ int
 main(int argc, char **argv)
 {
     int index = -1;
-    int myShard=0, maxShard=1, nKeys=1;
+    unsigned int myShard=0, maxShard=1, nKeys=1;
     const char *configPath = NULL;
     const char *keyPath = NULL;
     int64_t skew = 0, error = 0;
@@ -278,7 +278,7 @@ main(int argc, char **argv)
         {
             char *strtolPtr;
             nKeys = strtoul(optarg, &strtolPtr, 10);
-            if ((*optarg == '\0') || (*strtolPtr != '\0') || (nKeys < 0))
+            if ((*optarg == '\0') || (*strtolPtr != '\0'))
             {
                 fprintf(stderr, "option -e requires a numeric arg\n");
             }
@@ -289,7 +289,7 @@ main(int argc, char **argv)
         {
             char *strtolPtr;
             myShard = strtoul(optarg, &strtolPtr, 10);
-            if ((*optarg == '\0') || (*strtolPtr != '\0') || (myShard < 0))
+            if ((*optarg == '\0') || (*strtolPtr != '\0'))
             {
                 fprintf(stderr, "option -e requires a numeric arg\n");
             }
