@@ -32,12 +32,11 @@
 #ifndef _BUFFER_CLIENT_H_
 #define _BUFFER_CLIENT_H_
 
-#include "paxos-lib/lib/assert.h"
-#include "paxos-lib/lib/message.h"
-#include "paxos-lib/common/client.h"
-#include "common/transaction.h"
-#include "common/promise.h"
-#include "common/txnclient.h"
+#include "lib/assert.h"
+#include "lib/message.h"
+#include "store/common/transaction.h"
+#include "store/common/promise.h"
+#include "store/common/frontend/shardclient.h"
 
 #include <string>
 

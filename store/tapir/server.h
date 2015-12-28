@@ -1,12 +1,11 @@
 // -*- mode: c++; c-file-style: "k&r"; c-basic-offset: 4 -*-
-// vim: set ts=4 sw=4:
 /***********************************************************************
  *
- * store/txnstore/server.h:
+ * store/tapir/server.h:
  *   A single transactional server replica.
  *
  * Copyright 2015 Irene Zhang <iyzhang@cs.washington.edu>
- *                Naveen Kr. Sharma <nksharma@cs.washington.edu>
+ *                Naveen Kr. Sharma <naveenks@cs.washington.edu>
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -30,43 +29,39 @@
  *
  **********************************************************************/
 
-#ifndef _TXN_SERVER_H_
-#define _TXN_SERVER_H_
+#ifndef _TAPIR_SERVER_H_
+#define _TAPIR_SERVER_H_
 
 #include "lib/udptransport.h"
-#include "replication/vr/replica.h"
+#include "replication/ir/replica.h"
+#include "store/common/timestamp.h"
 #include "store/common/truetime.h"
-#include "store/txnstore/occstore.h"
-#include "store/txnstore/lockstore.h"
-#include "store/txnstore/txn-proto.pb.h"
+#include "store/tapir/tapir-proto.pb.h"
+#include "store/tapir/tapirstore.h"
 
-namespace txnstore {
+namespace tapir {
 
-enum Mode {
-    MODE_UNKNOWN,
-    MODE_OCC,
-    MODE_LOCK,
-    MODE_SPAN_OCC,
-    MODE_SPAN_LOCK
-};
-
-class Server : public replication::AppReplica
+class Server : public replication::ir::IRAppReplica
 {
 public:
-    Server(Mode mode, uint64_t skew, uint64_t error);
+    Server(bool linearizable);
     virtual ~Server();
 
-    virtual void LeaderUpcall(opnum_t opnum, const string &str1, bool &replicate, string &str2);
-    virtual void ReplicaUpcall(opnum_t opnum, const string &str1, string &str2);
-    virtual void UnloggedUpcall(const string &str1, string &str2);
+    // Invoke inconsistent operation, no return value
+    void ExecInconsistentUpcall(const string &str1);
+
+    // Invoke consensus operation
+    void ExecConsensusUpcall(const string &str1, string &str2);
+
+    // Invoke unreplicated operation
+    void UnloggedUpcall(const string &str1, string &str2);
+
     void Load(const string &key, const string &value, const Timestamp timestamp);
 
 private:
-    Mode mode;
     TxnStore *store;
-    TrueTime timeServer;
 };
 
-} // namespace txnstore
+} // namespace tapir
 
 #endif /* _TXN_SERVER_H_ */

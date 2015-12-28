@@ -128,6 +128,7 @@ include replication/ir/Rules.mk
 include store/common/Rules.mk
 include store/txnstore/Rules.mk
 include store/qwstore/Rules.mk
+include store/tapir/Rules.mk
 include lockserver/Rules.mk
 
 ##################################################################
