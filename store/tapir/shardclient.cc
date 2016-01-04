@@ -30,6 +30,7 @@
  **********************************************************************/
 
 #include "store/tapir/shardclient.h"
+#include "lib/configuration.h"
 
 namespace tapir {
 
@@ -39,14 +40,13 @@ using namespace proto;
 TapirClient::TapirClient(const string &configPath,
                        Transport *transport, uint64_t client_id, int
                        shard, int closestReplica)
-    : transport(transport), client_id(client_id), shard(shard)
+    : transport(transport), config(configStream), client_id(client_id), shard(shard)
 { 
     ifstream configStream(configPath);
     if (configStream.fail()) {
         fprintf(stderr, "unable to read configuration file: %s\n",
                 configPath.c_str());
     }
-    transport::Configuration config(configStream);
 
     client = new replication::ir::IRClient(config, transport, client_id);
 
@@ -166,6 +166,44 @@ TapirClient::Prepare(uint64_t id, const Transaction &txn,
                 placeholders::_1,
                 placeholders::_2));
     });
+}
+
+std::string
+TapirClient::TapirDecide(const std::set<std::string> &results)
+{
+    // If a majority say prepare_ok, 
+    int ok_count = 0;
+    uint64_t ts = 0;
+    string final_reply_str;
+    Reply final_reply;
+
+    for (string s : results) {
+        Reply reply;
+        reply.ParseFromString(s);
+
+	switch(reply.status()) {
+	case REPLY_OK:
+	    ok_count++;
+	    continue;
+	case REPLY_FAIL:
+	    return s;
+	case REPLY_RETRY:
+	    if (reply.timestamp() > ts) {
+		ts = reply.timestamp();
+	    }
+	    continue;
+	default:
+	    continue;
+	}
+    }
+
+    if (ok_count >= config.QuorumSize()) {
+	final_reply.set_status(REPLY_OK);
+    } else {
+       final_reply.set_status(REPLY_RETRY);
+    }
+    final_reply.SerializeToString(&final_reply_str);
+    return final_reply_str;
 }
 
 void

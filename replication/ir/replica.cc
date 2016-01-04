@@ -19,8 +19,7 @@ IRReplica::IRReplica(transport::Configuration config, int myIdx,
     view(0),
     myIdx(myIdx),
     transport(transport),
-    app(app),
-    status(STATUS_NORMAL)
+    app(app)
 {
     transport->Register(this, config, myIdx);
 }

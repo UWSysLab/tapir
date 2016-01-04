@@ -46,7 +46,6 @@ private:
     Transport *transport;
 
     IRAppReplica *app;
-    ReplicaStatus status;
 
     // record for this replica
     Record record;
