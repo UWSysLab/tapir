@@ -49,16 +49,82 @@ Server::~Server()
 void
 Server::ExecInconsistentUpcall(const string &str1)
 {
+    Debug("Received Inconsistent Request: %s",  str1.c_str());
+
+    Request request;
+
+    request.ParseFromString(str1);
+
+    switch (request.op()) {
+    case tapir::proto::Request::COMMIT:
+        store->Commit(request.txnid(), request.commit().timestamp());
+        break;
+    case tapir::proto::Request::ABORT:
+        store->Abort(request.txnid(), Transaction(request.abort().txn()));
+        break;
+    default:
+        Panic("Unrecognized inconsisternt operation.");
+    }
 }
 
 void
 Server::ExecConsensusUpcall(const string &str1, string &str2)
 {
+    Debug("Received Consensus Request: %s", str1.c_str());
+
+    Request request;
+    Reply reply;
+    int status;
+    
+    request.ParseFromString(str1);
+
+    switch (request.op()) {
+    case tapir::proto::Request::PREPARE:
+        status = store->Prepare(request.txnid(),
+                                Transaction(request.prepare().txn()));
+        reply.set_status(status);
+        reply.SerializeToString(&str2);
+        break;
+    default:
+        Panic("Unrecognized consensus operation.");
+    }
+
 }
 
 void
 Server::UnloggedUpcall(const string &str1, string &str2)
 {
+    Debug("Received Consensus Request: %s", str1.c_str());
+
+    Request request;
+    Reply reply;
+    int status;
+    
+    request.ParseFromString(str1);
+
+    switch (request.op()) {
+    case tapir::proto::Request::GET:
+        if (request.get().has_timestamp()) {
+            pair<Timestamp, string> val;
+            status = store->Get(request.txnid(), request.get().key(),
+                               request.get().timestamp(), val);
+            if (status == 0) {
+                reply.set_value(val.second);
+            }
+        } else {
+            pair<Timestamp, string> val;
+            status = store->Get(request.txnid(), request.get().key(), val);
+            if (status == 0) {
+                reply.set_value(val.second);
+                reply.set_timestamp(val.first.getTimestamp());
+            }
+        }
+        reply.set_status(status);
+        reply.SerializeToString(&str2);
+        break;
+    default:
+        Panic("Unrecognized Unlogged request.");
+    }
 }
 
 void
