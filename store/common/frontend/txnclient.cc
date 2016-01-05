@@ -2,10 +2,11 @@
 // vim: set ts=4 sw=4:
 /***********************************************************************
  *
- * store/common/frontend/bufferclient.h:
- *   Single shard buffering client implementation.
+ * store/common/frontend/txnclient.cc
+ *   Client interface for a single replicated shard.
  *
  * Copyright 2015 Irene Zhang <iyzhang@cs.washington.edu>
+ *                Naveen Kr. Sharma <nksharma@cs.washington.edu>
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -29,50 +30,72 @@
  *
  **********************************************************************/
 
-#ifndef _BUFFER_CLIENT_H_
-#define _BUFFER_CLIENT_H_
-
-#include "lib/assert.h"
-#include "lib/message.h"
-#include "store/common/transaction.h"
-#include "store/common/promise.h"
 #include "store/common/frontend/txnclient.h"
 
-#include <string>
+using namespace std;
 
-class BufferClient
+TxnClient::TxnClient() { }
+TxnClient::~TxnClient() { }
+
+void
+TxnClient::Begin(uint64_t id)
 {
-public:
-    BufferClient(TxnClient *txnclient);
-    ~BufferClient();
+    Panic("Unimplemented BEGIN");
+}
+    
+void
+TxnClient::Get(uint64_t id,
+               const string &key,
+               Promise *promise)
+{
+    Panic("Unimplemented GET");
+    return;
+}
 
-    // Begin a transaction with given tid.
-    void Begin(uint64_t tid);
+void
+TxnClient::Get(uint64_t id, 
+               const string &key,
+               const Timestamp &timestamp,
+               Promise *promise)
+{
+    Panic("Unimplemented GET");
+    return;
+}
 
-    // Get value corresponding to key.
-    void Get(const string &key, Promise *promise = NULL);
+void
+TxnClient::Put(uint64_t id,
+               const string &key,
+               const string &value,
+               Promise *promise)
+{
+    Panic("Unimplemented PUT");
+    return;
+}
 
-    // Put value for given key.
-    void Put(const string &key, const string &value, Promise *promise = NULL);
+void
+TxnClient::Prepare(uint64_t id,
+                   const Transaction &txn,
+                   const Timestamp &timestamp,
+                   Promise *promise)
+{
+    Panic("Unimplemented PREPARE");
+}
 
-    // Prepare (Spanner requires a prepare timestamp)
-    void Prepare(const Timestamp &timestamp = Timestamp(), Promise *promise = NULL); 
-
-    // Commit the ongoing transaction.
-    void Commit(uint64_t timestamp = 0, Promise *promise = NULL);
-
-    // Abort the running transaction.
-    void Abort(Promise *promise = NULL);
-
-private:
-    // Underlying single shard transaction client implementation.
-    TxnClient* txnclient;
-
-    // Transaction to keep track of read and write set.
-    Transaction txn;
-
-    // Unique transaction id to keep track of ongoing transaction.
-    uint64_t tid;
-};
-
-#endif /* _BUFFER_CLIENT_H_ */
+void
+TxnClient::Commit(uint64_t id,
+                  const Transaction &txn,
+                  uint64_t timestamp,
+                  Promise *promise)
+{
+    Panic("Unimplemented COMMIT");
+    return;
+}
+    
+void
+TxnClient::Abort(uint64_t id,
+                 const Transaction &txn,
+                 Promise *promise)
+{
+    Panic("Unimplemented ABORT");
+    return;
+}

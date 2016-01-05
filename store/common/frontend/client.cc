@@ -7,7 +7,7 @@
  *
  **********************************************************************/
 
-#include "common/client.h"
+#include "store/common/frontend/client.h"
 
 using namespace std;
 

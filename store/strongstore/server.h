@@ -2,10 +2,11 @@
 // vim: set ts=4 sw=4:
 /***********************************************************************
  *
- * store/common/frontend/bufferclient.h:
- *   Single shard buffering client implementation.
+ * store/strongstore/server.h:
+ *   A single transactional server replica.
  *
  * Copyright 2015 Irene Zhang <iyzhang@cs.washington.edu>
+ *                Naveen Kr. Sharma <nksharma@cs.washington.edu>
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -29,50 +30,43 @@
  *
  **********************************************************************/
 
-#ifndef _BUFFER_CLIENT_H_
-#define _BUFFER_CLIENT_H_
+#ifndef _STRONG_SERVER_H_
+#define _STRONG_SERVER_H_
 
-#include "lib/assert.h"
-#include "lib/message.h"
-#include "store/common/transaction.h"
-#include "store/common/promise.h"
-#include "store/common/frontend/txnclient.h"
+#include "lib/udptransport.h"
+#include "replication/vr/replica.h"
+#include "store/common/truetime.h"
+#include "store/strongstore/occstore.h"
+#include "store/strongstore/lockstore.h"
+#include "store/strongstore/strong-proto.pb.h"
 
-#include <string>
+namespace strongstore {
 
-class BufferClient
-{
-public:
-    BufferClient(TxnClient *txnclient);
-    ~BufferClient();
-
-    // Begin a transaction with given tid.
-    void Begin(uint64_t tid);
-
-    // Get value corresponding to key.
-    void Get(const string &key, Promise *promise = NULL);
-
-    // Put value for given key.
-    void Put(const string &key, const string &value, Promise *promise = NULL);
-
-    // Prepare (Spanner requires a prepare timestamp)
-    void Prepare(const Timestamp &timestamp = Timestamp(), Promise *promise = NULL); 
-
-    // Commit the ongoing transaction.
-    void Commit(uint64_t timestamp = 0, Promise *promise = NULL);
-
-    // Abort the running transaction.
-    void Abort(Promise *promise = NULL);
-
-private:
-    // Underlying single shard transaction client implementation.
-    TxnClient* txnclient;
-
-    // Transaction to keep track of read and write set.
-    Transaction txn;
-
-    // Unique transaction id to keep track of ongoing transaction.
-    uint64_t tid;
+enum Mode {
+    MODE_UNKNOWN,
+    MODE_OCC,
+    MODE_LOCK,
+    MODE_SPAN_OCC,
+    MODE_SPAN_LOCK
 };
 
-#endif /* _BUFFER_CLIENT_H_ */
+class Server : public replication::AppReplica
+{
+public:
+    Server(Mode mode, uint64_t skew, uint64_t error);
+    virtual ~Server();
+
+    virtual void LeaderUpcall(opnum_t opnum, const string &str1, bool &replicate, string &str2);
+    virtual void ReplicaUpcall(opnum_t opnum, const string &str1, string &str2);
+    virtual void UnloggedUpcall(const string &str1, string &str2);
+    void Load(const string &key, const string &value, const Timestamp timestamp);
+
+private:
+    Mode mode;
+    TxnStore *store;
+    TrueTime timeServer;
+};
+
+} // namespace strongstore
+
+#endif /* _STRONG_SERVER_H_ */

@@ -1,11 +1,11 @@
 // -*- mode: c++; c-file-style: "k&r"; c-basic-offset: 4 -*-
-// vim: set ts=4 sw=4:
 /***********************************************************************
  *
- * store/common/frontend/bufferclient.h:
- *   Single shard buffering client implementation.
+ * store/tapirstore/server.h:
+ *   A single transactional server replica.
  *
  * Copyright 2015 Irene Zhang <iyzhang@cs.washington.edu>
+ *                Naveen Kr. Sharma <naveenks@cs.washington.edu>
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -29,50 +29,39 @@
  *
  **********************************************************************/
 
-#ifndef _BUFFER_CLIENT_H_
-#define _BUFFER_CLIENT_H_
+#ifndef _TAPIR_SERVER_H_
+#define _TAPIR_SERVER_H_
 
-#include "lib/assert.h"
-#include "lib/message.h"
-#include "store/common/transaction.h"
-#include "store/common/promise.h"
-#include "store/common/frontend/txnclient.h"
+#include "lib/udptransport.h"
+#include "replication/ir/replica.h"
+#include "store/common/timestamp.h"
+#include "store/common/truetime.h"
+#include "store/tapirstore/tapir-proto.pb.h"
+#include "store/tapirstore/store.h"
 
-#include <string>
+namespace tapirstore {
 
-class BufferClient
+class Server : public replication::ir::IRAppReplica
 {
 public:
-    BufferClient(TxnClient *txnclient);
-    ~BufferClient();
+    Server(bool linearizable);
+    virtual ~Server();
 
-    // Begin a transaction with given tid.
-    void Begin(uint64_t tid);
+    // Invoke inconsistent operation, no return value
+    void ExecInconsistentUpcall(const string &str1);
 
-    // Get value corresponding to key.
-    void Get(const string &key, Promise *promise = NULL);
+    // Invoke consensus operation
+    void ExecConsensusUpcall(const string &str1, string &str2);
 
-    // Put value for given key.
-    void Put(const string &key, const string &value, Promise *promise = NULL);
+    // Invoke unreplicated operation
+    void UnloggedUpcall(const string &str1, string &str2);
 
-    // Prepare (Spanner requires a prepare timestamp)
-    void Prepare(const Timestamp &timestamp = Timestamp(), Promise *promise = NULL); 
-
-    // Commit the ongoing transaction.
-    void Commit(uint64_t timestamp = 0, Promise *promise = NULL);
-
-    // Abort the running transaction.
-    void Abort(Promise *promise = NULL);
+    void Load(const string &key, const string &value, const Timestamp timestamp);
 
 private:
-    // Underlying single shard transaction client implementation.
-    TxnClient* txnclient;
-
-    // Transaction to keep track of read and write set.
-    Transaction txn;
-
-    // Unique transaction id to keep track of ongoing transaction.
-    uint64_t tid;
+    TxnStore *store;
 };
 
-#endif /* _BUFFER_CLIENT_H_ */
+} // namespace tapirstore
+
+#endif /* _TAPIR_SERVER_H_ */

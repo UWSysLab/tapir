@@ -2,8 +2,8 @@
 // vim: set ts=4 sw=4:
 /***********************************************************************
  *
- * store/common/frontend/bufferclient.h:
- *   Single shard buffering client implementation.
+ * store/weakstore/weakstore.cc:
+ *   Simple quorum write key-value store implementation with weak consistency
  *
  * Copyright 2015 Irene Zhang <iyzhang@cs.washington.edu>
  *
@@ -29,50 +29,40 @@
  *
  **********************************************************************/
 
-#ifndef _BUFFER_CLIENT_H_
-#define _BUFFER_CLIENT_H_
+#include "store.h"
 
-#include "lib/assert.h"
-#include "lib/message.h"
-#include "store/common/transaction.h"
-#include "store/common/promise.h"
-#include "store/common/frontend/txnclient.h"
+using namespace std;
 
-#include <string>
+namespace weakstore {
 
-class BufferClient
+Store::Store() { }
+Store::~Store() { }
+
+int
+Store::Get(uint64_t id, const string &key, string &value)
 {
-public:
-    BufferClient(TxnClient *txnclient);
-    ~BufferClient();
+    Debug("[%lu] GET %s", id, key.c_str());
+    string val;
+    if (store.get(key, val)) {
+        value = val;
+        return REPLY_OK;
+    }
+    return REPLY_FAIL;
+}
 
-    // Begin a transaction with given tid.
-    void Begin(uint64_t tid);
 
-    // Get value corresponding to key.
-    void Get(const string &key, Promise *promise = NULL);
+int
+Store::Put(uint64_t id, const string &key, const string &value)
+{
+    Debug("[%lu] PUT %s %s", id, key.c_str(), value.c_str());
+    store.put(key, value);
+    return REPLY_OK;
+}
 
-    // Put value for given key.
-    void Put(const string &key, const string &value, Promise *promise = NULL);
+void
+Store::Load(const string &key, const string &value)
+{
+    store.put(key, value);
+}
 
-    // Prepare (Spanner requires a prepare timestamp)
-    void Prepare(const Timestamp &timestamp = Timestamp(), Promise *promise = NULL); 
-
-    // Commit the ongoing transaction.
-    void Commit(uint64_t timestamp = 0, Promise *promise = NULL);
-
-    // Abort the running transaction.
-    void Abort(Promise *promise = NULL);
-
-private:
-    // Underlying single shard transaction client implementation.
-    TxnClient* txnclient;
-
-    // Transaction to keep track of read and write set.
-    Transaction txn;
-
-    // Unique transaction id to keep track of ongoing transaction.
-    uint64_t tid;
-};
-
-#endif /* _BUFFER_CLIENT_H_ */
+} // namespace weakstore

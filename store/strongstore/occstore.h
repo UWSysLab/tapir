@@ -1,11 +1,12 @@
 // -*- mode: c++; c-file-style: "k&r"; c-basic-offset: 4 -*-
-// vim: set ts=4 sw=4:
 /***********************************************************************
  *
- * store/common/frontend/bufferclient.h:
- *   Single shard buffering client implementation.
+ * store/strongstore/occstore.h:
+ *   Key-value store with support for transactions with strong consistency using OCC.
  *
- * Copyright 2015 Irene Zhang <iyzhang@cs.washington.edu>
+ * Copyright 2013-2015 Irene Zhang <iyzhang@cs.washington.edu>
+ *                     Naveen Kr. Sharma <naveenks@cs.washington.edu>
+ *                     Dan R. K. Ports  <drkp@cs.washington.edu>
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -29,50 +30,47 @@
  *
  **********************************************************************/
 
-#ifndef _BUFFER_CLIENT_H_
-#define _BUFFER_CLIENT_H_
+#ifndef _STRONG_OCC_STORE_H_
+#define _STRONG_OCC_STORE_H_
 
 #include "lib/assert.h"
 #include "lib/message.h"
+#include "store/common/backend/versionstore.h"
+#include "store/common/backend/txnstore.h"
 #include "store/common/transaction.h"
-#include "store/common/promise.h"
-#include "store/common/frontend/txnclient.h"
 
-#include <string>
+#include <vector>
+#include <unordered_map>
+#include <set>
+#include <map>
+#include <list>
 
-class BufferClient
+namespace strongstore {
+
+class OCCStore : public TxnStore
 {
 public:
-    BufferClient(TxnClient *txnclient);
-    ~BufferClient();
+    OCCStore();
+    ~OCCStore();
 
-    // Begin a transaction with given tid.
-    void Begin(uint64_t tid);
-
-    // Get value corresponding to key.
-    void Get(const string &key, Promise *promise = NULL);
-
-    // Put value for given key.
-    void Put(const string &key, const string &value, Promise *promise = NULL);
-
-    // Prepare (Spanner requires a prepare timestamp)
-    void Prepare(const Timestamp &timestamp = Timestamp(), Promise *promise = NULL); 
-
-    // Commit the ongoing transaction.
-    void Commit(uint64_t timestamp = 0, Promise *promise = NULL);
-
-    // Abort the running transaction.
-    void Abort(Promise *promise = NULL);
+    // Overriding from TxnStore.
+    int Get(uint64_t id, const std::string &key, std::pair<Timestamp, std::string> &value);
+    int Get(uint64_t id, const std::string &key, const Timestamp &timestamp, std::pair<Timestamp, std::string> &value);
+    int Prepare(uint64_t id, const Transaction &txn);
+    void Commit(uint64_t id, uint64_t timestamp);
+    void Abort(uint64_t id, const Transaction &txn = Transaction());
+    void Load(const std::string &key, const std::string &value, const Timestamp &timestamp);
 
 private:
-    // Underlying single shard transaction client implementation.
-    TxnClient* txnclient;
+    // Data store.
+    VersionedKVStore store;
 
-    // Transaction to keep track of read and write set.
-    Transaction txn;
+    std::map<uint64_t, Transaction> prepared;
 
-    // Unique transaction id to keep track of ongoing transaction.
-    uint64_t tid;
+    std::set<std::string> getPreparedWrites();
+    std::set<std::string> getPreparedReadWrites();
 };
 
-#endif /* _BUFFER_CLIENT_H_ */
+} // namespace strongstore
+
+#endif /* _STRONG_OCC_STORE_H_ */

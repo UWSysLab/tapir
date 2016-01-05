@@ -2,8 +2,8 @@
 // vim: set ts=4 sw=4:
 /***********************************************************************
  *
- * store/common/frontend/bufferclient.h:
- *   Single shard buffering client implementation.
+ * store/weakstore/server.h:
+ *   Storage server executable and dispatch code
  *
  * Copyright 2015 Irene Zhang <iyzhang@cs.washington.edu>
  *
@@ -29,50 +29,52 @@
  *
  **********************************************************************/
 
-#ifndef _BUFFER_CLIENT_H_
-#define _BUFFER_CLIENT_H_
+#ifndef _WEAK_SERVER_H_
+#define _WEAK_SERVER_H_
 
 #include "lib/assert.h"
 #include "lib/message.h"
+#include "lib/udptransport.h"
+#include "lib/configuration.h"
+#include "store/common/timestamp.h"
 #include "store/common/transaction.h"
-#include "store/common/promise.h"
-#include "store/common/frontend/txnclient.h"
+#include "store.h"
+#include "store/weakstore/weak-proto.pb.h"
 
-#include <string>
+namespace weakstore {
 
-class BufferClient
+class Server : TransportReceiver
 {
-public:
-    BufferClient(TxnClient *txnclient);
-    ~BufferClient();
-
-    // Begin a transaction with given tid.
-    void Begin(uint64_t tid);
-
-    // Get value corresponding to key.
-    void Get(const string &key, Promise *promise = NULL);
-
-    // Put value for given key.
-    void Put(const string &key, const string &value, Promise *promise = NULL);
-
-    // Prepare (Spanner requires a prepare timestamp)
-    void Prepare(const Timestamp &timestamp = Timestamp(), Promise *promise = NULL); 
-
-    // Commit the ongoing transaction.
-    void Commit(uint64_t timestamp = 0, Promise *promise = NULL);
-
-    // Abort the running transaction.
-    void Abort(Promise *promise = NULL);
-
 private:
-    // Underlying single shard transaction client implementation.
-    TxnClient* txnclient;
+    // Underlying single node transactional key-value store.
+    Store *store;
 
-    // Transaction to keep track of read and write set.
-    Transaction txn;
+    // Configuration of replicas.
+    transport::Configuration configuration;
 
-    // Unique transaction id to keep track of ongoing transaction.
-    uint64_t tid;
+    // Index of 'this' replica, and handle to transport layer.
+    Transport *transport;
+
+public:
+    Server(const transport::Configuration &configuration, int myIdx,
+           Transport *transport, Store *store);
+    ~Server();
+
+    void ReceiveMessage(const TransportAddress &remote,
+                        const std::string &type, const std::string &data);
+
+    void HandleMessage(const TransportAddress &remote,
+                        const std::string &type, const std::string &data);
+    void HandleGet(const TransportAddress &remote,
+                   const proto::GetMessage &msg);
+    void HandlePut(const TransportAddress &remote,
+                   const proto::PutMessage &msg);
+
+    void Load(const std::string &key, const std::string &value);
+
 };
 
-#endif /* _BUFFER_CLIENT_H_ */
+
+} // namespace weakstore
+
+#endif /* _WEAK_SERVER_H_ */
