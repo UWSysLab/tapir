@@ -9,7 +9,7 @@ message GetMessage {
 
 message PrepareMessage {
     required TransactionMessage txn = 1;
-    optional uint64 timestamp = 2;
+    optional TimestampMessage timestamp = 2;
 }
 
 message CommitMessage {

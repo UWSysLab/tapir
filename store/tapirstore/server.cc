@@ -75,14 +75,20 @@ Server::ExecConsensusUpcall(const string &str1, string &str2)
     Request request;
     Reply reply;
     int status;
+    Timestamp proposed;
     
     request.ParseFromString(str1);
 
     switch (request.op()) {
     case tapirstore::proto::Request::PREPARE:
         status = store->Prepare(request.txnid(),
-                                Transaction(request.prepare().txn()));
+                                Transaction(request.prepare().txn()),
+                                Timestamp(request.prepare().timestamp()),
+                                proposed);
         reply.set_status(status);
+        if (proposed.isValid()) {
+            reply.set_timestamp(proposed.getTimestamp());
+        }
         reply.SerializeToString(&str2);
         break;
     default:

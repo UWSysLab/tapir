@@ -157,6 +157,7 @@ ShardClient::Prepare(uint64_t id, const Transaction &txn,
     request.set_op(Request::PREPARE);
     request.set_txnid(id);
     txn.serialize(request.mutable_prepare()->mutable_txn());
+    timestamp.serialize(request.mutable_prepare()->mutable_timestamp());
     request.SerializeToString(&request_str);
 
     transport->Timer(0, [=]() {
