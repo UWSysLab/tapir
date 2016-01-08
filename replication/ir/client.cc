@@ -215,7 +215,7 @@ IRClient::ConsensusSlowPath()
         return;
     }
 
-    Notice("Client timeout; taking consensus slow path: %lu", pendingConsensusRequest->clientReqId);
+    Debug("Client timeout; taking consensus slow path: %lu", pendingConsensusRequest->clientReqId);
 
     // get results so far
     viewstamp_t vs = { view, pendingConsensusRequest->clientReqId };
@@ -310,7 +310,7 @@ IRClient::HandleInconsistentReply(const TransportAddress &remote,
     }
 
     
-    Notice("Client received reply: %lu %i", pendingInconsistentRequest->clientReqId, inconsistentReplyQuorum.NumRequired());
+    Debug("Client received reply: %lu %i", pendingInconsistentRequest->clientReqId, inconsistentReplyQuorum.NumRequired());
 
     // Record replies
     viewstamp_t vs = { msg.view(), msg.opid().clientreqid() };
@@ -351,7 +351,7 @@ IRClient::HandleConsensusReply(const TransportAddress &remote,
     }
 
    
-     Notice("Client received reply: %lu %i", pendingConsensusRequest->clientReqId, consensusReplyQuorum.NumRequired());
+    Debug("Client received reply: %lu %i", pendingConsensusRequest->clientReqId, consensusReplyQuorum.NumRequired());
 
     // Record replies
     viewstamp_t vs = { msg.view(), msg.opid().clientreqid() };
@@ -433,7 +433,7 @@ IRClient::HandleUnloggedReply(const TransportAddress &remote,
         return;
     }
     
-    Notice("Client received unloggedReply");
+    Debug("Client received unloggedReply");
 
     unloggedRequestTimeout->Stop();
 
