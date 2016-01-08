@@ -87,7 +87,7 @@ Server::ExecConsensusUpcall(const string &str1, string &str2)
                                 proposed);
         reply.set_status(status);
         if (proposed.isValid()) {
-            reply.set_timestamp(proposed.getTimestamp());
+            proposed.serialize(reply.mutable_timestamp());
         }
         reply.SerializeToString(&str2);
         break;
@@ -122,7 +122,7 @@ Server::UnloggedUpcall(const string &str1, string &str2)
             status = store->Get(request.txnid(), request.get().key(), val);
             if (status == 0) {
                 reply.set_value(val.second);
-                reply.set_timestamp(val.first.getTimestamp());
+                val.first.serialize(reply.mutable_timestamp());
             }
         }
         reply.set_status(status);

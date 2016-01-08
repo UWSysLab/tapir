@@ -46,7 +46,7 @@ Store::Get(uint64_t id, const string &key, pair<Timestamp,string> &value)
 
     bool ret = store.get(key, value);
     if (ret) {
-        Debug("Value: %s", value.second.c_str());
+        Debug("Value: %s at <%lu, %lu>", value.second.c_str(), value.first.getTimestamp(), value.first.getID());
         return REPLY_OK;
     } else {
         return REPLY_FAIL;
@@ -56,7 +56,7 @@ Store::Get(uint64_t id, const string &key, pair<Timestamp,string> &value)
 int
 Store::Get(uint64_t id, const string &key, const Timestamp &timestamp, pair<Timestamp,string> &value)
 {
-    Debug("[%lu] GET %s", id, key.c_str());
+    Debug("[%lu] GET %s at <%lu, %lu>", id, key.c_str(), timestamp.getTimestamp(), timestamp.getID());
 
     bool ret = store.get(key, timestamp, value);
     if (ret) {

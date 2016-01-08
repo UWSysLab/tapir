@@ -177,27 +177,23 @@ ShardClient::TapirDecide(const std::set<std::string> &results)
 {
     // If a majority say prepare_ok, 
     int ok_count = 0;
-    uint64_t ts = 0;
+    Timestamp ts = 0;
     string final_reply_str;
     Reply final_reply;
 
     for (string s : results) {
         Reply reply;
         reply.ParseFromString(s);
-
-	switch(reply.status()) {
-	case REPLY_OK:
+	
+	if (reply.status() == REPLY_OK) {
 	    ok_count++;
-	    continue;
-	case REPLY_FAIL:
+	} else if (reply.status() == REPLY_FAIL) {
 	    return s;
-	case REPLY_RETRY:
-	    if (reply.timestamp() > ts) {
-		ts = reply.timestamp();
+	} else if (reply.status() == REPLY_RETRY) {
+	    Timestamp t(reply.timestamp());
+	    if (t > ts) {
+		ts = t;
 	    }
-	    continue;
-	default:
-	    continue;
 	}
     }
 
@@ -205,6 +201,7 @@ ShardClient::TapirDecide(const std::set<std::string> &results)
 	final_reply.set_status(REPLY_OK);
     } else {
        final_reply.set_status(REPLY_RETRY);
+       ts.serialize(final_reply.mutable_timestamp());
     }
     final_reply.SerializeToString(&final_reply_str);
     return final_reply_str;
@@ -303,7 +300,7 @@ ShardClient::PrepareCallback(const string &request_str, const string &reply_str)
         Promise *w = waiting;
         waiting = NULL;
         if (reply.has_timestamp()) {
-            w->Reply(reply.status(), Timestamp(reply.timestamp(), 0));
+            w->Reply(reply.status(), Timestamp(reply.timestamp()));
         } else {
             w->Reply(reply.status(), Timestamp());
         }
