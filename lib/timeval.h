@@ -5,7 +5,7 @@
  *   utility functions for manipulating timevals
  *
  * Copyright 2013-2015 Irene Zhang <iyzhang@cs.washington.edu>
- *                     Naveen Kr. Sharma <nksharma@cs.washington.edu>
+ *                     Naveen Kr. Sharma <naveenks@cs.washington.edu>
  *                     Dan R. K. Ports  <drkp@cs.washington.edu>
  * Copyright 2009-2012 Massachusetts Institute of Technology
  *

@@ -1,12 +1,11 @@
 // -*- mode: c++; c-file-style: "k&r"; c-basic-offset: 4 -*-
-// vim: set ts=4 sw=4:
 /***********************************************************************
  *
  * store/strongstore/server.cc:
  *   Implementation of a single transactional key-value server with strong consistency.
  *
  * Copyright 2015 Irene Zhang <iyzhang@cs.washington.edu>
- *                Naveen Kr. Sharma <nks@cs.washington.edu>
+ *                Naveen Kr. Sharma <naveenks@cs.washington.edu>
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation

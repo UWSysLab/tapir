@@ -59,7 +59,7 @@ public:
     void Load(const string &key, const string &value, const Timestamp timestamp);
 
 private:
-    Store *store;
+    TxnStore *store;
 };
 
 } // namespace tapirstore

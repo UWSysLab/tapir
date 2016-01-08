@@ -5,7 +5,7 @@
  *   assertion macros that integrate with the logging framework
  *
  * Copyright 2013-2015 Irene Zhang <iyzhang@cs.washington.edu>
- *                     Naveen Kr. Sharma <nksharma@cs.washington.edu>
+ *                     Naveen Kr. Sharma <naveenks@cs.washington.edu>
  *                     Dan R. K. Ports  <drkp@cs.washington.edu>
  *
  * Permission is hereby granted, free of charge, to any person
