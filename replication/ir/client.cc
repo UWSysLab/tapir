@@ -331,7 +331,7 @@ IRClient::HandleInconsistentReply(const TransportAddress &remote,
         } // don't use the confirmation timeout for async replies
 
         // Return to client
-        req->continuation(req->request);
+        req->continuation(req->request, "");
         delete req;
     }
 }
