@@ -312,7 +312,7 @@ ShardClient::PrepareCallback(const string &request_str, const string &reply_str)
 
 /* Callback from a shard replica on commit operation completion. */
 void
-ShardClient::CommitCallback(const string &request_str, const string &reply_str)
+ShardClient::CommitCallback(const string &request_str)
 {
     // COMMITs always succeed.
     Reply reply;
@@ -332,7 +332,7 @@ ShardClient::CommitCallback(const string &request_str, const string &reply_str)
 
 /* Callback from a shard replica on abort operation completion. */
 void
-ShardClient::AbortCallback(const string &request_str, const string &reply_str)
+ShardClient::AbortCallback(const string &request_str)
 {
     // ABORTs always succeed.
     Reply reply;
