@@ -129,6 +129,7 @@ include store/common/Rules.mk
 include store/tapirstore/Rules.mk
 include store/strongstore/Rules.mk
 include store/weakstore/Rules.mk
+include store/benchmark/Rules.mk
 include lockserver/Rules.mk
 
 ##################################################################

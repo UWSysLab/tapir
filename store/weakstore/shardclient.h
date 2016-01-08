@@ -10,14 +10,14 @@
 #ifndef _WEAK_SHARDCLIENT_H_
 #define _WEAK_SHARDCLIENT_H_
 
-#include "paxos-lib/lib/assert.h"
-#include "paxos-lib/lib/message.h"
-#include "paxos-lib/lib/configuration.h"
-#include "paxos-lib/lib/udptransport.h"
-#include "common/timestamp.h"
-#include "common/transaction.h"
-#include "common/txnclient.h"
-#include "weakstore/weak-proto.pb.h"
+#include "lib/assert.h"
+#include "lib/message.h"
+#include "lib/configuration.h"
+#include "lib/udptransport.h"
+#include "store/common/timestamp.h"
+#include "store/common/transaction.h"
+#include "store/common/frontend/txnclient.h"
+#include "store/weakstore/weak-proto.pb.h"
 
 #include <set>
 #include <thread>

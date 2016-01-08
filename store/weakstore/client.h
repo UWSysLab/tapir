@@ -33,17 +33,17 @@
 #ifndef _WEAK_CLIENT_H_
 #define _WEAK_CLIENT_H_
 
-#include "paxos-lib/lib/assert.h"
-#include "paxos-lib/lib/message.h"
-#include "paxos-lib/lib/configuration.h"
-#include "paxos-lib/lib/udptransport.h"
-#include "paxos-lib/common/client.h"
-#include "paxos-lib/vr/client.h"
-#include "common/client.h"
-#include "common/bufferclient.h"
-#include "common/truetime.h"
-#include "weakstore/shardclient.h"
-#include "weakstore/weak-proto.pb.h"
+#include "lib/assert.h"
+#include "lib/message.h"
+#include "lib/configuration.h"
+#include "lib/udptransport.h"
+#include "replication/common/client.h"
+#include "replication/vr/client.h"
+#include "store/common/frontend/client.h"
+#include "store/common/frontend/bufferclient.h"
+#include "store/common/truetime.h"
+#include "store/weakstore/shardclient.h"
+#include "store/weakstore/weak-proto.pb.h"
 
 #include <string>
 #include <thread>
@@ -81,7 +81,7 @@ private:
     std::thread *clientTransport;
 
     // Client for each shard.
-    std::vector<QWClient *> bclient;
+    std::vector<ShardClient *> bclient;
 };
 
 } // namespace weakstore

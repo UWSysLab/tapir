@@ -36,8 +36,8 @@
 #include "replication/ir/replica.h"
 #include "store/common/timestamp.h"
 #include "store/common/truetime.h"
-#include "store/tapirstore/tapir-proto.pb.h"
 #include "store/tapirstore/store.h"
+#include "store/tapirstore/tapir-proto.pb.h"
 
 namespace tapirstore {
 
@@ -59,7 +59,7 @@ public:
     void Load(const string &key, const string &value, const Timestamp timestamp);
 
 private:
-    TxnStore *store;
+    Store *store;
 };
 
 } // namespace tapirstore

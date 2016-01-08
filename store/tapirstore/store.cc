@@ -29,7 +29,7 @@
  *
  **********************************************************************/
 
-#include "store.h"
+#include "store/tapirstore/store.h"
 
 namespace tapirstore {
 

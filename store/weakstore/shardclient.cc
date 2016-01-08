@@ -30,8 +30,7 @@
  *
  **********************************************************************/
 
-#include "weakstore/shardclient.h"
-#include "common/txnstore.h"
+#include "store/weakstore/shardclient.h"
 
 using namespace std;
 
@@ -48,7 +47,7 @@ ShardClient::ShardClient(string configPath, Transport *transport,
         fprintf(stderr, "unable to read configuration file: %s\n",
                 configPath.c_str());
     }
-    config = new specpaxos::Configuration(configStream);
+    config = new transport::Configuration(configStream);
     transport->Register(this, *config, -1);
     
     timeout = new Timeout(transport, 250, [this]() {

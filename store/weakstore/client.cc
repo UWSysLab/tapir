@@ -29,9 +29,9 @@
  *
  **********************************************************************/
 
-#include "qwstore/client.h"
+#include "store/weakstore/client.h"
 
-namespace qwstore {
+namespace weakstore {
 
 using namespace std;
 using namespace proto;
@@ -51,19 +51,19 @@ Client::Client(string configPath, int nShards, int closestReplica)
     nshards = nShards;
     bclient.reserve(nShards);
 
-    Debug("Initializing Orstore client with id [%lu]", client_id);
+    Debug("Initializing WeakStore client with id [%lu]", client_id);
 
     /* Start a client for each shard. */
     for (int i = 0; i < nShards; i++) {
         string shardConfigPath = configPath + to_string(i) + ".config";
-        bclient[i] = new QWClient(shardConfigPath, &transport,
+        bclient[i] = new ShardClient(shardConfigPath, &transport,
             client_id, i, closestReplica);
     }
 
     /* Run the transport in a new thread. */
     clientTransport = new thread(&Client::run_client, this);
 
-    Debug("QWstore client [%lu] created!", client_id);
+    Debug("WeakStore client [%lu] created!", client_id);
 }
 
 Client::~Client()
@@ -116,4 +116,4 @@ Client::Put(const string &key,
     return promise.GetReply();
 }
 
-} // namespace qwstore
+} // namespace weakstore

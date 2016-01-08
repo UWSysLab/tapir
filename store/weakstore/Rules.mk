@@ -12,7 +12,5 @@ OBJS-weak-client := $(LIB-message) $(LIB-udptransport) $(LIB-request) $(LIB-stor
 									$(o)weak-proto.o $(o)shardclient.o $(o)client.o 
 
 $(d)server: $(OBJS-weak-server)
-$(d)client: $(LIB-udptransport) $(LIB-request) $(LIB-store-common) \
-	$(LIB-latency) $(LIB-$(OBJS-weak-client)
 
-BINS += $(d)server $(d)client
+BINS += $(d)server

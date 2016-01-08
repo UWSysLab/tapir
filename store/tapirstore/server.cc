@@ -140,7 +140,7 @@ int
 main(int argc, char **argv)
 {
     int index = -1;
-    unsigned int myShard=0, maxShard=1, nKeys=1;
+    unsigned int myShard = 0, maxShard = 1, nKeys = 1;
     const char *configPath = NULL;
     const char *keyPath = NULL;
     bool linearizable = true;
