@@ -1,5 +1,5 @@
 #
-# Top-level makefile for OR-2PC
+# Top-level makefile for IR and TAPIR
 #
 
 CC = clang
@@ -7,7 +7,7 @@ CXX = clang++
 LD = clang++
 EXPAND = lib/tmpl/expand
 
-#CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -levent_pthreads -O2 -DNASSERT
+#CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -O2 -DNASSERT
 CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized 
 CXXFLAGS := -g -std=c++0x
 LDFLAGS := -levent_pthreads

@@ -300,7 +300,7 @@ IRClient::HandleInconsistentReply(const TransportAddress &remote,
                                   const proto::ReplyInconsistentMessage &msg)
 {
     if (pendingInconsistentRequest == NULL) {
-        Warning("Received reply when no request was pending");
+        Debug("Received reply when no request was pending");
         return;
     }
     

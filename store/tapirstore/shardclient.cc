@@ -320,10 +320,9 @@ ShardClient::CommitCallback(const string &request_str, const string &reply_str)
     blockingBegin->Reply(0);
 
     if (waiting != NULL) {
-        Promise *w = waiting;
         waiting = NULL;
     }
-    Debug("[shard %i] Received COMMIT callback [%d]", shard);
+    Debug("[shard %i] Received COMMIT callback", shard);
 }
 
 /* Callback from a shard replica on abort operation completion. */
@@ -336,10 +335,9 @@ ShardClient::AbortCallback(const string &request_str, const string &reply_str)
     blockingBegin->Reply(0);
 
     if (waiting != NULL) {
-        Promise *w = waiting;
         waiting = NULL;
     }
-    Debug("[shard %i] Received ABORT callback [%d]", shard);
+    Debug("[shard %i] Received ABORT callback", shard);
 }
 
 } // namespace tapir

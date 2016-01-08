@@ -99,12 +99,10 @@ LockStore::Commit(uint64_t id, uint64_t timestamp)
     Transaction txn = prepared[id];
 
     for (auto &write : txn.getWriteSet()) {
-        bool ret = store.put(write.first, // key
-                             write.second); // value
-        ASSERT(ret);
+        store.put(write.first, write.second);
     }
 
-    //drop locks
+    // Drop locks.
     dropLocks(id, txn);
 
     prepared.erase(id);
