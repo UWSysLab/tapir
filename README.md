@@ -1,7 +1,25 @@
 # TAPIR
 
-This repository includes code implementing several replicated and
-transactional key-value stores.
+This repository includes code implementing TAPIR -- the Transaction
+Application Protocol for Inconsistent Replication. This code was used
+for the SOSP 2015 paper, ["Building Consistent Transactions with
+Inconsistent Replication."](http://dl.acm.org/authorize?N93281)
+
+In addition, this repo includes several other useful implementations
+of distributed systems, including:
+
+1. An implementation of a lock server designed to work with
+   inconsistent replication (IR), our high-performance, unordered
+   replication protocol.
+
+2. An implementation of Viewstamped Replication (VR), detailed in this
+   [older paper](http://dl.acm.org/citation.cfm?id=62549) and this
+   [more recent paper](http://18.7.29.232/handle/1721.1/71763).
+
+3. An implementation of a scalable, distributed storage system
+   designed to work with VR that uses two-phase commit to support
+   distributed transactions and supports both optimistic concurrency
+   control and strict two-phase locking.
 
 The repo is structured as follows:
 
@@ -30,4 +48,4 @@ You can compile all of the TAPIR executables by running make in the root directo
 TAPIR depends on protobufs and libevent, so you will need those development libraries installed on your machine. On Linux, this can be done through apt.
 
 ## Contact and Questions
-Please email us at iyzhang@cs.washington.edu and naveenks@cs.washington.edu
+Please email Irene at iyzhang@cs.washington.edu, Dan at drkp@cs.washington.edu and Naveen at naveenks@cs.washington.edu
