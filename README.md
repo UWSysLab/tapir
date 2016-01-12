@@ -10,17 +10,19 @@ The repo is structured as follows:
   simulate network conditions on a local machine, including packet
   delays and reorderings.
 
-- /replication
+- /replication - replication library for the distributed stores
   - /vr - implementation of viewstamped replication protocol
   - /ir - implementation of inconsistent replication protocol
 
-- /store
+- /store - partitioned/sharded distributed store
   - /common - common data structures, backing stores and interfaces for all of stores
   - /tapirstore - implementation of TAPIR designed to work with IR
   - /strongstore - implementation of both an OCC-based and locking-based 2PC transactional
   storage system, designed to work with VR
   - /weakstore - implementation of an eventually consistent storage
     system, using quorum writes for replication
+
+- /lockserver - a lock server designed to be used with IR
 
 ## Compiling & Running
 You can compile all of the TAPIR executables by running make in the root directory
