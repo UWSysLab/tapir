@@ -28,3 +28,6 @@ The repo is structured as follows:
 You can compile all of the TAPIR executables by running make in the root directory
 
 TAPIR depends on protobufs and libevent, so you will need those development libraries installed on your machine. On Linux, this can be done through apt.
+
+## Contact and Questions
+Please email us at iyzhang@cs.washington.edu and naveenks@cs.washington.edu
