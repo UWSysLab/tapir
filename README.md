@@ -5,8 +5,15 @@ Application Protocol for Inconsistent Replication. This code was used
 for the SOSP 2015 paper, ["Building Consistent Transactions with
 Inconsistent Replication."](http://dl.acm.org/authorize?N93281)
 
-In addition, this repo includes several other useful implementations
-of distributed systems, including:
+TAPIR is a new protocol for linearizable distributed transactions
+built using replication with no consistency guarantees. By enforcing
+consistency only at the transaction layer, TAPIR eliminates
+coordination at the replication layer, enabling TAPIR to provide the
+same transaction model and consistency guarantees as existing systems,
+like Spanner, with better latency and throughput.
+
+In addition to TAPIR, this repo includes several other useful
+implementations of distributed systems, including:
 
 1. An implementation of a lock server designed to work with
    inconsistent replication (IR), our high-performance, unordered
