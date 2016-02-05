@@ -122,6 +122,7 @@ $(foreach bin,$(1),$(eval LDFLAGS-$(bin) += $(2)))
 endef
 
 include lib/Rules.mk
+include libtapir/Rules.mk
 include replication/common/Rules.mk
 include replication/vr/Rules.mk
 include replication/ir/Rules.mk
