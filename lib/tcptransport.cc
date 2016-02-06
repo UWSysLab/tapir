@@ -128,7 +128,8 @@ BindToPort(int fd, const string &host, const string &port)
     hints.ai_flags    = AI_PASSIVE;
     struct addrinfo *ai;
     int res;
-    if ((res = getaddrinfo(host.c_str(), port.c_str(),
+    if ((res = getaddrinfo(host.c_str(),
+			   port.c_str(),
                            &hints, &ai))) {
         Panic("Failed to resolve host/port %s:%s: %s",
               host.c_str(), port.c_str(), gai_strerror(res));
@@ -203,11 +204,20 @@ TCPTransport::ConnectTCP(TransportReceiver *src, const TCPTransportAddress &dst)
         PWarning("Failed to set O_NONBLOCK on outgoing TCP socket");
     }
 
+    TCPTransportTCPListener *info = new TCPTransportTCPListener();
+    info->transport = this;
+    info->acceptFd = 0;
+    info->receiver = src;
+    info->replicaIdx = -1;
+    info->acceptEvent = NULL;
+    
+    tcpListeners.push_back(info);
+
     struct bufferevent *bev =
         bufferevent_socket_new(libeventBase, fd,
                                BEV_OPT_CLOSE_ON_FREE);
-    bufferevent_setcb(bev, NULL, NULL,
-                      TCPOutgoingEventCallback, this);
+    bufferevent_setcb(bev, TCPReadableCallback, NULL,
+                      TCPOutgoingEventCallback, info);
     
     if (bufferevent_socket_connect(bev,
                                    (struct sockaddr *)&(dst.addr),
@@ -235,10 +245,14 @@ TCPTransport::Register(TransportReceiver *receiver,
     ASSERT(replicaIdx < config.n);
     struct sockaddr_in sin;
 
-    TCPTransportTCPListener *info = new TCPTransportTCPListener();
     //const transport::Configuration *canonicalConfig =
     RegisterConfiguration(receiver, config, replicaIdx);
 
+    // Clients don't need to accept TCP connections
+    if (replicaIdx == -1) {
+	return;
+    }
+    
     // Create socket
     int fd;
     if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -257,23 +271,19 @@ TCPTransport::Register(TransportReceiver *receiver,
         PWarning("Failed to set SO_REUSEADDR on TCP listening socket");
     }
 
-    if (replicaIdx != -1) {
-        // Registering a replica. Bind socket to the designated
-        // host/port
-        const string &host = config.replica(replicaIdx).host;
-        const string &port = config.replica(replicaIdx).port;
-        BindToPort(fd, host, port);
-    } else {
-        // Registering a client. Bind to any available host/port
-        BindToPort(fd, "", "any");        
-    }
-
+    // Registering a replica. Bind socket to the designated
+    // host/port
+    const string &host = config.replica(replicaIdx).host;
+    const string &port = config.replica(replicaIdx).port;
+    BindToPort(fd, host, port);
+    
     // Listen for connections
     if (listen(fd, 5) < 0) {
         PPanic("Failed to listen for TCP connections");
     }
         
     // Create event to accept connections
+    TCPTransportTCPListener *info = new TCPTransportTCPListener();
     info->transport = this;
     info->acceptFd = fd;
     info->receiver = receiver;
@@ -333,24 +343,24 @@ TCPTransport::SendMessageInternal(TransportReceiver *src,
 
     *((uint32_t *) ptr) = MAGIC;
     ptr += sizeof(uint32_t);
-    ASSERT(ptr-buf < totalLen);
+    ASSERT((size_t)(ptr-buf) < totalLen);
     
     *((size_t *) ptr) = totalLen;
     ptr += sizeof(size_t);
-    ASSERT(ptr-buf < totalLen);
+    ASSERT((size_t)(ptr-buf) < totalLen);
 
     *((size_t *) ptr) = typeLen;
     ptr += sizeof(size_t);
-    ASSERT(ptr-buf < totalLen);
+    ASSERT((size_t)(ptr-buf) < totalLen);
 
-    ASSERT(ptr+typeLen-buf < totalLen);
+    ASSERT((size_t)(ptr+typeLen-buf) < totalLen);
     memcpy(ptr, type.c_str(), typeLen);
     ptr += typeLen;
     *((size_t *) ptr) = dataLen;
     ptr += sizeof(size_t);
 
-    ASSERT(ptr-buf < totalLen);
-    ASSERT(ptr+dataLen-buf == totalLen);
+    ASSERT((size_t)(ptr-buf) < totalLen);
+    ASSERT((size_t)(ptr+dataLen-buf) == totalLen);
     memcpy(ptr, data.c_str(), dataLen);
     ptr += dataLen;
 
@@ -377,6 +387,8 @@ TCPTransport::Stop()
 int
 TCPTransport::Timer(uint64_t ms, timer_callback_t cb)
 {
+    std::lock_guard<std::mutex> lck(mtx);
+    
     TCPTransportTimerInfo *info = new TCPTransportTimerInfo();
 
     struct timeval tv;
@@ -401,12 +413,14 @@ TCPTransport::Timer(uint64_t ms, timer_callback_t cb)
 bool
 TCPTransport::CancelTimer(int id)
 {
+    std::lock_guard<std::mutex> lck(mtx);
     TCPTransportTimerInfo *info = timers[id];
 
     if (info == NULL) {
         return false;
     }
 
+    timers.erase(info->id);
     event_del(info->ev);
     event_free(info->ev);
     delete info;
@@ -426,9 +440,13 @@ TCPTransport::CancelAllTimers()
 void
 TCPTransport::OnTimer(TCPTransportTimerInfo *info)
 {
-    timers.erase(info->id);
-    event_del(info->ev);
-    event_free(info->ev);
+    {
+	    std::lock_guard<std::mutex> lck(mtx);
+	    
+	    timers.erase(info->id);
+	    event_del(info->ev);
+	    event_free(info->ev);
+    }
     
     info->cb();
 
@@ -518,7 +536,9 @@ TCPTransport::TCPAcceptCallback(evutil_socket_t fd, short what, void *arg)
         }
 
         info->connectionEvents.push_back(bev);
-	transport->tcpAddresses.insert(pair<struct bufferevent*, TCPTransportAddress>(bev,TCPTransportAddress(sin)));
+	TCPTransportAddress client = TCPTransportAddress(sin);
+	transport->tcpOutgoing[client] = bev;
+	transport->tcpAddresses.insert(pair<struct bufferevent*, TCPTransportAddress>(bev,client));
         Debug("Opened incoming TCP connection from %s:%d",
                inet_ntoa(sin.sin_addr), htons(sin.sin_port));
     } 
@@ -565,7 +585,7 @@ TCPTransport::TCPReadableCallback(struct bufferevent *bev, void *arg)
     ptr += sizeof(size_t);
     ASSERT((size_t)(ptr-buf) < totalSize);
     
-    ASSERT(ptr+typeLen-buf < totalSize);
+    ASSERT((size_t)(ptr+typeLen-buf) < totalSize);
     string msgType(ptr, typeLen);
     ptr += typeLen;
     
@@ -573,7 +593,7 @@ TCPTransport::TCPReadableCallback(struct bufferevent *bev, void *arg)
     ptr += sizeof(size_t);
     ASSERT((size_t)(ptr-buf) < totalSize);
     
-    ASSERT(ptr+msgLen-buf <= totalSize);
+    ASSERT((size_t)(ptr+msgLen-buf) <= totalSize);
     string msg(ptr, msgLen);
     ptr += msgLen;
 
@@ -605,7 +625,8 @@ void
 TCPTransport::TCPOutgoingEventCallback(struct bufferevent *bev,
                                        short what, void *arg)
 {
-    TCPTransport *transport = (TCPTransport *)arg;
+    TCPTransportTCPListener *info = (TCPTransportTCPListener *)arg;
+    TCPTransport *transport = info->transport;
     auto it = transport->tcpAddresses.find(bev);    
     ASSERT(it != transport->tcpAddresses.end());
     TCPTransportAddress addr = it->second;

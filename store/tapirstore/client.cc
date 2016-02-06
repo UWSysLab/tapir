@@ -120,6 +120,14 @@ Client::Get(const string &key, string &value)
     return promise.GetReply();
 }
 
+string
+Client::Get(const string &key)
+{
+    string value;
+    Get(key, value);
+    return value;
+}
+
 /* Sets the value corresponding to the supplied key. */
 int
 Client::Put(const string &key, const string &value)

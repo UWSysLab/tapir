@@ -2,9 +2,9 @@
 # Top-level makefile for IR and TAPIR
 #
 
-CC = clang
-CXX = clang++
-LD = clang++
+CC = gcc
+CXX = g++
+LD = g++
 EXPAND = lib/tmpl/expand
 
 #CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -O2 -DNASSERT
