@@ -37,7 +37,7 @@ using namespace std;
 
 Client::Client(const string configPath, int nShards,
                 int closestReplica, TrueTime timeServer)
-    : transport(0.0, 0.0, 0), timeServer(timeServer)
+    : nshards(nShards), transport(0.0, 0.0, 0), timeServer(timeServer)
 {
     // Initialize all state here;
     client_id = 0;
@@ -49,23 +49,24 @@ Client::Client(const string configPath, int nShards,
     }
     t_id = (client_id/10000)*10000;
 
-    nshards = nShards;
     bclient.reserve(nshards);
 
-    Debug("Initializing Tapir client with id [%lu]", client_id);
+    Debug("Initializing Tapir client with id [%lu] %lu", client_id, nshards);
 
     /* Start a client for each shard. */
-    for (int i = 0; i < nShards; i++) {
+    for (int i = 0; i < nshards; i++) {
         string shardConfigPath = configPath + to_string(i) + ".config";
         ShardClient *shardclient = new ShardClient(shardConfigPath,
                 &transport, client_id, i, closestReplica);
         bclient[i] = new BufferClient(shardclient);
     }
 
+    Debug("Tapir client [%lu] created! %lu %lu", client_id, nshards, bclient.size());
+
     /* Run the transport in a new thread. */
     clientTransport = new thread(&Client::run_client, this);
 
-    Debug("Tapir client [%lu] created!", client_id);
+    Debug("Tapir client [%lu] created! %lu", client_id, bclient.size());
 }
 
 Client::~Client()
@@ -104,7 +105,7 @@ Client::Get(const string &key, string &value)
     Debug("GET Operation [%s]", key.c_str());
 
     // Contact the appropriate shard to get the value.
-    int i = key_to_shard(key, nshards);
+    int i = key_to_shard(key, bclient.size());
 
     // If needed, add this shard to set of participants and send BEGIN.
     if (participants.find(i) == participants.end()) {

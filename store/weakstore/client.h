@@ -62,7 +62,8 @@ public:
     int Put(const std::string &key, const std::string &value);
     bool Commit() { return true; };
     void Abort() {};
-    
+    std::vector<int> Stats();
+
 private:
     /* Private helper functions. */
     void run_client(); // Runs the transport event loop.

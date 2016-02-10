@@ -115,4 +115,11 @@ Client::Put(const string &key,
     return promise.GetReply();
 }
 
+vector<int>
+Client::Stats()
+{
+    vector<int> v;
+    return v;
+}
+
 } // namespace weakstore

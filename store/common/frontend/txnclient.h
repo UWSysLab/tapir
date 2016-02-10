@@ -58,44 +58,44 @@
 class TxnClient
 {
 public:
-    TxnClient();
-    ~TxnClient();
+    TxnClient() {};
+    virtual ~TxnClient() {};
 
     // Begin a transaction.
-    virtual void Begin(uint64_t id);
+    virtual void Begin(uint64_t id) = 0;
     
     // Get the value corresponding to key (valid at given timestamp).
     virtual void Get(uint64_t id,
                      const std::string &key,
-                     Promise *promise = NULL);
+                     Promise *promise = NULL) = 0;
 
     virtual void Get(uint64_t id,
                      const std::string &key,
                      const Timestamp &timestamp,
-                     Promise *promise = NULL);
+                     Promise *promise = NULL) = 0;
 
     // Set the value for the given key.
     virtual void Put(uint64_t id,
                      const std::string &key,
                      const std::string &value,
-                     Promise *promise = NULL);
+                     Promise *promise = NULL) = 0;
 
     // Prepare the transaction.
     virtual void Prepare(uint64_t id,
                          const Transaction &txn,
                          const Timestamp &timestamp = Timestamp(),
-                         Promise *promise = NULL);
+                         Promise *promise = NULL) = 0;
 
     // Commit all Get(s) and Put(s) since Begin().
     virtual void Commit(uint64_t id,
                         const Transaction &txn = Transaction(), 
                         uint64_t timestamp = 0,
-                        Promise *promise = NULL);
+                        Promise *promise = NULL) = 0;
     
     // Abort all Get(s) and Put(s) since Begin().
     virtual void Abort(uint64_t id, 
                        const Transaction &txn = Transaction(), 
-                       Promise *promise = NULL);
+                       Promise *promise = NULL) = 0;
 };
 
 #endif /* _TXN_CLIENT_H_ */
