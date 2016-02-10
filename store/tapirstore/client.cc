@@ -105,7 +105,7 @@ Client::Get(const string &key, string &value)
     Debug("GET Operation [%s]", key.c_str());
 
     // Contact the appropriate shard to get the value.
-    int i = key_to_shard(key, bclient.size());
+    int i = key_to_shard(key, nshards);
 
     // If needed, add this shard to set of participants and send BEGIN.
     if (participants.find(i) == participants.end()) {
