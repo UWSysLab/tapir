@@ -54,7 +54,7 @@ Client::Client(const string configPath, int nShards,
     Debug("Initializing Tapir client with id [%lu] %lu", client_id, nshards);
 
     /* Start a client for each shard. */
-    for (int i = 0; i < nshards; i++) {
+    for (uint64_t i = 0; i < nshards; i++) {
         string shardConfigPath = configPath + to_string(i) + ".config";
         ShardClient *shardclient = new ShardClient(shardConfigPath,
                 &transport, client_id, i, closestReplica);

@@ -56,11 +56,13 @@
              <commandlineArgs>-jar ../javacpp/target/javacpp.jar
              -classpath target/classes
              -d ../libs
-             -Xcompiler -std=c++0x -Xcompiler -levent_pthreads
+             -Xcompiler -std=c++0x
+	     -Xcompiler -levent
+	     -Xcompiler -iquote/usr/lib/jvm/default-java/include
              -Xcompiler -iquote../../
-             -Xcompiler -iquote../../.obj/gen
-             -Xcompiler -iquote/usr/lib/jvm/default-java/include
-             -Xcompiler -L../../libtapir -Xcompiler -ltapir
+	     -Xcompiler -iquote../../.obj/gen
+	     -Xcompiler -L../libs
+	     -Xcompiler -ltapir
              </commandlineArgs>
            </configuration>
          </execution>
