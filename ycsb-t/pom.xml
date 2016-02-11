@@ -50,34 +50,15 @@
   <!-- Properties Management -->
   <properties>
     <maven.assembly.version>2.2.1</maven.assembly.version>
-    <hbase.version>0.90.5</hbase.version>
-    <cassandra.version>0.7.0</cassandra.version>
-    <infinispan.version>7.1.0.CR1</infinispan.version>
-    <openjpa.jdbc.version>2.1.1</openjpa.jdbc.version>
-    <mapkeeper.version>1.0</mapkeeper.version>
-    <mongodb.version>2.7.2</mongodb.version>
-    <redis.version>2.6.2</redis.version>
-    <voldemort.version>0.81</voldemort.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
   <modules>
     <!--module>build-tools</module-->
     <module>core</module>
-    <module>hbase</module>
-    <module>cassandra</module>
-    <module>gemfire</module>
-    <module>infinispan</module>
-    <module>jdbc</module>
-    <!-- <module>mapkeeper</module> -->
-    <module>mongodb</module>
-    <!--module>nosqldb</module-->
-    <module>redis</module>
-    <module>voldemort</module>
     <module>tapir-interface</module>
     <module>tapir</module>
     <module>javacpp</module>
-    <module>distribution</module>
   </modules>
 
   <build>
