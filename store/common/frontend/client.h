@@ -40,13 +40,13 @@ public:
 
     // Sharding logic: Given key, generates a number b/w 0 to nshards-1
     uint64_t key_to_shard(const std::string &key, uint64_t nshards) {
-	uint64_t hash = 5381;
-	const char* str = key.c_str();
-	for (unsigned int i = 0; i < key.length(); i++) {
-	    hash = ((hash << 5) + hash) + (uint64_t)str[i];
-	}
+        uint64_t hash = 5381;
+        const char* str = key.c_str();
+        for (unsigned int i = 0; i < key.length(); i++) {
+            hash = ((hash << 5) + hash) + (uint64_t)str[i];
+        }
 
-	return (hash % nshards);
+        return (hash % nshards);
     };
 };
 
