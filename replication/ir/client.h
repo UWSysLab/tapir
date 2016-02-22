@@ -77,6 +77,7 @@ protected:
     struct PendingRequest
     {
         string request;
+        string decideReq;
         uint64_t clientReqId;
         decide_t decide;
         continuation_t continuation;

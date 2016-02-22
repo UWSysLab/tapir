@@ -166,24 +166,27 @@ Client::Prepare(Timestamp &timestamp)
         uint64_t proposed = p->GetTimestamp().getTimestamp();
 
         switch(p->GetReply()) {
-            case REPLY_OK:
-                Debug("Prepare ok vote");
-                continue;
-            case REPLY_FAIL:
-                // abort!
-                Debug("ABORT transaction");
-                return REPLY_FAIL;
-            case REPLY_RETRY:
-                status = REPLY_RETRY;
+        case REPLY_OK:
+            Debug("Prepare ok vote");
+            continue;
+        case REPLY_FAIL:
+            // abort!
+            Debug("ABORT transaction");
+            return REPLY_FAIL;
+        case REPLY_RETRY:
+            status = REPLY_RETRY;
                 if (proposed > ts) {
                     ts = proposed;
                 }
                 break;
-            case REPLY_TIMEOUT:
-                status = REPLY_RETRY;
-                break;
-            default:
-                NOT_IMPLEMENTED();
+        case REPLY_TIMEOUT:
+            status = REPLY_RETRY;
+            break;
+        case REPLY_ABSTAIN:
+            // just ignore abstains
+            break;
+        default:
+            break;
         }
         delete p;
     }

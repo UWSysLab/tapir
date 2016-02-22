@@ -232,7 +232,7 @@ IRClient::ConsensusSlowPath()
     string result = pendingConsensusRequest->decide(results);
 
     // Put the result in the request to store for later retries
-    pendingConsensusRequest->request = result;
+    pendingConsensusRequest->decideReq = result;
 
     // Send finalize message
     proto::FinalizeConsensusMessage response;
@@ -258,7 +258,7 @@ IRClient::ResendConfirmation()
         proto::FinalizeConsensusMessage response;
         response.mutable_opid()->set_clientid(clientid);
         response.mutable_opid()->set_clientreqid(pendingConsensusRequest->clientReqId);
-        response.set_result(pendingConsensusRequest->request);
+        response.set_result(pendingConsensusRequest->decideReq);
                  
         if(transport->SendMessageToAll(this, response)) {
             confirmationTimeout->Reset();
@@ -419,7 +419,7 @@ IRClient::HandleConfirm(const TransportAddress &remote,
         pendingConsensusRequest = NULL;
 
         // Return to client
-        req->continuation(req->request, pendingConsensusRequest->request);
+        req->continuation(req->request, req->decideReq);
         delete req;
     }
 }
