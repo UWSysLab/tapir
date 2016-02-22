@@ -57,13 +57,15 @@ namespace tapirstore {
 class Client : public ::Client
 {
 public:
-    Client(const std::string configPath, int nshards,
-            int closestReplica, TrueTime timeserver);
+    Client(const std::string configPath, int nShards,
+	   int closestReplica, TrueTime timeserver = TrueTime(0,0));
     virtual ~Client();
 
     // Overriding functions from ::Client.
     void Begin();
     int Get(const std::string &key, std::string &value);
+    // Interface added for Java bindings
+    std::string Get(const std::string &key);
     int Put(const std::string &key, const std::string &value);
     bool Commit();
     void Abort();
@@ -77,7 +79,7 @@ private:
     uint64_t t_id;
 
     // Number of shards.
-    long nshards;
+    uint64_t nshards;
 
     // Number of retries for current transaction.
     long retries;

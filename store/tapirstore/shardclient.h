@@ -65,6 +65,10 @@ public:
             const std::string &key,
             const Timestamp &timestamp, 
             Promise *promise = NULL);
+    void Put(uint64_t id,
+	     const std::string &key,
+	     const std::string &value,
+	     Promise *promise = NULL);
     void Prepare(uint64_t id, 
                  const Transaction &txn,
                  const Timestamp &timestamp = Timestamp(),

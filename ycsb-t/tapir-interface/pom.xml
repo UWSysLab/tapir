@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>com.yahoo.ycsb</groupId>
+    <artifactId>root</artifactId>
+    <version>0.1.4</version>
+  </parent>
+
+  <artifactId>tapir-interface</artifactId>
+  <name>TAPIR Interface</name>
+  <packaging>jar</packaging>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.bytedeco</groupId>
+      <artifactId>javacpp</artifactId>
+      <version>0.10</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+   <plugins>
+      <plugin>
+       <groupId>org.apache.maven.plugins</groupId>
+       <artifactId>maven-assembly-plugin</artifactId>
+       <version>2.2.1</version>
+       <configuration>
+         <descriptorRefs>
+           <descriptorRef>jar-with-dependencies</descriptorRef>
+         </descriptorRefs>
+         <appendAssemblyId>false</appendAssemblyId>
+       </configuration>
+       <executions>
+         <execution>
+           <phase>package</phase>
+           <goals>
+             <goal>single</goal>
+           </goals>
+         </execution>
+       </executions>
+     </plugin>
+      <plugin>
+       <groupId>org.codehaus.mojo</groupId>
+       <artifactId>exec-maven-plugin</artifactId>
+       <version>1.3.2</version>
+       <executions>
+         <execution>
+           <id>build-jnilib</id>
+           <phase>process-classes</phase>
+           <goals>
+             <goal>exec</goal>
+           </goals>
+           <configuration>
+             <executable>java</executable>
+             <commandlineArgs>-jar ../javacpp/target/javacpp.jar
+             -classpath target/classes
+             -d ../libs
+             -Xcompiler -std=c++0x
+	     -Xcompiler -levent
+	     -Xcompiler -iquote/usr/lib/jvm/default-java/include
+             -Xcompiler -iquote../../
+	     -Xcompiler -iquote../../.obj/gen
+	     -Xcompiler -L../libs
+	     -Xcompiler -ltapir
+             </commandlineArgs>
+           </configuration>
+         </execution>
+       </executions>
+     </plugin>
+  </plugins>
+ </build>	
+</project>

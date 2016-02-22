@@ -1,4 +1,4 @@
-// -*- mode: c++; c-file-style: "k&r"; c-basic-offset: 4 -*-
+/ -*- mode: c++; c-file-style: "k&r"; c-basic-offset: 4 -*-
 /***********************************************************************
  *
  * udptransport.h:
@@ -44,6 +44,7 @@
 #include <unordered_map>
 #include <list>
 #include <random>
+#include <mutex>
 #include <netinet/in.h>
 
 class TCPTransportAddress : public TransportAddress
@@ -79,6 +80,7 @@ public:
     void CancelAllTimers();
     
 private:
+    std::mutex mtx;
     struct TCPTransportTimerInfo
     {
         TCPTransport *transport;
