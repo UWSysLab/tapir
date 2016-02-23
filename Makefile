@@ -7,8 +7,8 @@ CXX = g++
 LD = g++
 EXPAND = lib/tmpl/expand
 
-#CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -O2 -DNASSERT
-CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized 
+CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -O2 -DNASSERT
+#CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized 
 CXXFLAGS := -g -std=c++0x
 LDFLAGS := -levent_pthreads
 ## Debian package: check
@@ -131,6 +131,7 @@ include store/strongstore/Rules.mk
 include store/weakstore/Rules.mk
 include store/benchmark/Rules.mk
 include lockserver/Rules.mk
+include timeserver/Rules.mk
 include libtapir/Rules.mk
 ##################################################################
 # General rules
