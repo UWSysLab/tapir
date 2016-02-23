@@ -11,7 +11,6 @@
 #include "store/strongstore/client.h"
 #include "store/weakstore/client.h"
 #include "store/tapirstore/client.h"
-#include <algorithm>
 
 using namespace std;
 

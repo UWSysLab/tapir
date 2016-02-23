@@ -42,19 +42,18 @@ VersionedKVStore::inStore(const string &key)
     return store.find(key) != store.end() && store[key].size() > 0;
 }
 
-bool
+void
 VersionedKVStore::getValue(const string &key, const Timestamp &t, set<VersionedKVStore::VersionedValue>::iterator &it)
 {
-    if (!inStore(key)) return false;
-    
     VersionedValue v(t);
     it = store[key].upper_bound(v);
 
     // if there is no valid version at this timestamp
-    if (it == store[key].begin()) return false;
-    
-    it--;
-    return true;
+    if (it == store[key].begin()) {
+        it = store[key].end();
+    } else {
+        it--;
+    }
 }
 
 
@@ -77,10 +76,13 @@ VersionedKVStore::get(const string &key, pair<Timestamp, string> &value)
 bool
 VersionedKVStore::get(const string &key, const Timestamp &t, pair<Timestamp, string> &value)
 {
-    set<VersionedValue>::iterator it;
-    if (getValue(key, t, it)) {
-        value = make_pair((*it).write, (*it).value);
-        return true;
+    if (inStore(key)) {
+        set<VersionedValue>::iterator it;
+        getValue(key, t, it);
+        if (it != store[key].end()) {
+            value = make_pair((*it).write, (*it).value);
+            return true;
+        }
     }
     return false;
 }
@@ -89,14 +91,18 @@ bool
 VersionedKVStore::getRange(const string &key, const Timestamp &t,
 			   pair<Timestamp, Timestamp> &range)
 {
-    set<VersionedValue>::iterator it;
-    if (getValue(key, t, it)) {
-        range.first = (*it).write;
-        it++;
+    if (inStore(key)) {
+        set<VersionedValue>::iterator it;
+        getValue(key, t, it);
+
         if (it != store[key].end()) {
-            range.second = (*it).write;
+            range.first = (*it).write;
+            it++;
+            if (it != store[key].end()) {
+                range.second = (*it).write;
+            }
+            return true;
         }
-        return true;
     }
     return false;
 }
@@ -116,13 +122,17 @@ void
 VersionedKVStore::commitGet(const string &key, const Timestamp &readTime, const Timestamp &commit)
 {
     // Hmm ... could read a key we don't have if we are behind ... do we commit this or wait for the log update?
-    set<VersionedValue>::iterator it;
-    if (getValue(key, readTime, it)) {
-        // figure out if anyone has read this version before
-        if (lastReads.find(key) != lastReads.end() &&
-            lastReads[key].find((*it).write) != lastReads[key].end()) {
-            if (lastReads[key][(*it).write] < commit) {
-                lastReads[key][(*it).write] = commit;
+    if (inStore(key)) {
+        set<VersionedValue>::iterator it;
+        getValue(key, readTime, it);
+        
+        if (it != store[key].end()) {
+            // figure out if anyone has read this version before
+            if (lastReads.find(key) != lastReads.end() &&
+                lastReads[key].find((*it).write) != lastReads[key].end()) {
+                if (lastReads[key][(*it).write] < commit) {
+                    lastReads[key][(*it).write] = commit;
+                }
             }
         }
     } // otherwise, ignore the read
@@ -148,15 +158,17 @@ VersionedKVStore::getLastRead(const string &key, Timestamp &lastRead)
 bool
 VersionedKVStore::getLastRead(const string &key, const Timestamp &t, Timestamp &lastRead)
 {
-    set<VersionedValue>::iterator it;
-    bool ret = getValue(key, t, it);
-    ASSERT(ret);
+    if (inStore(key)) {
+        set<VersionedValue>::iterator it;
+        getValue(key, t, it);
+        ASSERT(it != store[key].end());
 
-    // figure out if anyone has read this version before
-    if (lastReads.find(key) != lastReads.end() &&
-        lastReads[key].find((*it).write) != lastReads[key].end()) {
-        lastRead = lastReads[key][(*it).write];
-        return true;
+        // figure out if anyone has read this version before
+        if (lastReads.find(key) != lastReads.end() &&
+            lastReads[key].find((*it).write) != lastReads[key].end()) {
+            lastRead = lastReads[key][(*it).write];
+            return true;
+        }
     }
     return false;	
 }

@@ -42,7 +42,6 @@
 #include <set>
 #include <unordered_map>
 #include <vector>
-#include <mutex>
 
 namespace tapirstore {
 
@@ -69,11 +68,8 @@ private:
     // Data store
     VersionedKVStore store;
 
-    // list of prepared transactions
+    // TODO: comment this.
     std::unordered_map<uint64_t, std::pair<Timestamp, Transaction>> prepared;
-
-    // protect both store and prepared
-    std::mutex mtx;
     
     void GetPreparedWrites(std::unordered_map< std::string, std::set<Timestamp> > &writes);
     void GetPreparedReads(std::unordered_map< std::string, std::set<Timestamp> > &reads);

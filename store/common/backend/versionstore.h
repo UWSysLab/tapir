@@ -76,7 +76,7 @@ private:
     std::unordered_map< std::string, std::set<VersionedValue> > store;
     std::unordered_map< std::string, std::map< Timestamp, Timestamp > > lastReads;
     bool inStore(const std::string &key);
-    bool getValue(const std::string &key, const Timestamp &t, std::set<VersionedValue>::iterator &it);
+    void getValue(const std::string &key, const Timestamp &t, std::set<VersionedValue>::iterator &it);
 };
 
 #endif  /* _VERSIONED_KV_STORE_H_ */
