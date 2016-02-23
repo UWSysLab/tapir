@@ -43,9 +43,9 @@ int
 Store::Get(uint64_t id, const string &key, pair<Timestamp,string> &value)
 {
     Debug("[%lu] GET %s", id, key.c_str());
-
-    bool ret = store.get(key, value);
-    if (ret) {
+    std::lock_guard<std::mutex> lck (mtx);
+    
+    if (store.get(key, value)) {
         Debug("Value: %s at <%lu, %lu>", value.second.c_str(), value.first.getTimestamp(), value.first.getID());
         return REPLY_OK;
     } else {
@@ -57,9 +57,9 @@ int
 Store::Get(uint64_t id, const string &key, const Timestamp &timestamp, pair<Timestamp,string> &value)
 {
     Debug("[%lu] GET %s at <%lu, %lu>", id, key.c_str(), timestamp.getTimestamp(), timestamp.getID());
+    std::lock_guard<std::mutex> lck (mtx);
 
-    bool ret = store.get(key, timestamp, value);
-    if (ret) {
+    if (store.get(key, timestamp, value)) {
         return REPLY_OK;
     } else {
         return REPLY_FAIL;
@@ -70,6 +70,8 @@ int
 Store::Prepare(uint64_t id, const Transaction &txn, const Timestamp &timestamp, Timestamp &proposedTimestamp)
 {   
     Debug("[%lu] START PREPARE", id);
+
+    std::lock_guard<std::mutex> lck (mtx);
 
     if (prepared.find(id) != prepared.end()) {
         if (prepared[id].first == timestamp) {
@@ -212,7 +214,9 @@ Store::Commit(uint64_t id, uint64_t timestamp)
 {
 
     Debug("[%lu] COMMIT", id);
-    
+
+    std::lock_guard<std::mutex> lck (mtx);
+
     // Nope. might not find it
     //ASSERT(prepared.find(id) != prepared.end());
 
@@ -245,7 +249,8 @@ void
 Store::Abort(uint64_t id, const Transaction &txn)
 {
     Debug("[%lu] ABORT", id);
-    
+    std::lock_guard<std::mutex> lck (mtx);
+
     if (prepared.find(id) != prepared.end()) {
         prepared.erase(id);
     }
@@ -254,9 +259,11 @@ Store::Abort(uint64_t id, const Transaction &txn)
 void
 Store::Load(const string &key, const string &value, const Timestamp &timestamp)
 {
+    std::lock_guard<std::mutex> lck (mtx);    
     store.put(key, value, timestamp);
 }
 
+// hold lock when using this function
 void
 Store::GetPreparedWrites(unordered_map<string, set<Timestamp>> &writes)
 {
@@ -268,6 +275,7 @@ Store::GetPreparedWrites(unordered_map<string, set<Timestamp>> &writes)
     }
 }
 
+// hold lock when using this function
 void
 Store::GetPreparedReads(unordered_map<string, set<Timestamp>> &reads)
 {
