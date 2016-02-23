@@ -53,16 +53,17 @@
            </goals>
            <configuration>
              <executable>java</executable>
-             <commandlineArgs>-jar ../javacpp/target/javacpp.jar
-             -classpath target/classes
-             -d ../libs
-             -Xcompiler -std=c++0x
-	     -Xcompiler -levent
-	     -Xcompiler -iquote/usr/lib/jvm/default-java/include
-             -Xcompiler -iquote../../
-	     -Xcompiler -iquote../../.obj/gen
-	     -Xcompiler -L../libs
-	     -Xcompiler -ltapir
+             <commandlineArgs>
+               -jar ../javacpp/target/javacpp.jar
+               -classpath target/classes
+               -d ../libs
+               -Xcompiler -std=c++0x
+               -Xcompiler -levent
+               -Xcompiler -iquote/usr/lib/jvm/default-java/include
+               -Xcompiler -iquote../../
+               -Xcompiler -iquote../../.obj/gen
+               -Xcompiler -L../libs
+               -Xcompiler -ltapir
              </commandlineArgs>
            </configuration>
          </execution>

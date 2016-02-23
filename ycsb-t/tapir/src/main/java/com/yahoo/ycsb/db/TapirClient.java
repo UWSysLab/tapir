@@ -29,7 +29,7 @@ public class TapirClient extends DB {
       }
       
       public TableRow(String s) {
-         System.out.println(s);
+         //System.out.println(s);
          String columns[] = s.split("\n");
          for (int i = 0; i < columns.length; i++) {
             String column[] = columns[i].split("\t");
