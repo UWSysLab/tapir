@@ -1,3 +1,0 @@
-[submodule "YCSB"]
-	path = YCSB
-	url = https://github.com/brianfrankcooper/YCSB
