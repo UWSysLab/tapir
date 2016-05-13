@@ -271,6 +271,13 @@ TCPTransport::Register(TransportReceiver *receiver,
         PWarning("Failed to set SO_REUSEADDR on TCP listening socket");
     }
 
+    // Set TCP_NODELAY
+    n = 1;
+    if (setsockopt(fd, IPPROTO_TCP,
+                   TCP_NODELAY, (char *)&n, sizeof(n)) < 0) {
+        PWarning("Failed to set TCP_NODELAY on TCP listening socket");
+    }
+
     // Registering a replica. Bind socket to the designated
     // host/port
     const string &host = config.replica(replicaIdx).host;
@@ -555,6 +562,9 @@ TCPTransport::TCPReadableCallback(struct bufferevent *bev, void *arg)
     
     uint32_t *magic;
     magic = (uint32_t *)evbuffer_pullup(evbuf, sizeof(*magic));
+    if (magic == NULL) {
+        return;
+    }
     ASSERT(*magic == MAGIC);
     
     size_t *sz;
