@@ -19,6 +19,7 @@ message UnloggedRequestMessage {
 
 message UnloggedReplyMessage {
     required bytes reply = 1;
+    required uint64 clientreqid = 2;
 }
 
 message PrepareMessage {

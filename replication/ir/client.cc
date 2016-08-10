@@ -43,52 +43,22 @@ namespace replication {
 namespace ir {
 
 using namespace std;
-
+    
 IRClient::IRClient(const transport::Configuration &config,
                    Transport *transport,
                    uint64_t clientid)
     : Client(config, transport, clientid),
       view(0),
-      lastReqId(0),
-      inconsistentReplyQuorum(config.QuorumSize()),
-      consensusReplyQuorum(config.QuorumSize() + ceil(0.5 * config.QuorumSize())),
-      confirmQuorum(config.QuorumSize()-1)
+      lastReqId(0)
 {
-    pendingInconsistentRequest = NULL;
-    pendingConsensusRequest = NULL;
-    pendingUnloggedRequest = NULL;
     
-    inconsistentRequestTimeout = new Timeout(transport, 500, [this]() {
-            ResendInconsistent();
-        });
-    consensusRequestTimeout = new Timeout(transport, 500, [this]() {
-            ConsensusSlowPath();
-        });
-    confirmationTimeout = new Timeout(transport, 500, [this]() {
-            ResendConfirmation();
-        });
-    unloggedRequestTimeout = new Timeout(transport, 500, [this]() {
-            UnloggedRequestTimeoutCallback();
-        });
 }
 
 IRClient::~IRClient()
 {
-    if (pendingInconsistentRequest) {
-        delete pendingInconsistentRequest;
+    for (auto kv : pendingReqs) {
+	delete kv.second;
     }
-
-    if (pendingInconsistentRequest) {
-        delete pendingConsensusRequest;
-    }
-
-    if (pendingUnloggedRequest) {
-        delete pendingUnloggedRequest;
-    }
-    delete inconsistentRequestTimeout;
-    delete consensusRequestTimeout;
-    delete confirmationTimeout;
-    delete unloggedRequestTimeout;
 }
 
 void
@@ -102,32 +72,36 @@ void
 IRClient::InvokeInconsistent(const string &request,
                              continuation_t continuation)
 {
-    // XXX Can only handle one pending request for now
-    if (pendingInconsistentRequest != NULL) {
-        Panic("Client only supports one pending request");
-    }
-
-    ++lastReqId;
-    uint64_t reqId = lastReqId;
-    pendingInconsistentRequest = new PendingRequest(request, reqId, continuation);
-
-    SendInconsistent();
+    // Bump the request ID
+    uint64_t reqId = ++lastReqId;
+    // Create new timer
+    Timeout *timer = new Timeout(transport, 500, [this, reqId]() {
+            ResendInconsistent(reqId);
+        });
+    PendingInconsistentRequest *req =
+	new PendingInconsistentRequest(request,
+				       reqId,
+				       continuation,
+				       timer,
+				       config.QuorumSize());
+    pendingReqs[reqId] = req;
+    SendInconsistent(req);
 }
-
 void
-IRClient::SendInconsistent()
+IRClient::SendInconsistent(const PendingInconsistentRequest *req)
 {
-    ASSERT(pendingInconsistentRequest != NULL);
     
     proto::ProposeInconsistentMessage reqMsg;
-    reqMsg.mutable_req()->set_op(pendingInconsistentRequest->request);
+    reqMsg.mutable_req()->set_op(req->request);
     reqMsg.mutable_req()->set_clientid(clientid);
-    reqMsg.mutable_req()->set_clientreqid(pendingInconsistentRequest->clientReqId);
-    
+    reqMsg.mutable_req()->set_clientreqid(req->clientReqId);
+     
     if (transport->SendMessageToAll(this, reqMsg)) {   
-        inconsistentRequestTimeout->Reset();
+        req->timer->Reset();
     } else {
         Warning("Could not send inconsistent request to replicas");
+	pendingReqs.erase(req->clientReqId);
+	delete req;
     }
 }
     
@@ -136,26 +110,31 @@ IRClient::InvokeConsensus(const string &request,
                           decide_t decide,
                           continuation_t continuation)
 {
-    // XXX Can only handle one pending request for now
-    if (pendingConsensusRequest != NULL) {
-        Panic("Client only supports one pending request");
-    }
-
-    ++lastReqId;
-    uint64_t reqId = lastReqId;
+    uint64_t reqId = ++lastReqId;
+    Timeout *timer = new Timeout(transport, 500, [this, reqId]() {
+            ConsensusSlowPath(reqId);
+        });
     
-    pendingConsensusRequest = new PendingRequest(request, reqId, continuation);
-    pendingConsensusRequest->decide = decide;
+    PendingConsensusRequest *req =
+	new PendingConsensusRequest(request,
+				    reqId,
+				    continuation,
+				    timer,
+				    config.QuorumSize(),
+				    config.QuorumSize() + ceil(0.5 * config.QuorumSize()),
+				    decide);
     
     proto::ProposeConsensusMessage reqMsg;
-    reqMsg.mutable_req()->set_op(pendingConsensusRequest->request);
+    reqMsg.mutable_req()->set_op(request);
     reqMsg.mutable_req()->set_clientid(clientid);
-    reqMsg.mutable_req()->set_clientreqid(pendingConsensusRequest->clientReqId);
+    reqMsg.mutable_req()->set_clientreqid(reqId);
 
     if (transport->SendMessageToAll(this, reqMsg)) {
-        consensusRequestTimeout->Reset();
+        req->timer->Start();
+	pendingReqs[reqId] = req;
     } else {
         Warning("Could not send consensus request to replicas");
+	delete req;
     }
 }
 
@@ -166,60 +145,62 @@ IRClient::InvokeUnlogged(int replicaIdx,
                          timeout_continuation_t timeoutContinuation,
                          uint32_t timeout)
 {
-    // XXX Can only handle one pending request for now
-    if (pendingUnloggedRequest != NULL) {
-        Panic("Client only supports one pending unlogged request");
-    }
+    uint64_t reqId = ++lastReqId;
+    Timeout *timer =
+	new Timeout(transport, timeout, [this, reqId]() {
+            UnloggedRequestTimeoutCallback(reqId);
+        });
 
-    ++lastReqId;
-    uint64_t reqId = lastReqId;
-
-    pendingUnloggedRequest = new PendingRequest(request, reqId, continuation);
-    pendingUnloggedRequest->timeoutContinuation = timeoutContinuation;
+    PendingUnloggedRequest *req =
+	new PendingUnloggedRequest(request,
+				   reqId,
+				   continuation,
+				   timeoutContinuation,
+				   timer);
 
     proto::UnloggedRequestMessage reqMsg;
-    reqMsg.mutable_req()->set_op(pendingUnloggedRequest->request);
+    reqMsg.mutable_req()->set_op(request);
     reqMsg.mutable_req()->set_clientid(clientid);
-    reqMsg.mutable_req()->set_clientreqid(pendingUnloggedRequest->clientReqId);
-
-    ASSERT(!unloggedRequestTimeout->Active());
+    reqMsg.mutable_req()->set_clientreqid(reqId);
 
     if (transport->SendMessageToReplica(this, replicaIdx, reqMsg)) {
-        unloggedRequestTimeout->SetTimeout(timeout);
-        unloggedRequestTimeout->Start();
+	req->timer->Start();
+	pendingReqs[reqId] = req;
     } else {
         Warning("Could not send unlogged request to replica");
+	delete req;
     }
 }
 
 void
-IRClient::ResendInconsistent()
+IRClient::ResendInconsistent(const uint64_t reqId)
 {
-    if (pendingInconsistentRequest == NULL) {
-        inconsistentRequestTimeout->Stop();
-        return;
-    }
     
-    Warning("Client timeout; resending inconsistent request: %lu", pendingInconsistentRequest->clientReqId);
-    SendInconsistent();
+    Warning("Client timeout; resending inconsistent request: %lu", reqId);
+    SendInconsistent((PendingInconsistentRequest *)pendingReqs[reqId]);
 }
 
 void
-IRClient::ConsensusSlowPath()
+IRClient::ConsensusSlowPath(const uint64_t reqId)
 {
+    PendingConsensusRequest *req = static_cast<PendingConsensusRequest *>(pendingReqs[reqId]);
+    // Make sure the dynamic cast worked
+    ASSERT(req != NULL);
+
     // Give up on the fast path 
-    consensusRequestTimeout->Stop();
-    
-    if (pendingConsensusRequest == NULL) {
-        Warning("No consensus operation pending");
-        return;
-    }
+    req->timer->Stop();
+    delete req->timer;
+    // set up a new timer for the slow path
+    req->timer = new Timeout(transport, 500, [this, reqId]() {
+            ResendConfirmation(reqId, true);
+        });
 
-    Debug("Client timeout; taking consensus slow path: %lu", pendingConsensusRequest->clientReqId);
+	
+    Debug("Client timeout; taking consensus slow path: %lu", reqId);
 
     // get results so far
-    viewstamp_t vs = { view, pendingConsensusRequest->clientReqId };
-    auto msgs = consensusReplyQuorum.GetMessages(vs);
+    viewstamp_t vs = { view, reqId };
+    auto msgs = req->consensusReplyQuorum.GetMessages(vs);
 
     // construct result set
     set<string> results;
@@ -228,44 +209,70 @@ IRClient::ConsensusSlowPath()
     }
 
     // Upcall into the application
-    ASSERT(pendingConsensusRequest->decide != NULL);
-    string result = pendingConsensusRequest->decide(results);
+    ASSERT(req->decide != NULL);
+    string result = req->decide(results);
 
     // Put the result in the request to store for later retries
-    pendingConsensusRequest->decideReq = result;
+    req->decideResult = result;
 
     // Send finalize message
     proto::FinalizeConsensusMessage response;
     response.mutable_opid()->set_clientid(clientid);
-    response.mutable_opid()->set_clientreqid(pendingConsensusRequest->clientReqId);
+    response.mutable_opid()->set_clientreqid(req->clientReqId);
     response.set_result(result);
                 
     if(transport->SendMessageToAll(this, response)) {
-        confirmationTimeout->Reset();
+        req->timer->Start();
     } else {
         Warning("Could not send finalize message to replicas");
+	pendingReqs.erase(reqId);
+	delete req;
     }
 }
 
 void
-IRClient::ResendConfirmation()
+IRClient::ResendConfirmation(const uint64_t reqId, bool isConsensus)
 {
-    if (pendingConsensusRequest == NULL) {
-        // Unless we are waiting for a confirm to finish up a
-        // consensus slow path, just ignore
-        confirmationTimeout->Stop();
-    } else {
+    if (pendingReqs.find(reqId) == pendingReqs.end()) {
+        Debug("Received resend request when no request was pending");
+        return;
+    }
+
+    if (isConsensus) {
+	PendingConsensusRequest *req = static_cast<PendingConsensusRequest *>(pendingReqs[reqId]);
+	ASSERT(req != NULL);
+	
         proto::FinalizeConsensusMessage response;
         response.mutable_opid()->set_clientid(clientid);
-        response.mutable_opid()->set_clientreqid(pendingConsensusRequest->clientReqId);
-        response.set_result(pendingConsensusRequest->decideReq);
+        response.mutable_opid()->set_clientreqid(req->clientReqId);
+        response.set_result(req->decideResult);
                  
         if(transport->SendMessageToAll(this, response)) {
-            confirmationTimeout->Reset();
+            req->timer->Reset();
         } else {
             Warning("Could not send finalize message to replicas");
+	    // give up and clean up
+	    pendingReqs.erase(reqId);
+	    delete req;
         }
+    } else {
+	PendingInconsistentRequest *req = static_cast<PendingInconsistentRequest *>(pendingReqs[reqId]);
+	ASSERT(req != NULL);
+
+	proto::FinalizeInconsistentMessage response;
+        response.mutable_opid()->set_clientid(clientid);
+        response.mutable_opid()->set_clientreqid(req->clientReqId);
+
+        if (transport->SendMessageToAll(this, response)) {
+	    req->timer->Reset();
+	} else {
+            Warning("Could not send finalize message to replicas");
+	    pendingReqs.erase(reqId);
+	    delete req;
+        } 
+
     }
+	
 }
 
 void
@@ -299,40 +306,48 @@ void
 IRClient::HandleInconsistentReply(const TransportAddress &remote,
                                   const proto::ReplyInconsistentMessage &msg)
 {
-    if (pendingInconsistentRequest == NULL) {
+    uint64_t reqId = msg.opid().clientreqid();
+    auto it = pendingReqs.find(reqId);
+    if (it == pendingReqs.end()) {
         Debug("Received reply when no request was pending");
         return;
     }
-    
-    if (msg.opid().clientreqid() != pendingInconsistentRequest->clientReqId) {
-        Warning("Received reply for a different request");
-        return;
-    }
 
+    PendingInconsistentRequest *req = static_cast<PendingInconsistentRequest *>(it->second);
+    // Make sure the dynamic cast worked
+    ASSERT(req != NULL);
     
-    Debug("Client received reply: %lu %i", pendingInconsistentRequest->clientReqId, inconsistentReplyQuorum.NumRequired());
+    Debug("Client received reply: %lu %i", reqId, req->inconsistentReplyQuorum.NumRequired());
 
     // Record replies
-    viewstamp_t vs = { msg.view(), msg.opid().clientreqid() };
-    if (inconsistentReplyQuorum.AddAndCheckForQuorum(vs, msg.replicaidx(), msg)) {
+    viewstamp_t vs = { msg.view(), reqId };
+    if (req->inconsistentReplyQuorum.AddAndCheckForQuorum(vs, msg.replicaidx(), msg)) {
         // If all quorum received, then send finalize and return to client
 
-        inconsistentRequestTimeout->Stop();
-
-        PendingRequest *req = pendingInconsistentRequest;
-        pendingInconsistentRequest = NULL;
+        req->timer->Stop();
+        delete req->timer;
+        req->timer = new Timeout(transport, 500, [this, reqId]() {
+                ResendConfirmation(reqId, false);
+            });
 
         // asynchronously send the finalize message
         proto::FinalizeInconsistentMessage response;
         *(response.mutable_opid()) = msg.opid();
 
-        if (!transport->SendMessageToAll(this, response)) {
+        if (transport->SendMessageToAll(this, response)) {
+            req->timer->Start();
+        } else {
             Warning("Could not send finalize message to replicas");
-        } // don't use the confirmation timeout for async replies
+            pendingReqs.erase(it);
+            delete req;
+            return;
+        } 
 
         // Return to client
-        req->continuation(req->request, "");
-        delete req;
+        if (!req->continuationInvoked) {
+            req->continuation(req->request, "");
+            req->continuationInvoked = true;
+        }
     }
 }
 
@@ -340,23 +355,20 @@ void
 IRClient::HandleConsensusReply(const TransportAddress &remote,
                                const proto::ReplyConsensusMessage &msg)
 {
-    if (pendingConsensusRequest == NULL) {
-        Warning("Received reply when no request was pending");
+    uint64_t reqId = msg.opid().clientreqid();
+    auto it = pendingReqs.find(reqId); 
+    if (it == pendingReqs.end()) {
+        Debug("Received reply when no request was pending");
         return;
     }
-    
-    if (msg.opid().clientreqid() != pendingConsensusRequest->clientReqId) {
-        Warning("Received reply for a different request");
-        return;
-    }
-
+    PendingConsensusRequest *req = static_cast<PendingConsensusRequest *>(it->second);
    
-    Debug("Client received reply: %lu %i", pendingConsensusRequest->clientReqId, consensusReplyQuorum.NumRequired());
+    Debug("Client received reply: %lu %i", reqId, req->consensusReplyQuorum.NumRequired());
 
     // Record replies
-    viewstamp_t vs = { msg.view(), msg.opid().clientreqid() };
+    viewstamp_t vs = { msg.view(), reqId };
     if (auto msgs =
-        (consensusReplyQuorum.AddAndCheckForQuorum(vs, msg.replicaidx(), msg))) {
+        (req->consensusReplyQuorum.AddAndCheckForQuorum(vs, msg.replicaidx(), msg))) {
         // If all quorum received, then check return values
 
         map<string, int> results;
@@ -371,24 +383,37 @@ IRClient::HandleConsensusReply(const TransportAddress &remote,
 
         // Check that there are a quorum of *matching* results
         for (auto result : results) {
-            if (result.second >= consensusReplyQuorum.NumRequired()) {
-                consensusRequestTimeout->Stop();
-
-                PendingRequest *req = pendingConsensusRequest;
-                pendingConsensusRequest = NULL;
+            if (result.second >= req->consensusReplyQuorum.NumRequired()) {
+                req->timer->Stop();
+                delete req->timer;
+                // set up new timeout for finalize phase
+                req->timer =
+                    new Timeout(transport, 500, [this, reqId]() {
+                            ResendConfirmation(reqId, true);
+                            });
 
                 // asynchronously send the finalize message
                 proto::FinalizeConsensusMessage response;
                 *response.mutable_opid() = msg.opid();
                 response.set_result(result.first);
-                
-                if(!transport->SendMessageToAll(this, response)) {
+
+                req->decideResult = result.first;
+
+                if(transport->SendMessageToAll(this, response)) {
+                    // Start the timer
+                    req->timer->Start();
+                } else {
                     Warning("Could not send finalize message to replicas");
-                } // don't reset the confirm timeout on fast path
+                    // give up and clean up
+                    pendingReqs.erase(it);
+                    delete req;
+                }
 
                 // Return to client
-                req->continuation(req->request, result.first);
-                delete req;
+                if (!req->continuationInvoked) {
+                    req->continuation(req->request, result.first);
+                    req->continuationInvoked = true;
+                }
                 break;
             }
         }
@@ -399,27 +424,24 @@ void
 IRClient::HandleConfirm(const TransportAddress &remote,
                         const proto::ConfirmMessage &msg)
 {
-    if (pendingConsensusRequest == NULL) {
-        // if no pending request, then we were waiting for a synchronous confirmation
+    uint64_t reqId = msg.opid().clientreqid();
+    auto it = pendingReqs.find(reqId); 
+    if (it == pendingReqs.end()) {
+        Debug("Received reply when no request was pending");
         return;
     }
+
+    PendingRequest *req = it->second;
     
-    if (msg.opid().clientreqid() != pendingConsensusRequest->clientReqId) {
-        Warning("Received reply for a different request");
-        return;
-    }
-
-    // otherwise, we are waiting on a finalized consensus result
-    // Record replies
-    viewstamp_t vs = { msg.view(), msg.opid().clientreqid() };
-    if (confirmQuorum.AddAndCheckForQuorum(vs, msg.replicaidx(), msg)) {
-        confirmationTimeout->Stop();
-
-        PendingRequest *req = pendingConsensusRequest;
-        pendingConsensusRequest = NULL;
-
-        // Return to client
-        req->continuation(req->request, req->decideReq);
+    viewstamp_t vs = { msg.view(), reqId };
+    if (req->confirmQuorum.AddAndCheckForQuorum(vs, msg.replicaidx(), msg)) {
+        req->timer->Stop();
+	pendingReqs.erase(it);
+	if (!req->continuationInvoked) {
+	    // Return to client
+	    PendingConsensusRequest *r2 = static_cast<PendingConsensusRequest *>(req);
+	    r2->continuation(r2->request, r2->decideResult);
+	}
         delete req;
     }
 }
@@ -428,33 +450,43 @@ void
 IRClient::HandleUnloggedReply(const TransportAddress &remote,
                               const proto::UnloggedReplyMessage &msg)
 {
-    if (pendingUnloggedRequest == NULL) {
-        Warning("Received unloggedReply when no request was pending");
+    uint64_t reqId = msg.clientreqid();
+    auto it = pendingReqs.find(reqId); 
+    if (it == pendingReqs.end()) {
+        Debug("Received reply when no request was pending");
         return;
     }
-    
-    Debug("Client received unloggedReply");
 
-    unloggedRequestTimeout->Stop();
-
-    PendingRequest *req = pendingUnloggedRequest;
-    pendingUnloggedRequest = NULL;
-    
+    PendingRequest *req = it->second;
+    // delete timer event
+    req->timer->Stop();
+    // remove from pending list
+    pendingReqs.erase(it);
+    // invoke application callback
     req->continuation(req->request, msg.reply());
     delete req;
 }
 
 void
-IRClient::UnloggedRequestTimeoutCallback()
+IRClient::UnloggedRequestTimeoutCallback(const uint64_t reqId)
 {
-    PendingRequest *req = pendingUnloggedRequest;
-    pendingUnloggedRequest = NULL;
+    auto it = pendingReqs.find(reqId);
+    if (it == pendingReqs.end()) {
+        Debug("Received timeout when no request was pending");
+        return;
+    }
+
+    PendingUnloggedRequest *req = static_cast<PendingUnloggedRequest *>(it->second);
+    ASSERT(req != NULL);
 
     Warning("Unlogged request timed out");
-
-    unloggedRequestTimeout->Stop();
-    
+    // delete timer event
+    req->timer->Stop();
+    // remove from pending list
+    pendingReqs.erase(it);
+    // invoke application callback
     req->timeoutContinuation(req->request);
+    delete req;
 }
 
 } // namespace ir

@@ -223,7 +223,7 @@ IRReplica::HandleUnlogged(const TransportAddress &remote,
 
     app->UnloggedUpcall(msg.req().op(), res);
     reply.set_reply(res);
-    
+    reply.set_clientreqid(msg.req().clientreqid());    
     if (!(transport->SendMessage(this, remote, reply)))
         Warning("Failed to send reply message");
 }

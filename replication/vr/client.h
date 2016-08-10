@@ -36,6 +36,8 @@
 #include "lib/configuration.h"
 #include "replication/vr/vr-proto.pb.h"
 
+#include <unordered_map>
+
 namespace replication {
 namespace vr {
 
@@ -66,24 +68,37 @@ protected:
         string request;
         uint64_t clientReqId;
         continuation_t continuation;
-        timeout_continuation_t timeoutContinuation;
-        inline PendingRequest(string request, uint64_t clientReqId,
-                              continuation_t continuation)
+	Timeout *timer;
+        inline PendingRequest(string request,
+			      uint64_t clientReqId,
+                              continuation_t continuation,
+			      Timeout *timer)
             : request(request), clientReqId(clientReqId),
-              continuation(continuation) { }
+              continuation(continuation), timer(timer) { };
+	inline ~PendingRequest() { delete timer; }
     };
-    PendingRequest *pendingRequest;
-    PendingRequest *pendingUnloggedRequest;
-    Timeout *requestTimeout;
-    Timeout *unloggedRequestTimeout;
 
-    void SendRequest();
-    void ResendRequest();
+    struct PendingUnloggedRequest : public PendingRequest
+    {
+	timeout_continuation_t timeoutContinuation;
+        inline PendingUnloggedRequest(string request,
+				      uint64_t clientReqId,
+				      continuation_t continuation,
+				      Timeout *timer,
+				      timeout_continuation_t timeoutContinuation)
+            : PendingRequest(request, clientReqId, continuation, timer),
+              timeoutContinuation(timeoutContinuation) { };
+    };
+
+    std::unordered_map<uint64_t, PendingRequest *> pendingReqs;
+
+    void SendRequest(const PendingRequest *req);
+    void ResendRequest(const uint64_t reqId);
     void HandleReply(const TransportAddress &remote,
                      const proto::ReplyMessage &msg);
     void HandleUnloggedReply(const TransportAddress &remote,
                              const proto::UnloggedReplyMessage &msg);
-    void UnloggedRequestTimeoutCallback();
+    void UnloggedRequestTimeoutCallback(const uint64_t reqId);
 };
 
 } // namespace replication::vr

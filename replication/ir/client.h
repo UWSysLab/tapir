@@ -39,6 +39,7 @@
 
 #include <functional>
 #include <set>
+#include <unordered_map>
 
 namespace replication {
 namespace ir {
@@ -68,38 +69,78 @@ public:
                                 const string &type, const string &data);
 
 protected:
+    struct PendingRequest
+    {	
+        string request;
+        uint64_t clientReqId;
+	continuation_t continuation;
+	bool continuationInvoked = false;
+	Timeout *timer;
+	QuorumSet<viewstamp_t, proto::ConfirmMessage> confirmQuorum;
+    	inline PendingRequest(string request,
+			      uint64_t clientReqId,
+			      continuation_t continuation,
+			      Timeout *timer,
+			      int quorumSize) :
+	    request(request), clientReqId(clientReqId),
+	    continuation(continuation), timer(timer),
+	    confirmQuorum(quorumSize) { };
+	inline ~PendingRequest() { delete timer; };
+    };
+
+    struct PendingUnloggedRequest : public PendingRequest
+    {
+	timeout_continuation_t timeoutContinuation;
+	inline PendingUnloggedRequest(string request,
+			       uint64_t clientReqId,
+			       continuation_t continuation,
+			       timeout_continuation_t timeoutContinuation,
+			       Timeout *timer) :
+	    PendingRequest(request, clientReqId,
+			   continuation, timer, 1),
+	    timeoutContinuation(timeoutContinuation) { };
+    };
+
+    struct PendingInconsistentRequest : public PendingRequest
+    {	
+	QuorumSet<viewstamp_t, proto::ReplyInconsistentMessage> inconsistentReplyQuorum;
+    	inline PendingInconsistentRequest(string request,
+					  uint64_t clientReqId,
+					  continuation_t continuation,
+					  Timeout *timer,
+					  int quorumSize) :
+	    PendingRequest(request, clientReqId,
+			   continuation, timer, quorumSize),
+	    inconsistentReplyQuorum(quorumSize) { };
+    };
+
+    struct PendingConsensusRequest : public PendingRequest
+    {	
+	QuorumSet<viewstamp_t, proto::ReplyConsensusMessage> consensusReplyQuorum;
+	decide_t decide;
+	string decideResult;
+    	inline PendingConsensusRequest(string request,
+				       uint64_t clientReqId,
+				       continuation_t continuation,
+				       Timeout *timer,
+				       int quorumSize,
+				       int superQuorum,
+				       decide_t decide) :
+	    PendingRequest(request, clientReqId,
+			   continuation, timer, quorumSize),
+	    consensusReplyQuorum(superQuorum),
+	    decide(decide) { };
+    };
+
+
     uint64_t view;
     uint64_t lastReqId;
-    QuorumSet<viewstamp_t, proto::ReplyInconsistentMessage> inconsistentReplyQuorum;
-    QuorumSet<viewstamp_t, proto::ReplyConsensusMessage> consensusReplyQuorum;
-    QuorumSet<viewstamp_t, proto::ConfirmMessage> confirmQuorum;
+    std::unordered_map<uint64_t, PendingRequest *> pendingReqs;
 
-    struct PendingRequest
-    {
-        string request;
-        string decideReq;
-        uint64_t clientReqId;
-        decide_t decide;
-        continuation_t continuation;
-        timeout_continuation_t timeoutContinuation;
-        
-        inline PendingRequest(string request, uint64_t clientReqId,
-                              continuation_t continuation)
-            : request(request), clientReqId(clientReqId),
-              continuation(continuation) { }
-    };
-    PendingRequest *pendingInconsistentRequest;
-    PendingRequest *pendingConsensusRequest;
-    PendingRequest *pendingUnloggedRequest;
-    Timeout *inconsistentRequestTimeout;
-    Timeout *consensusRequestTimeout;
-    Timeout *confirmationTimeout;
-    Timeout *unloggedRequestTimeout;
-
-    void SendInconsistent();
-    void ResendInconsistent();
-    void ConsensusSlowPath();
-    void ResendConfirmation();
+    void SendInconsistent(const PendingInconsistentRequest *req);
+    void ResendInconsistent(const uint64_t reqId);   
+    void ConsensusSlowPath(const uint64_t reqId);
+    void ResendConfirmation(const uint64_t reqId, bool isConsensus);
     void HandleInconsistentReply(const TransportAddress &remote,
                                  const proto::ReplyInconsistentMessage &msg);
     void HandleConsensusReply(const TransportAddress &remote,
@@ -108,7 +149,7 @@ protected:
                        const proto::ConfirmMessage &msg);
     void HandleUnloggedReply(const TransportAddress &remote,
                              const proto::UnloggedReplyMessage &msg);
-    void UnloggedRequestTimeoutCallback();
+    void UnloggedRequestTimeoutCallback(const uint64_t reqId);
 };
 
 } // namespace replication::ir
