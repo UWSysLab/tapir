@@ -35,16 +35,12 @@
 #include "lib/assert.h"
 #include "lib/message.h"
 #include "lib/transport.h"
-#include "store/common/frontend/client.h"
 #include "replication/vr/client.h"
+#include "store/common/frontend/client.h"
 #include "store/common/frontend/txnclient.h"
 #include "store/common/timestamp.h"
 #include "store/common/transaction.h"
 #include "store/strongstore/strong-proto.pb.h"
-
-#include <string>
-#include <mutex>
-#include <condition_variable>
 
 namespace strongstore {
 

@@ -35,9 +35,6 @@
 #include "lib/message.h"
 
 #include <unordered_map>
-#include <vector>
-#include <fstream>
-#include <iostream>
 #include <list>
 
 class KVStore

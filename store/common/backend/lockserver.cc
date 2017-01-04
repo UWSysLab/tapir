@@ -6,7 +6,7 @@
  *
  **********************************************************************/
 
-#include "lockserver.h"
+#include "store/common/backend/lockserver.h"
 
 using namespace std;
 

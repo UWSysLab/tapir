@@ -13,13 +13,8 @@
 #include "lib/message.h"
 #include "lib/configuration.h"
 #include "lib/udptransport.h"
-#include "store/common/timestamp.h"
-#include "store/common/transaction.h"
 #include "store/common/frontend/txnclient.h"
 #include "store/weakstore/weak-proto.pb.h"
-
-#include <set>
-#include <thread>
 
 #define COMMIT_RETRIES 5
 

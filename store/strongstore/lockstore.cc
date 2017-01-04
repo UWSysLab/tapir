@@ -30,7 +30,7 @@
  *
  **********************************************************************/
 
-#include "lockstore.h"
+#include "store/strongstore/lockstore.h"
 
 using namespace std;
 

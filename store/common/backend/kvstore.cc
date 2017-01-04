@@ -28,7 +28,7 @@
  *
  **********************************************************************/
 
-#include "kvstore.h"
+#include "store/common/backend/kvstore.h"
 
 using namespace std;
 

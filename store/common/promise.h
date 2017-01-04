@@ -35,7 +35,8 @@
 #include "lib/assert.h"
 #include "lib/message.h"
 #include "lib/transport.h"
-#include "transaction.h"
+#include "store/common/transaction.h"
+
 #include <condition_variable>
 #include <mutex>
 

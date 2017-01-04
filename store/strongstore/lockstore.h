@@ -41,11 +41,7 @@
 #include "store/common/backend/txnstore.h"
 #include "store/common/backend/lockserver.h"
 
-#include <set>
 #include <map>
-#include <list>
-#include <vector>
-#include <unordered_map>
 
 namespace strongstore {
 

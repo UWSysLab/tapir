@@ -38,12 +38,9 @@
 #include <set>
 #include <map>
 #include <unordered_map>
-#include <fstream>
-#include <iostream>
 
 class VersionedKVStore
 {
-
 public:
     VersionedKVStore();
     ~VersionedKVStore();

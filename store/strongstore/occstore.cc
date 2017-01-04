@@ -30,11 +30,11 @@
  *
  **********************************************************************/
 
-#include "occstore.h"
-
-using namespace std;
+#include "store/strongstore/occstore.h"
 
 namespace strongstore {
+
+using namespace std;
 
 OCCStore::OCCStore() : store() { }
 OCCStore::~OCCStore() { }

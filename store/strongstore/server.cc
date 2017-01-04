@@ -29,12 +29,11 @@
  *
  **********************************************************************/
 
-#include "server.h"
-
-using namespace std;
+#include "store/strongstore/server.h"
 
 namespace strongstore {
 
+using namespace std;
 using namespace proto;
 
 Server::Server(Mode mode, uint64_t skew, uint64_t error) : mode(mode)
@@ -350,7 +349,7 @@ main(int argc, char **argv)
     
     if (keyPath) {
         string key;
-        ifstream in;
+        std::ifstream in;
         in.open(keyPath);
         if (!in) {
             fprintf(stderr, "Could not read keys from: %s\n", keyPath);

@@ -28,7 +28,7 @@
  *
  **********************************************************************/
 
-#include "server.h"
+#include "store/weakstore/server.h"
 
 namespace weakstore {
 

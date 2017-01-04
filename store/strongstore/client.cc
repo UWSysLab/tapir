@@ -29,7 +29,7 @@
  *
  **********************************************************************/
 
-#include "client.h"
+#include "store/strongstore/client.h"
 
 using namespace std;
 

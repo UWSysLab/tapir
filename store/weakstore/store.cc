@@ -28,11 +28,11 @@
  *
  **********************************************************************/
 
-#include "store.h"
-
-using namespace std;
+#include "store/weakstore/store.h"
 
 namespace weakstore {
+
+using namespace std;
 
 Store::Store() { }
 Store::~Store() { }

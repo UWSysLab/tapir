@@ -29,7 +29,7 @@
  *
  **********************************************************************/
 
-#include "shardclient.h"
+#include "store/strongstore/shardclient.h"
 
 namespace strongstore {
 
@@ -325,6 +325,5 @@ ShardClient::AbortCallback(const string &request_str, const string &reply_str)
     }
     Debug("[shard %i] Received ABORT callback [%d]", shard, reply.status());
 }
-
 
 } // namespace strongstore

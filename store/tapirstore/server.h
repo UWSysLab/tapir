@@ -32,7 +32,6 @@
 #ifndef _TAPIR_SERVER_H_
 #define _TAPIR_SERVER_H_
 
-#include "lib/udptransport.h"
 #include "replication/ir/replica.h"
 #include "store/common/timestamp.h"
 #include "store/common/truetime.h"

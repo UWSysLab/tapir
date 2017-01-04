@@ -33,6 +33,7 @@
 #define _TAPIR_SHARDCLIENT_H_
 
 #include "lib/assert.h"
+#include "lib/configuration.h"
 #include "lib/message.h"
 #include "lib/transport.h"
 #include "replication/ir/client.h"

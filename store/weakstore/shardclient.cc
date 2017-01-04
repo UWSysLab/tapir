@@ -31,10 +31,9 @@
 
 #include "store/weakstore/shardclient.h"
 
-using namespace std;
-
 namespace weakstore {
 
+using namespace std;
 using namespace proto;
 
 ShardClient::ShardClient(string configPath, Transport *transport,
@@ -133,7 +132,6 @@ ShardClient::Put(uint64_t id,
 
 }
 
-
 // Callbacks that happen in the transport thread
 void
 ShardClient::RequestTimedOut()
@@ -181,4 +179,5 @@ ShardClient::ReceiveMessage(const TransportAddress &remote,
         NOT_REACHABLE();
     }
 }
+
 } // namespace weakstore

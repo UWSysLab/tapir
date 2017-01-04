@@ -28,7 +28,7 @@
  *
  **********************************************************************/
 
-#include "bufferclient.h"
+#include "store/common/frontend/bufferclient.h"
 
 using namespace std;
 

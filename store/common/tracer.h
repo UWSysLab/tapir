@@ -9,9 +9,9 @@
 #ifndef _LIB_TRACER_H_
 #define _LIB_TRACER_H_
 
+#include <sys/time.h>
 #include <map>
 #include <string>
-#include <sys/time.h>
 
 /* Trace details of an individual type of request. */
 typedef struct Request_Trace

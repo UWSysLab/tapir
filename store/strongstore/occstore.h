@@ -39,11 +39,7 @@
 #include "store/common/backend/txnstore.h"
 #include "store/common/transaction.h"
 
-#include <vector>
-#include <unordered_map>
-#include <set>
 #include <map>
-#include <list>
 
 namespace strongstore {
 

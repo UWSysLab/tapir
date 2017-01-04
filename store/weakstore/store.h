@@ -12,7 +12,6 @@
 #include "lib/assert.h"
 #include "lib/message.h"
 #include "store/common/backend/kvstore.h"
-#include "store/common/timestamp.h"
 #include "store/common/transaction.h"
 
 namespace weakstore {

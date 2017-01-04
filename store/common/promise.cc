@@ -28,7 +28,7 @@
  *
  **********************************************************************/
 
-#include "promise.h"
+#include "store/common/promise.h"
 
 using namespace std;
 

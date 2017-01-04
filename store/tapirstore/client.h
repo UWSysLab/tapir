@@ -39,17 +39,11 @@
 #include "replication/ir/client.h"
 #include "store/common/timestamp.h"
 #include "store/common/truetime.h"
-#include "store/common/backend/txnstore.h"
 #include "store/common/frontend/client.h"
 #include "store/common/frontend/bufferclient.h"
-#include "store/common/frontend/txnclient.h"
 #include "store/tapirstore/shardclient.h"
 #include "store/tapirstore/tapir-proto.pb.h"
 
-#include <condition_variable>
-#include <mutex>
-#include <set>
-#include <string>
 #include <thread>
 
 namespace tapirstore {

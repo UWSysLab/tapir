@@ -28,7 +28,7 @@
  *
  **********************************************************************/
 
-#include "versionstore.h"
+#include "store/common/backend/versionstore.h"
 
 using namespace std;
 

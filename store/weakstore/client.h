@@ -34,10 +34,8 @@
 
 #include "lib/assert.h"
 #include "lib/message.h"
-#include "lib/configuration.h"
 #include "lib/udptransport.h"
 #include "replication/common/client.h"
-#include "replication/vr/client.h"
 #include "store/common/frontend/client.h"
 #include "store/common/frontend/bufferclient.h"
 #include "store/common/truetime.h"

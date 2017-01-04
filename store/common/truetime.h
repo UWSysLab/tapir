@@ -12,7 +12,7 @@
 #include "lib/message.h"
 
 #include <sys/time.h>
-#include <stdlib.h>
+#include <cstdlib>
 
 class TrueTime
 {

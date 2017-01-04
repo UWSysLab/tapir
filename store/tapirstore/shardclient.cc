@@ -29,8 +29,7 @@
  *
  **********************************************************************/
 
-#include "shardclient.h"
-#include "lib/configuration.h"
+#include "store/tapirstore/shardclient.h"
 
 namespace tapirstore {
 

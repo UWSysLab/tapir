@@ -33,11 +33,9 @@
 
 #include "lib/assert.h"
 #include "lib/message.h"
-#include "store/common/transaction.h"
 #include "store/common/promise.h"
+#include "store/common/transaction.h"
 #include "store/common/frontend/txnclient.h"
-
-#include <string>
 
 class BufferClient
 {

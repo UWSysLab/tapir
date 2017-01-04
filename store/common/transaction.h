@@ -11,7 +11,7 @@
 
 #include "lib/assert.h"
 #include "lib/message.h"
-#include "timestamp.h"
+#include "store/common/timestamp.h"
 #include "store/common/common-proto.pb.h"
 
 #include <unordered_map>

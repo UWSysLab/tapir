@@ -35,9 +35,7 @@
 #include "lib/message.h"
 #include "lib/udptransport.h"
 #include "lib/configuration.h"
-#include "store/common/timestamp.h"
-#include "store/common/transaction.h"
-#include "store.h"
+#include "store/weakstore/store.h"
 #include "store/weakstore/weak-proto.pb.h"
 
 namespace weakstore {

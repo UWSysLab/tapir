@@ -33,11 +33,11 @@
 
 #include "lib/assert.h"
 #include "lib/message.h"
+
 #include <sys/time.h>
 #include <map>
 #include <queue>
 #include <string>
-#include <vector>
 #include <unordered_map>
 #include <unordered_set>
 

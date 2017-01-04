@@ -35,16 +35,13 @@
 #include "lib/message.h"
 #include "lib/configuration.h"
 #include "lib/udptransport.h"
-#include "store/common/frontend/client.h"
 #include "replication/vr/client.h"
 #include "store/common/frontend/bufferclient.h"
+#include "store/common/frontend/client.h"
 #include "store/common/truetime.h"
 #include "store/strongstore/strong-proto.pb.h"
 #include "store/strongstore/shardclient.h"
 
-#include <condition_variable>
-#include <mutex>
-#include <string>
 #include <set>
 #include <thread>
 

@@ -36,17 +36,8 @@
 
 #include "lib/assert.h"
 #include "lib/message.h"
-#include "store/common/transaction.h"
 #include "store/common/timestamp.h"
-
-// Reply types
-#define REPLY_OK 0
-#define REPLY_FAIL 1
-#define REPLY_RETRY 2
-#define REPLY_ABSTAIN 3
-#define REPLY_TIMEOUT 4
-#define REPLY_NETWORK_FAILURE 5
-#define REPLY_MAX 6
+#include "store/common/transaction.h"
 
 class TxnStore
 {
