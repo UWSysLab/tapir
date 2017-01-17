@@ -82,7 +82,7 @@ private:
     bool hasMulticast;
 };
 
-}      // namespace replication
+}      // namespace transport
 
 namespace std {
 template <> struct hash<transport::ReplicaAddress>

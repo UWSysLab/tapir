@@ -178,9 +178,8 @@ BindToPort(int fd, const string &host, const string &port)
 }
 
 UDPTransport::UDPTransport(double dropRate, double reorderRate,
-                           int dscp, event_base *evbase)
-    : dropRate(dropRate), reorderRate(reorderRate),
-      dscp(dscp)
+        int dscp, bool handleSignals)
+    : dropRate(dropRate), reorderRate(reorderRate), dscp(dscp)
 {
 
     lastTimerId = 0;
@@ -199,25 +198,21 @@ UDPTransport::UDPTransport(double dropRate, double reorderRate,
     // Set up libevent
     event_set_log_callback(LogCallback);
     event_set_fatal_callback(FatalCallback);
-    // XXX Hack for Naveen: allow the user to specify an existing
-    // libevent base. This will probably not work exactly correctly
-    // for error messages or signals, but that doesn't much matter...
-    if (evbase) {
-        libeventBase = evbase;
-    } else {
-        evthread_use_pthreads();
-        libeventBase = event_base_new();
-        evthread_make_base_notifiable(libeventBase);
-    }
+    evthread_use_pthreads();
+
+    libeventBase = event_base_new();
+    evthread_make_base_notifiable(libeventBase);
 
     // Set up signal handler
-    signalEvents.push_back(evsignal_new(libeventBase, SIGTERM,
-                                        SignalCallback, this));
-    signalEvents.push_back(evsignal_new(libeventBase, SIGINT,
-                                        SignalCallback, this));
+    if (handleSignals) {
+        signalEvents.push_back(evsignal_new(libeventBase, SIGTERM,
+                    SignalCallback, this));
+        signalEvents.push_back(evsignal_new(libeventBase, SIGINT,
+                    SignalCallback, this));
 
-    for (event *x : signalEvents) {
-        event_add(x, NULL);
+        for (event *x : signalEvents) {
+            event_add(x, NULL);
+        }
     }
 }
 

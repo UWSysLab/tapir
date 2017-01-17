@@ -1,7 +1,7 @@
-/ -*- mode: c++; c-file-style: "k&r"; c-basic-offset: 4 -*-
+// -*- mode: c++; c-file-style: "k&r"; c-basic-offset: 4 -*-
 /***********************************************************************
  *
- * udptransport.h:
+ * tcptransport.h:
  *   message-passing network interface that uses UDP message delivery
  *   and libasync
  *
@@ -68,7 +68,7 @@ class TCPTransport : public TransportCommon<TCPTransportAddress>
 {
 public:
     TCPTransport(double dropRate = 0.0, double reogrderRate = 0.0,
-                 int dscp = 0, event_base *evbase = nullptr);
+                    int dscp = 0, bool handleSignals = true);
     virtual ~TCPTransport();
     void Register(TransportReceiver *receiver,
                   const transport::Configuration &config,

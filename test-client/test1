@@ -1,0 +1,4 @@
+f 1
+replica localhost:51729
+replica localhost:51730
+replica localhost:51731

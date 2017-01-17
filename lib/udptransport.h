@@ -66,7 +66,7 @@ class UDPTransport : public TransportCommon<UDPTransportAddress>
 {
 public:
     UDPTransport(double dropRate = 0.0, double reorderRate = 0.0,
-                 int dscp = 0, event_base *evbase = nullptr);
+                    int dscp = 0, bool handleSignals = true);
     virtual ~UDPTransport();
     void Register(TransportReceiver *receiver,
                   const transport::Configuration &config,

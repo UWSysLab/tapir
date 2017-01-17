@@ -1,7 +1,7 @@
 // -*- mode: c++; c-file-style: "k&r"; c-basic-offset: 4 -*-
 /***********************************************************************
  *
- * udptransport.cc:
+ * tcptransport.cc:
  *   message-passing network interface that uses TCP message delivery
  *   and libasync
  *
@@ -35,11 +35,9 @@
 #include "lib/tcptransport.h"
 
 #include <google/protobuf/message.h>
-#include <event2/event.h>
-#include <event2/buffer.h>
 #include <event2/thread.h>
-#include <event2/bufferevent.h>
 
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <fcntl.h>
@@ -151,33 +149,27 @@ BindToPort(int fd, const string &host, const string &port)
 }
 
 TCPTransport::TCPTransport(double dropRate, double reorderRate,
-			   int dscp, event_base *evbase)
+			   int dscp, bool handleSignals)
 {
     lastTimerId = 0;
     
     // Set up libevent
     event_set_log_callback(LogCallback);
     event_set_fatal_callback(FatalCallback);
-    libeventBase = event_base_new();
+    evthread_use_pthreads();
 
-    // XXX Hack for Naveen: allow the user to specify an existing
-    // libevent base. This will probably not work exactly correctly
-    // for error messages or signals, but that doesn't much matter...
-    if (evbase) {
-        libeventBase = evbase;
-    } else {
-        evthread_use_pthreads();
-        libeventBase = event_base_new();
-        evthread_make_base_notifiable(libeventBase);
-    }
+    libeventBase = event_base_new();
+    evthread_make_base_notifiable(libeventBase);
 
     // Set up signal handler
-    signalEvents.push_back(evsignal_new(libeventBase, SIGTERM,
-                                        SignalCallback, this));
-    signalEvents.push_back(evsignal_new(libeventBase, SIGINT,
-                                        SignalCallback, this));
-    for (event *x : signalEvents) {
-        event_add(x, NULL);
+    if (handleSignals) {
+        signalEvents.push_back(evsignal_new(libeventBase, SIGTERM,
+                                            SignalCallback, this));
+        signalEvents.push_back(evsignal_new(libeventBase, SIGINT,
+                                            SignalCallback, this));
+        for (event *x : signalEvents) {
+            event_add(x, NULL);
+        }
     }
 }
 
