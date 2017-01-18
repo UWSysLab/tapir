@@ -33,10 +33,8 @@
 #include "lib/configuration.h"
 #include "lib/message.h"
 
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <string.h>
+#include <cstring>
+#include <stdexcept>
 
 namespace transport {
 
@@ -94,52 +92,53 @@ Configuration::Configuration(std::ifstream &file)
         }
 
         // Get the command
-        // This is pretty horrible, but C++ does promise that &line[0]
-        // is going to be a mutable contiguous buffer...
-        char *cmd = strtok(&line[0], " \t");
+        unsigned int t1 = line.find_first_of(" \t");
+        string cmd = line.substr(0, t1);
 
-        if (strcasecmp(cmd, "f") == 0) {
-            char *arg = strtok(NULL, " \t");
-            if (!arg) {
+        if (strcasecmp(cmd.c_str(), "f") == 0) {
+            unsigned int t2 = line.find_first_not_of(" \t", t1);
+            if (t2 == string::npos) {
                 Panic ("'f' configuration line requires an argument");
             }
-            char *strtolPtr;
-            f = strtoul(arg, &strtolPtr, 0);
-            if ((*arg == '\0') || (*strtolPtr != '\0')) {
+
+            try {
+                f = stoul(line.substr(t2, string::npos));
+            } catch (std::invalid_argument& ia) {
                 Panic("Invalid argument to 'f' configuration line");
             }
-        } else if (strcasecmp(cmd, "replica") == 0) {
-            char *arg = strtok(NULL, " \t");
-            if (!arg) {
+        } else if (strcasecmp(cmd.c_str(), "replica") == 0) {
+            unsigned int t2 = line.find_first_not_of(" \t", t1);
+            if (t2 == string::npos) { 
                 Panic ("'replica' configuration line requires an argument");
             }
 
-            char *host = strtok(arg, ":");
-            char *port = strtok(NULL, "");
-            
-            if (!host || !port) {
+            unsigned int t3 = line.find_first_of(":", t2);
+            if (t3 == string::npos) {
                 Panic("Configuration line format: 'replica host:port'");
             }
 
-            replicas.push_back(ReplicaAddress(string(host), string(port)));
-        } else if (strcasecmp(cmd, "multicast") == 0) {
-            char *arg = strtok(NULL, " \t");
-            if (!arg) {
+            string host = line.substr(t2, t3-t2);
+            string port = line.substr(t3+1, string::npos);
+
+            replicas.push_back(ReplicaAddress(host, port));
+        } else if (strcasecmp(cmd.c_str(), "multicast") == 0) {
+            unsigned int t2 = line.find_first_not_of(" \t", t1);
+            if (t2 == string::npos) {
                 Panic ("'multicast' configuration line requires an argument");
             }
 
-            char *host = strtok(arg, ":");
-            char *port = strtok(NULL, "");
-            
-            if (!host || !port) {
-                Panic("Configuration line format: 'multicast host:port'");
+            unsigned int t3 = line.find_first_of(":", t2);
+            if (t3 == string::npos) {
+                Panic("Configuration line format: 'replica host:port'");
             }
 
-            multicastAddress = new ReplicaAddress(string(host),
-                                                  string(port));
+            string host = line.substr(t2, t3-t2);
+            string port = line.substr(t3+1, string::npos);
+
+            multicastAddress = new ReplicaAddress(host, port);
             hasMulticast = true;
         } else {
-            Panic("Unknown configuration directive: %s", cmd);
+            Panic("Unknown configuration directive: %s", cmd.c_str());
         }
     }
 

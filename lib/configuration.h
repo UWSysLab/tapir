@@ -84,6 +84,7 @@ private:
 
 }      // namespace transport
 
+
 namespace std {
 template <> struct hash<transport::ReplicaAddress>
 {
@@ -109,6 +110,5 @@ template <> struct hash<transport::Configuration>
         }
 };
 }
-
 
 #endif  /* _LIB_CONFIGURATION_H_ */

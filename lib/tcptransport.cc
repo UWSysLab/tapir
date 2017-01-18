@@ -154,9 +154,9 @@ TCPTransport::TCPTransport(double dropRate, double reorderRate,
     lastTimerId = 0;
     
     // Set up libevent
+    evthread_use_pthreads();
     event_set_log_callback(LogCallback);
     event_set_fatal_callback(FatalCallback);
-    evthread_use_pthreads();
 
     libeventBase = event_base_new();
     evthread_make_base_notifiable(libeventBase);
