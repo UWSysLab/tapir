@@ -37,11 +37,11 @@ void
 IRReplica::HandleMessage(const TransportAddress &remote,
                          const string &type, const string &data)
 {
-    static ProposeInconsistentMessage proposeInconsistent;
-    static FinalizeInconsistentMessage finalizeInconsistent;
-    static ProposeConsensusMessage proposeConsensus;
-    static FinalizeConsensusMessage finalizeConsensus;
-    static UnloggedRequestMessage unloggedRequest;
+    ProposeInconsistentMessage proposeInconsistent;
+    FinalizeInconsistentMessage finalizeInconsistent;
+    ProposeConsensusMessage proposeConsensus;
+    FinalizeConsensusMessage finalizeConsensus;
+    UnloggedRequestMessage unloggedRequest;
 
     if (type == proposeInconsistent.GetTypeName()) {
         proposeInconsistent.ParseFromString(data);

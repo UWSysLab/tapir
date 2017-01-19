@@ -137,8 +137,8 @@ VRClient::ReceiveMessage(const TransportAddress &remote,
                          const string &type,
                          const string &data)
 {
-    static proto::ReplyMessage reply;
-    static proto::UnloggedReplyMessage unloggedReply;
+    proto::ReplyMessage reply;
+    proto::UnloggedReplyMessage unloggedReply;
     
     if (type == reply.GetTypeName()) {
         reply.ParseFromString(data);

@@ -37,7 +37,7 @@ using namespace std;
 
 Client::Client(const string configPath, int nShards,
                 int closestReplica, TrueTime timeServer)
-    : nshards(nShards), transport(0.0, 0.0, 0), timeServer(timeServer)
+    : nshards(nShards), transport(0.0, 0.0, 0, false), timeServer(timeServer)
 {
     // Initialize all state here;
     client_id = 0;
@@ -93,7 +93,7 @@ Client::run_client()
 void
 Client::Begin()
 {
-    Debug("BEGIN Transaction");
+    Debug("BEGIN [%lu]", t_id + 1);
     t_id++;
     participants.clear();
 }
@@ -102,7 +102,7 @@ Client::Begin()
 int
 Client::Get(const string &key, string &value)
 {
-    Debug("GET Operation [%s]", key.c_str());
+    Debug("GET [%lu : %s]", t_id, key.c_str());
 
     // Contact the appropriate shard to get the value.
     int i = key_to_shard(key, nshards);
@@ -133,7 +133,7 @@ Client::Get(const string &key)
 int
 Client::Put(const string &key, const string &value)
 {
-    Debug("PUT Operation [%s]", key.c_str());
+    Debug("PUT [%lu : %s]", t_id, key.c_str());
 
     // Contact the appropriate shard to set the value.
     int i = key_to_shard(key, nshards);
@@ -158,11 +158,10 @@ Client::Prepare(Timestamp &timestamp)
     uint64_t proposed = 0;
     list<Promise *> promises;
 
-    Debug("PREPARE Transaction at %lu", timestamp.getTimestamp());
+    Debug("PREPARE [%lu] at %lu", t_id, timestamp.getTimestamp());
     ASSERT(participants.size() > 0);
 
     for (auto p : participants) {
-        Debug("Sending prepare to shard [%d]", p);
         promises.push_back(new Promise(PREPARE_TIMEOUT));
         bclient[p]->Prepare(timestamp, promises.back());
     }
@@ -176,11 +175,11 @@ Client::Prepare(Timestamp &timestamp)
 
         switch(p->GetReply()) {
         case REPLY_OK:
-            Debug("Prepare ok vote");
+            Debug("PREPARE [%lu] OK", t_id);
             continue;
         case REPLY_FAIL:
             // abort!
-            Debug("ABORT transaction");
+            Debug("PREPARE [%lu] ABORT", t_id);
             return REPLY_FAIL;
         case REPLY_RETRY:
             status = REPLY_RETRY;
@@ -207,10 +206,10 @@ Client::Prepare(Timestamp &timestamp)
         } else {
             timestamp.setTimestamp(proposed);
         }
-        Debug("RETRY transaction at %lu", timestamp.getTimestamp());
+        Debug("RETRY [%lu] at [%lu]", t_id, timestamp.getTimestamp());
     }
 
-    Debug("All PREPARE replies received");
+    Debug("All PREPARE's [%lu] received", t_id);
     return status;
 }
 
@@ -232,10 +231,9 @@ Client::Commit()
     }
 
     if (status == REPLY_OK) {
-        Debug("COMMIT Transaction");
+        Debug("COMMIT [%lu]", t_id);
         
         for (auto p : participants) {
-            Debug("Sending commit to shard [%d]", p);
             bclient[p]->Commit(0);
         }
         return true;
@@ -250,18 +248,10 @@ Client::Commit()
 void
 Client::Abort()
 {
-    Debug("ABORT Transaction");
-    list<Promise *> promises;
+    Debug("ABORT [%lu]", t_id);
 
     for (auto p : participants) {
-        promises.push_back(new Promise(ABORT_TIMEOUT));
-        bclient[p]->Abort(promises.back());
-    }
-    
-    // Wait for responses for aborts
-    for (auto p : promises) {
-        p->GetReply();
-        delete p;
+        bclient[p]->Abort();
     }
 }
 

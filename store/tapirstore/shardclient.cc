@@ -43,8 +43,7 @@ ShardClient::ShardClient(const string &configPath,
 { 
     ifstream configStream(configPath);
     if (configStream.fail()) {
-        fprintf(stderr, "unable to read configuration file: %s\n",
-                configPath.c_str());
+        Panic("Unable to read configuration file: %s\n", configPath.c_str());
     }
 
     transport::Configuration config(configStream);
@@ -85,7 +84,7 @@ void
 ShardClient::Get(uint64_t id, const string &key, Promise *promise)
 {
     // Send the GET operation to appropriate shard.
-    Debug("[shard %i] Sending GET [%s]", shard, key.c_str());
+    Debug("[shard %i] Sending GET [%lu : %s]", shard, id, key.c_str());
 
     // create request
     string request_str;
@@ -117,7 +116,7 @@ ShardClient::Get(uint64_t id, const string &key,
                 const Timestamp &timestamp, Promise *promise)
 {
     // Send the GET operation to appropriate shard.
-    Debug("[shard %i] Sending GET [%s]", shard, key.c_str());
+    Debug("[shard %i] Sending GET [%lu : %s]", shard, id, key.c_str());
 
     // create request
     string request_str;
@@ -158,7 +157,7 @@ void
 ShardClient::Prepare(uint64_t id, const Transaction &txn,
                     const Timestamp &timestamp, Promise *promise)
 {
-    Debug("[shard %i] Sending PREPARE: %lu", shard, id);
+    Debug("[shard %i] Sending PREPARE [%lu]", shard, id);
 
     // create prepare request
     string request_str;
@@ -221,7 +220,7 @@ ShardClient::Commit(uint64_t id, const Transaction &txn,
                    uint64_t timestamp, Promise *promise)
 {
 
-    Debug("[shard %i] Sending COMMIT: %lu", shard, id);
+    Debug("[shard %i] Sending COMMIT [%lu]", shard, id);
 
     // create commit request
     string request_str;
@@ -245,7 +244,7 @@ ShardClient::Commit(uint64_t id, const Transaction &txn,
 void
 ShardClient::Abort(uint64_t id, const Transaction &txn, Promise *promise)
 {
-    Debug("[shard %i] Sending ABORT: %lu", shard, id);
+    Debug("[shard %i] Sending ABORT [%lu]", shard, id);
     
     // create abort request
     string request_str;
@@ -284,7 +283,7 @@ ShardClient::GetCallback(const string &request_str, const string &reply_str)
     Reply reply;
     reply.ParseFromString(reply_str);
 
-    Debug("[shard %i] Received GET callback [%d]", shard, reply.status());
+    Debug("[shard %lu:%i] GET callback [%d]", client_id, shard, reply.status());
     if (waiting != NULL) {
         Promise *w = waiting;
         waiting = NULL;
@@ -303,7 +302,7 @@ ShardClient::PrepareCallback(const string &request_str, const string &reply_str)
     Reply reply;
 
     reply.ParseFromString(reply_str);
-    Debug("[shard %i] Received PREPARE callback [%d]", shard, reply.status());
+    Debug("[shard %lu:%i] PREPARE callback [%d]", client_id, shard, reply.status());
 
     if (waiting != NULL) {
         Promise *w = waiting;
@@ -328,7 +327,7 @@ ShardClient::CommitCallback(const string &request_str, const string &reply_str)
     if (waiting != NULL) {
         waiting = NULL;
     }
-    Debug("[shard %i] Received COMMIT callback", shard);
+    Debug("[shard %lu:%i] COMMIT callback", client_id, shard);
 }
 
 /* Callback from a shard replica on abort operation completion. */
@@ -343,7 +342,7 @@ ShardClient::AbortCallback(const string &request_str, const string &reply_str)
     if (waiting != NULL) {
         waiting = NULL;
     }
-    Debug("[shard %i] Received ABORT callback", shard);
+    Debug("[shard %lu:%i] ABORT callback", client_id, shard);
 }
 
 } // namespace tapir

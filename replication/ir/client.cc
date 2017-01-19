@@ -280,10 +280,10 @@ IRClient::ReceiveMessage(const TransportAddress &remote,
                          const string &type,
                          const string &data)
 {
-    static proto::ReplyInconsistentMessage replyInconsistent;
-    static proto::ReplyConsensusMessage replyConsensus;
-    static proto::ConfirmMessage confirm;
-    static proto::UnloggedReplyMessage unloggedReply;
+    proto::ReplyInconsistentMessage replyInconsistent;
+    proto::ReplyConsensusMessage replyConsensus;
+    proto::ConfirmMessage confirm;
+    proto::UnloggedReplyMessage unloggedReply;
     
     if (type == replyInconsistent.GetTypeName()) {
         replyInconsistent.ParseFromString(data);

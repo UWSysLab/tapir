@@ -54,8 +54,8 @@ void
 Server::HandleMessage(const TransportAddress &remote,
                       const string &type, const string &data)
 {
-    static GetMessage get;
-    static PutMessage put;
+    GetMessage get;
+    PutMessage put;
     
     if (type == get.GetTypeName()) {
         get.ParseFromString(data);

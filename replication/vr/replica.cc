@@ -349,16 +349,16 @@ void
 VRReplica::ReceiveMessage(const TransportAddress &remote,
                           const string &type, const string &data)
 {
-    static RequestMessage request;
-    static UnloggedRequestMessage unloggedRequest;
-    static PrepareMessage prepare;
-    static PrepareOKMessage prepareOK;
-    static CommitMessage commit;
-    static RequestStateTransferMessage requestStateTransfer;
-    static StateTransferMessage stateTransfer;
-    static StartViewChangeMessage startViewChange;
-    static DoViewChangeMessage doViewChange;
-    static StartViewMessage startView;
+    RequestMessage request;
+    UnloggedRequestMessage unloggedRequest;
+    PrepareMessage prepare;
+    PrepareOKMessage prepareOK;
+    CommitMessage commit;
+    RequestStateTransferMessage requestStateTransfer;
+    StateTransferMessage stateTransfer;
+    StartViewChangeMessage startViewChange;
+    DoViewChangeMessage doViewChange;
+    StartViewMessage startView;
     
     if (type == request.GetTypeName()) {
         request.ParseFromString(data);

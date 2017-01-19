@@ -50,7 +50,7 @@
 #define TIMESTAMP_BASE62 0
 #define TIMESTAMP_NUMERIC 1
 
-std::mutex mtx;
+std::mutex message_mtx;
 
 void __attribute__((weak))
 Message_VA(enum Message_Type type,
@@ -79,7 +79,7 @@ _Message_VA(enum Message_Type type, FILE *fp,
             const char *fmt, va_list args)
 {
     // Lock mutex to make sure the output is not mangled.
-    mtx.lock();
+    message_mtx.lock();
 
     static int haveColor = -1;
     struct msg_desc {
@@ -159,7 +159,7 @@ _Message_VA(enum Message_Type type, FILE *fp,
     fflush(fp);
 
     // Unlock mutex.
-    mtx.unlock();
+    message_mtx.unlock();
 }
 
 void _Panic(void)

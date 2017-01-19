@@ -152,8 +152,8 @@ ShardClient::ReceiveMessage(const TransportAddress &remote,
                          const string &type,
                          const string &data)
 {
-    static GetReplyMessage getReply;
-    static PutReplyMessage putReply;
+    GetReplyMessage getReply;
+    PutReplyMessage putReply;
   
     Debug("Received reply type: %s", type.c_str());
 
