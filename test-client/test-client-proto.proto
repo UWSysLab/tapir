@@ -1,5 +1,0 @@
-syntax = "proto2";
-
-message TestMessage {
-    required int32 status = 1;
-}
