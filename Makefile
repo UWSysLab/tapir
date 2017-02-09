@@ -132,7 +132,6 @@ include store/weakstore/Rules.mk
 include store/benchmark/Rules.mk
 include lockserver/Rules.mk
 include timeserver/Rules.mk
-include test-client/Rules.mk
 include libtapir/Rules.mk
 ##################################################################
 # General rules
