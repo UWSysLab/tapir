@@ -80,10 +80,10 @@ IRClient::InvokeInconsistent(const string &request,
         });
     PendingInconsistentRequest *req =
 	new PendingInconsistentRequest(request,
-				       reqId,
-				       continuation,
-				       timer,
-				       config.QuorumSize());
+                                   reqId,
+                                   continuation,
+                                   timer,
+                                   config.QuorumSize());
     pendingReqs[reqId] = req;
     SendInconsistent(req);
 }
@@ -100,8 +100,8 @@ IRClient::SendInconsistent(const PendingInconsistentRequest *req)
         req->timer->Reset();
     } else {
         Warning("Could not send inconsistent request to replicas");
-	pendingReqs.erase(req->clientReqId);
-	delete req;
+        pendingReqs.erase(req->clientReqId);
+        delete req;
     }
 }
     
@@ -313,40 +313,38 @@ IRClient::HandleInconsistentReply(const TransportAddress &remote,
         return;
     }
 
-    PendingInconsistentRequest *req = static_cast<PendingInconsistentRequest *>(it->second);
+    PendingInconsistentRequest *req =
+        static_cast<PendingInconsistentRequest *>(it->second);
     // Make sure the dynamic cast worked
     ASSERT(req != NULL);
     
-    Debug("Client received reply: %lu %i", reqId, req->inconsistentReplyQuorum.NumRequired());
+    Debug("Client received reply: %lu %i", reqId,
+          req->inconsistentReplyQuorum.NumRequired());
 
     // Record replies
     viewstamp_t vs = { msg.view(), reqId };
     if (req->inconsistentReplyQuorum.AddAndCheckForQuorum(vs, msg.replicaidx(), msg)) {
         // If all quorum received, then send finalize and return to client
-
-        req->timer->Stop();
-        delete req->timer;
-        req->timer = new Timeout(transport, 500, [this, reqId]() {
-                ResendConfirmation(reqId, false);
-            });
-
-        // asynchronously send the finalize message
-        proto::FinalizeInconsistentMessage response;
-        *(response.mutable_opid()) = msg.opid();
-
-        if (transport->SendMessageToAll(this, response)) {
-            req->timer->Start();
-        } else {
-            Warning("Could not send finalize message to replicas");
-            pendingReqs.erase(it);
-            delete req;
-            return;
-        } 
-
         // Return to client
         if (!req->continuationInvoked) {
+            req->timer->Stop();
+            delete req->timer;
+            req->timer = new Timeout(transport, 500, [this, reqId]() {
+                    ResendConfirmation(reqId, false);
+                });
+
+            // asynchronously send the finalize message
+            proto::FinalizeInconsistentMessage response;
+            *(response.mutable_opid()) = msg.opid();
+
+            if (transport->SendMessageToAll(this, response)) {
+                req->timer->Start();
+            } else {
+                Warning("Could not send finalize message to replicas");
+            } 
+
             req->continuation(req->request, "");
-            req->continuationInvoked = true;
+            req->continuationInvoked = true;       
         }
     }
 }
@@ -427,7 +425,7 @@ IRClient::HandleConfirm(const TransportAddress &remote,
     uint64_t reqId = msg.opid().clientreqid();
     auto it = pendingReqs.find(reqId); 
     if (it == pendingReqs.end()) {
-        Debug("Received reply when no request was pending");
+        // ignore, we weren't waiting for the confirmation
         return;
     }
 
@@ -436,12 +434,12 @@ IRClient::HandleConfirm(const TransportAddress &remote,
     viewstamp_t vs = { msg.view(), reqId };
     if (req->confirmQuorum.AddAndCheckForQuorum(vs, msg.replicaidx(), msg)) {
         req->timer->Stop();
-	pendingReqs.erase(it);
-	if (!req->continuationInvoked) {
-	    // Return to client
-	    PendingConsensusRequest *r2 = static_cast<PendingConsensusRequest *>(req);
-	    r2->continuation(r2->request, r2->decideResult);
-	}
+        pendingReqs.erase(it);
+        if (!req->continuationInvoked) {
+            // Return to client
+            PendingConsensusRequest *r2 = static_cast<PendingConsensusRequest *>(req);
+            r2->continuation(r2->request, r2->decideResult);
+        }
         delete req;
     }
 }

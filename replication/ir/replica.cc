@@ -113,7 +113,7 @@ IRReplica::HandleFinalizeInconsistent(const TransportAddress &remote,
     
     // Check record for the request
     RecordEntry *entry = record.Find(opid);    
-    if (entry != NULL) {
+    if (entry != NULL && entry->state == RECORD_STATE_TENTATIVE) {
         // Mark entry as finalized
         record.SetStatus(opid, RECORD_STATE_FINALIZED);
 

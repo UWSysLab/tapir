@@ -30,6 +30,17 @@
 
 #include "lockserver/client.h"
 
+namespace {
+
+void
+usage()
+{
+    printf("Unknown command.. Try again!\n");
+    printf("Usage: exit | q | lock <key> | unlock <key>\n");
+}
+
+} // namespace
+
 int
 main(int argc, char **argv)
 {
@@ -68,14 +79,18 @@ main(int argc, char **argv)
             cmd[clen++] = c;
         cmd[clen] = '\0';
 
-        if (clen == 0) continue;
         tok = strtok(cmd, " ,.-");
+        if (tok == NULL) continue;
 
         if (strcasecmp(tok, "exit") == 0 || strcasecmp(tok, "q") == 0) {
             printf("Exiting..\n");
             break;
         } else if (strcasecmp(tok, "lock") == 0) {
             tok = strtok(NULL, " ,.-");
+            if (tok == NULL) {
+                usage();
+                continue;
+            }
             key = string(tok);
             status = locker.lock(key);
 
@@ -86,11 +101,15 @@ main(int argc, char **argv)
             }
         } else if (strcasecmp(tok, "unlock") == 0) {
             tok = strtok(NULL, " ,.-");
+            if (tok == NULL) {
+                usage();
+                continue;
+            }
             key = string(tok);
             locker.unlock(key);
             printf("Unlock Successful\n");
         } else {
-            printf("Unknown command.. Try again!\n");
+            usage();
         }
         fflush(stdout);
     }

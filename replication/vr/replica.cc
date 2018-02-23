@@ -513,7 +513,8 @@ VRReplica::HandleUnloggedRequest(const TransportAddress &remote,
     Debug("Received unlogged request %s", (char *)msg.req().op().c_str());
 
     ExecuteUnlogged(msg.req(), reply);
-    
+    reply.set_clientreqid(msg.req().clientreqid());
+
     if (!(transport->SendMessage(this, remote, reply)))
         Warning("Failed to send reply message");
 }
