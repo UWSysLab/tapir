@@ -71,7 +71,7 @@ for ((i=0; i<$nshard; i++))
 do
   echo "Starting shard$i replicas.."
   $srcdir/store/tools/start_replica.sh shard$i $srcdir/store/tools/shard$i.config \
-    "$srcdir/store/$store/server -m $mode -f $srcdir/store/tools/keys -e $err -s $skew" $logdir
+    "$srcdir/store/$store/server -m $mode -f $srcdir/store/tools/keys -k $nkeys -e $err -s $skew" $logdir
 done
 
 
