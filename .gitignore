@@ -1,0 +1,64 @@
+.obj/
+lockserver/client
+lockserver/server
+store/benchmark/benchClient
+store/benchmark/retwisClient
+store/benchmark/terminalClient
+store/strongstore/server
+store/tapirstore/server
+store/weakstore/server
+timeserver/timeserver
+
+################################################################################
+# vim
+################################################################################
+# Swap
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-v][a-z]
+[._]sw[a-p]
+
+# Session
+Session.vim
+
+# Temporary
+.netrwhist
+*~
+# Auto-generated tag files
+tags
+
+################################################################################
+# c++
+################################################################################
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
