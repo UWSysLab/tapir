@@ -38,6 +38,7 @@
 #include <event2/event.h>
 #include <event2/thread.h>
 
+#include <memory>
 #include <random>
 
 #include <arpa/inet.h>
@@ -380,7 +381,8 @@ UDPTransport::Register(TransportReceiver *receiver,
 }
 
 static size_t
-SerializeMessage(const ::google::protobuf::Message &m, char **out)
+SerializeMessage(const ::google::protobuf::Message &m,
+                 std::unique_ptr<char[]> *out)
 {
     string data = m.SerializeAsString();
     string type = m.GetTypeName();
@@ -389,8 +391,9 @@ SerializeMessage(const ::google::protobuf::Message &m, char **out)
     ssize_t totalLen = (typeLen + sizeof(typeLen) +
                        dataLen + sizeof(dataLen));
 
-    char *buf = new char[totalLen];
-    
+    std::unique_ptr<char[]> unique_buf(new char[totalLen]);
+    char *buf = unique_buf.get();
+
     char *ptr = buf;
     *((size_t *) ptr) = typeLen;
     ptr += sizeof(size_t);
@@ -404,8 +407,8 @@ SerializeMessage(const ::google::protobuf::Message &m, char **out)
     ASSERT(ptr+dataLen-buf == totalLen);
     memcpy(ptr, data.c_str(), dataLen);
     ptr += dataLen;
-    
-    *out = buf;
+
+    *out = std::move(unique_buf);
     return totalLen;
 }
 
@@ -418,11 +421,12 @@ UDPTransport::SendMessageInternal(TransportReceiver *src,
     sockaddr_in sin = dynamic_cast<const UDPTransportAddress &>(dst).addr;
 
     // Serialize message
-    char *buf;
-    size_t msgLen = SerializeMessage(m, &buf);
+    std::unique_ptr<char[]> unique_buf;
+    size_t msgLen = SerializeMessage(m, &unique_buf);
+    char *buf = unique_buf.get();
 
     int fd = fds[src];
-    
+
     // XXX All of this assumes that the socket is going to be
     // available for writing, which since it's a UDP socket it ought
     // to be.
@@ -430,7 +434,7 @@ UDPTransport::SendMessageInternal(TransportReceiver *src,
         if (sendto(fd, buf, msgLen, 0,
                    (sockaddr *)&sin, sizeof(sin)) < 0) {
             PWarning("Failed to send message");
-            goto fail;
+            return false;
         }
     } else {
         int numFrags = ((msgLen-1) / MAX_UDP_MESSAGE_SIZE) + 1;
@@ -453,22 +457,17 @@ UDPTransport::SendMessageInternal(TransportReceiver *src,
             *((size_t *)ptr) = msgLen;
             ptr += sizeof(size_t);
             memcpy(ptr, &buf[fragStart], fragLen);
-            
+
             if (sendto(fd, fragBuf, fragLen + fragHeaderLen, 0,
                        (sockaddr *)&sin, sizeof(sin)) < 0) {
                 PWarning("Failed to send message fragment %ld",
                          fragStart);
-                goto fail;
+                return false;
             }
         }
-    }    
+    }
 
-    delete [] buf;
     return true;
-
-fail:
-    delete [] buf;
-    return false;
 }
 
 void
