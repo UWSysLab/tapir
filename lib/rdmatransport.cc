@@ -534,7 +534,7 @@ RDMATransport::SignalCallback(evutil_socket_t fd, short what, void *arg)
 
 
 void
-RDMATransport::RDMAListnerCallback(evutil_socket_t fd, short what, void *arg)
+RDMATransport::RDMAListenerCallback(evutil_socket_t fd, short what, void *arg)
 {
     RDMATransportRDMAListener *info = (RDMATransportRDMAListener *)arg;
     struct rdma_cm_event *event;
@@ -545,7 +545,7 @@ RDMATransport::RDMAListnerCallback(evutil_socket_t fd, short what, void *arg)
         RDMAAcceptCallback(event);
         break;
     case RDMA_CM_EVENT_ESTABLISHED:
-        
+        // set a flag?
         break;
     case RDMA_CM_EVENT_DISCONNECTED:
     }
@@ -637,8 +637,8 @@ RDMATransport::RDMAReadableCallback(struct event *bev, void *arg)
 }
 
 void
-RDMATransport::RDMAIncomingEventCallback(struct event *bev,
-                                       short what, void *arg)
+RDMATransport::RDMAIncomingEventCallback(struct event *ev,
+                                         short what, void *arg)
 {
     if (what & BEV_EVENT_ERROR) {
         Warning("Error on incoming RDMA connection: %s",
@@ -653,8 +653,8 @@ RDMATransport::RDMAIncomingEventCallback(struct event *bev,
 }
 
 void
-RDMATransport::RDMAOutgoingEventCallback(struct event *bev,
-                                       short what, void *arg)
+RDMATransport::RDMAOutgoingEventCallback(struct event *ev,
+                                         short what, void *arg)
 {
     RDMATransportRDMAListener *info = (RDMATransportRDMAListener *)arg;
     RDMATransport *transport = info->transport;
