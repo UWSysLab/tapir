@@ -35,7 +35,7 @@
 #define _COMMON_QUORUMSET_H_
 
 namespace replication {
-    
+
 template <class IDTYPE, class MSGTYPE>
 class QuorumSet
 {
@@ -43,9 +43,9 @@ public:
     QuorumSet(int numRequired)
         : numRequired(numRequired)
     {
-           
+
     }
-    
+
     void
     Clear()
     {
@@ -80,7 +80,20 @@ public:
             return &vsmessages;
         } else {
             return NULL;
-        }    
+        }
+    }
+
+    const std::map<int, MSGTYPE> *
+    CheckForQuorum()
+    {
+        for (const auto &p : messages) {
+            const IDTYPE &vs = p.first;
+            const std::map<int, MSGTYPE> *quorum = CheckForQuorum(vs);
+            if (quorum != nullptr) {
+                return quorum;
+            }
+        }
+        return nullptr;
     }
 
     const std::map<int, MSGTYPE> *
@@ -98,7 +111,7 @@ public:
         }
 
         vsmessages[replicaIdx] = msg;
-        
+
         return CheckForQuorum(vs);
     }
 
@@ -107,7 +120,7 @@ public:
     {
         AddAndCheckForQuorum(vs, replicaIdx, msg);
     }
-    
+
 public:
     int numRequired;
 private:

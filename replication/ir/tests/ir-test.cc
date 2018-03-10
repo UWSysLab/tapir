@@ -39,16 +39,14 @@
 #include "replication/ir/client.h"
 #include "replication/ir/replica.h"
 
+#include <cstdio>
 #include <stdlib.h>
 #include <stdio.h>
 #include <gtest/gtest.h>
 #include <vector>
 #include <set>
 #include <sstream>
-
-static string replicaLastOp;
-static string clientLastOp;
-static string clientLastReply;
+#include <memory>
 
 using google::protobuf::Message;
 using namespace replication;
@@ -56,14 +54,15 @@ using namespace replication::ir;
 using namespace replication::ir::proto;
 
 class IRApp : public IRAppReplica {
-
     std::vector<string> *iOps;
     std::vector<string> *cOps;
     std::vector<string> *unloggedOps;
 
 public:
-    IRApp(std::vector<string> *i, std::vector<string> *c, std::vector<string> *u) : iOps(i), cOps(c), unloggedOps(u) { }
-    
+    IRApp(std::vector<string> *i, std::vector<string> *c,
+          std::vector<string> *u)
+        : iOps(i), cOps(c), unloggedOps(u) {}
+
     void ExecInconsistentUpcall(const string &req) {
         iOps->push_back(req);
     }
@@ -72,51 +71,48 @@ public:
         cOps->push_back(req);
         reply = "1";
     }
-    
+
     void UnloggedUpcall(const string &req, string &reply) {
         unloggedOps->push_back(req);
         reply = "unlreply: " + req;
     }
 };
-    
+
 class IRTest : public  ::testing::Test
 {
 protected:
-    std::vector<IRReplica *> replicas;
-    IRClient *client;
-    SimulatedTransport *transport;
-    transport::Configuration *config;
+    std::vector<transport::ReplicaAddress> replicaAddrs;
+    std::unique_ptr<transport::Configuration> config;
+    SimulatedTransport transport;
+    std::vector<std::unique_ptr<IRApp>> apps;
+    std::vector<std::unique_ptr<IRReplica>> replicas;
+    std::unique_ptr<IRClient> client;
     std::vector<std::vector<string> > iOps;
     std::vector<std::vector<string> > cOps;
     std::vector<std::vector<string> > unloggedOps;
     int requestNum;
-    
-    virtual void SetUp() {
-        std::vector<transport::ReplicaAddress> replicaAddrs =
-            { { "localhost", "12345" },
-              { "localhost", "12346" },
-              { "localhost", "12347" }};
-        config = new transport::Configuration(3, 1, replicaAddrs);
 
-        transport = new SimulatedTransport();
-        
+    IRTest() : requestNum(-1) {
+        replicaAddrs = {{"localhost", "12345"},
+                        {"localhost", "12346"},
+                        {"localhost", "12347"}};
+        config = std::unique_ptr<transport::Configuration>(
+            new transport::Configuration(3, 1, replicaAddrs));
+
         iOps.resize(config->n);
         cOps.resize(config->n);
         unloggedOps.resize(config->n);
 
         for (int i = 0; i < config->n; i++) {
-            replicas.push_back(new IRReplica(*config, i, transport,
-                                             new IRApp(&iOps[i], &cOps[i], &unloggedOps[i])));
+            auto ir_app = std::unique_ptr<IRApp>(
+                new IRApp(&iOps[i], &cOps[i], &unloggedOps[i]));
+            auto p = std::unique_ptr<IRReplica>(
+                new IRReplica(*config, i, &transport, ir_app.get()));
+            apps.push_back(std::move(ir_app));
+            replicas.push_back(std::move(p));
         }
 
-        client = new IRClient(*config, transport);
-        requestNum = -1;
-
-        // Only let tests run for a simulated minute. This prevents
-        // infinite retry loops, etc.
-//        transport->Timer(60000, [&]() {
-//                transport->CancelAllTimers();
-//            });
+        client = std::unique_ptr<IRClient>(new IRClient(*config, &transport));
     }
 
     virtual string RequestOp(int n) {
@@ -128,37 +124,41 @@ protected:
     virtual string LastRequestOp() {
         return RequestOp(requestNum);
     }
-    
+
     virtual void ClientSendNextInconsistent(Client::continuation_t upcall) {
         requestNum++;
         client->InvokeInconsistent(LastRequestOp(), upcall);
     }
 
-    virtual void ClientSendNextConsensus(Client::continuation_t upcall, IRClient::decide_t decide) {
+    virtual void ClientSendNextConsensus(Client::continuation_t upcall,
+                                         IRClient::decide_t decide) {
         requestNum++;
         client->InvokeConsensus(LastRequestOp(), decide, upcall);
     }
 
-    virtual void ClientSendNextUnlogged(int idx, Client::continuation_t upcall,
-                                        Client::timeout_continuation_t timeoutContinuation = nullptr,
-                                        uint32_t timeout = Client::DEFAULT_UNLOGGED_OP_TIMEOUT) {
+    virtual void ClientSendNextUnlogged(
+        int idx, Client::continuation_t upcall,
+        Client::error_continuation_t error_continuation = nullptr,
+        uint32_t timeout = Client::DEFAULT_UNLOGGED_OP_TIMEOUT) {
         requestNum++;
-        client->InvokeUnlogged(idx, LastRequestOp(), upcall, timeoutContinuation, timeout);
+        client->InvokeUnlogged(idx, LastRequestOp(), upcall,
+                               error_continuation, timeout);
     }
-    
-    virtual void TearDown() {
-        for (auto x : replicas) {
-            delete x;
-        }
-        
-        replicas.clear();
-        iOps.clear();
-        cOps.clear();
-        unloggedOps.clear();
 
-        delete client;
-        delete transport;
-        delete config;
+    virtual void TearDown() {
+        // Replicas store their view information in the following files:
+        //   - localhost:12345_0.bin
+        //   - localhost:12346_1.bin
+        //   - localhost:12347_2.bin
+        // We have to make sure to delete them after every test. Otherwise,
+        // replicas run in recovery mode.
+        for (std::size_t i = 0; i < replicaAddrs.size(); ++i) {
+            const transport::ReplicaAddress &addr = replicaAddrs[i];
+            const std::string filename =
+                addr.host + ":" + addr.port + "_" + std::to_string(i) + ".bin";
+            int success = std::remove(filename.c_str());
+            ASSERT(success == 0);
+        }
     }
 };
 
@@ -169,12 +169,12 @@ TEST_F(IRTest, OneInconsistentOp)
 
         // Inconsistent ops do not return a value
         EXPECT_EQ(reply, "");
-        
-        transport->CancelAllTimers();
+
+        transport.CancelAllTimers();
     };
-    
+
     ClientSendNextInconsistent(upcall);
-    transport->Run();
+    transport.Run();
 
     // By now, they all should have executed the last request.
     for (int i = 0; i < config->n; i++) {
@@ -189,10 +189,10 @@ TEST_F(IRTest, OneConsensusOp)
         EXPECT_EQ(req, LastRequestOp());
         EXPECT_EQ(reply, "1");
 
-        transport->CancelAllTimers();
+        transport.CancelAllTimers();
     };
 
-    auto decide = [this](const std::set<string> &results) {
+    auto decide = [this](const std::map<string, std::size_t> &results) {
         // shouldn't ever get called
         EXPECT_FALSE(true);
 
@@ -200,7 +200,7 @@ TEST_F(IRTest, OneConsensusOp)
     };
 
     ClientSendNextConsensus(upcall, decide);
-    transport->Run();
+    transport.Run();
 
     // By now, they all should have executed the last request.
     for (int i = 0; i < config->n; i++) {
@@ -216,15 +216,15 @@ TEST_F(IRTest, Unlogged)
         EXPECT_EQ(reply, "unlreply: "+LastRequestOp());
 
         EXPECT_EQ(unloggedOps[1].back(), req);
-        transport->CancelAllTimers();
+        transport.CancelAllTimers();
     };
     int timeouts = 0;
-    auto timeout = [&](const string &req) {
+    auto timeout = [&](const string &req, ErrorCode) {
         timeouts++;
     };
-    
+
     ClientSendNextUnlogged(1, upcall, timeout);
-    transport->Run();
+    transport.Run();
 
     for (unsigned int i = 0; i < iOps.size(); i++) {
         EXPECT_EQ(0, iOps[i].size());
@@ -237,15 +237,15 @@ TEST_F(IRTest, UnloggedTimeout)
 {
     auto upcall = [this](const string &req, const string &reply) {
         FAIL();
-        transport->CancelAllTimers();
+        transport.CancelAllTimers();
     };
     int timeouts = 0;
-    auto timeout = [&](const string &req) {
+    auto timeout = [&](const string &req, ErrorCode) {
         timeouts++;
     };
 
     // Drop messages to or from replica 1
-    transport->AddFilter(10, [](TransportReceiver *src, int srcIdx,
+    transport.AddFilter(10, [](TransportReceiver *src, int srcIdx,
                                 TransportReceiver *dst, int dstIdx,
                                 Message &m, uint64_t &delay) {
                              if ((srcIdx == 1) || (dstIdx == 1)) {
@@ -255,12 +255,12 @@ TEST_F(IRTest, UnloggedTimeout)
                          });
 
     // Run for 10 seconds
-    transport->Timer(10000, [&]() {
-            transport->CancelAllTimers();
+    transport.Timer(10000, [&]() {
+            transport.CancelAllTimers();
         });
 
     ClientSendNextUnlogged(1, upcall, timeout);
-    transport->Run();
+    transport.Run();
 
     for (unsigned int i = 0; i < iOps.size(); i++) {
         EXPECT_EQ(0, iOps[i].size());
@@ -283,19 +283,18 @@ TEST_F(IRTest, UnloggedTimeout)
 //         if (requestNum < 9) {
 //             ClientSendNext(upcall);
 //         } else {
-//             transport->CancelAllTimers();
+//             transport.CancelAllTimers();
 //         }
 //     };
-    
+
 //     ClientSendNext(upcall);
-//     transport->Run();
+//     transport.Run();
 
 //     // By now, they all should have executed the last request.
 //     for (int i = 0; i < config->n; i++) {
 //         EXPECT_EQ(10, ops[i].size());
 //         for (int j = 0; j < 10; j++) {
-//             EXPECT_EQ(RequestOp(j), ops[i][j]);            
+//             EXPECT_EQ(RequestOp(j), ops[i][j]);
 //         }
 //     }
 // }
-

@@ -12,7 +12,7 @@ OBJS-ir-client :=  $(o)ir-proto.o $(o)client.o \
 
 OBJS-ir-replica := $(o)record.o $(o)replica.o $(o)ir-proto.o \
                    $(OBJS-replica) $(LIB-message) \
-                   $(LIB-configuration)
+                   $(LIB-configuration) $(LIB-persistent_register)
 
 include $(d)tests/Rules.mk
 

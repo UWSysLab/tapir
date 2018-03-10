@@ -35,6 +35,7 @@
 
 #include <cstring>
 #include <stdexcept>
+#include <tuple>
 
 namespace transport {
 
@@ -50,6 +51,12 @@ ReplicaAddress::operator==(const ReplicaAddress &other) const {
             (port == other.port));
 }
 
+bool
+ReplicaAddress::operator<(const ReplicaAddress &other) const {
+    auto this_t = std::forward_as_tuple(host, port);
+    auto other_t = std::forward_as_tuple(other.host, other.port);
+    return this_t < other_t;
+}
 
 Configuration::Configuration(const Configuration &c)
     : n(c.n), f(c.f), replicas(c.replicas), hasMulticast(c.hasMulticast)
@@ -59,7 +66,7 @@ Configuration::Configuration(const Configuration &c)
         multicastAddress = new ReplicaAddress(*c.multicastAddress);
     }
 }
-    
+
 Configuration::Configuration(int n, int f,
                              std::vector<ReplicaAddress> replicas,
                              ReplicaAddress *multicastAddress)
@@ -80,7 +87,7 @@ Configuration::Configuration(std::ifstream &file)
     f = -1;
     hasMulticast = false;
     multicastAddress = NULL;
-    
+
     while (!file.eof()) {
         // Read a line
         string line;
@@ -108,7 +115,7 @@ Configuration::Configuration(std::ifstream &file)
             }
         } else if (strcasecmp(cmd.c_str(), "replica") == 0) {
             unsigned int t2 = line.find_first_not_of(" \t", t1);
-            if (t2 == string::npos) { 
+            if (t2 == string::npos) {
                 Panic ("'replica' configuration line requires an argument");
             }
 
@@ -208,8 +215,27 @@ Configuration::operator==(const Configuration &other) const
             return false;
         }
     }
-    
+
     return true;
+}
+
+bool
+Configuration::operator<(const Configuration &other) const {
+    auto this_t = std::forward_as_tuple(n, f, replicas, hasMulticast);
+    auto other_t = std::forward_as_tuple(other.n, other.f, other.replicas,
+                                         other.hasMulticast);
+    if (this_t < other_t) {
+        return true;
+    } else if (this_t == other_t) {
+        if (hasMulticast) {
+            return *multicastAddress < *other.multicastAddress;
+        } else {
+            return false;
+        }
+    } else {
+        // this_t > other_t
+        return false;
+    }
 }
 
 } // namespace transport
