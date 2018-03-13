@@ -89,12 +89,11 @@ private:
         event *ev;
         int id;
     };
-    struct RDMATransportRDMAListener
+    struct RDMATransportRDMAConnection
     {
         RDMATransport *transport;
         TransportReceiver *receiver;
         struct rdma_cm_id *id;
-        event *acceptEvent;
         int replicaIdx;
         Message send;
         ibv_mr *sendmr;
@@ -103,15 +102,10 @@ private:
         std::list<struct event *> connectionEvents;
     };
     event_base *libeventBase;
-    std::vector<event *> listenerEvents;
-    std::vector<event *> signalEvents;
-    std::map<struct rdma_cm_id *, TransportReceiver*> receivers; // fd -> receiver
-    std::map<TransportReceiver*, rdma_cm_id *> fds; // receiver -> fd
     int lastTimerId;
     std::map<int, RDMATransportTimerInfo *> timers;
-    std::list<RDMATransportRDMAListener *> rdmaListeners;
-    std::map<RDMATransportAddress, struct bufferevent *> rdmaOutgoing;
-    std::map<struct bufferevent *, RDMATransportAddress> rdmaAddresses;
+    std::list<RDMATransportRDMAConnection *> connections;
+    std::map<RDMATransportAddress, struct RDMATransportConnection *> rdmaOutgoing;
     
     bool SendMessageInternal(TransportReceiver *src,
                              const RDMATransportAddress &dst,
