@@ -81,7 +81,7 @@ bool operator<(const RDMATransportAddress &a, const RDMATransportAddress &b)
 }
 
 RDMATransport::RDMATransport(double dropRate, double reorderRate,
-			   int dscp, bool handleSignals)
+                             int dscp, bool handleSignals)
 {
     lastTimerId = 0;
     
@@ -95,12 +95,12 @@ RDMATransport::RDMATransport(double dropRate, double reorderRate,
 
     // Set up signal handler
     if (handleSignals) {
-        event_add((evsignal_new(libeventBase, SIGTERM,
-                                SignalCallback, this),
-                      NULL);
+        event_add(evsignal_new(libeventBase, SIGTERM,
+                               SignalCallback, this),
+                  NULL);
         event_add(evsignal_new(libeventBase, SIGINT,
                                SignalCallback, this)
-            NULL);
+                  NULL);
     }
 }
 
@@ -117,24 +117,24 @@ RDMATransport::~RDMATransport()
 RDMATransportAddress
 RDMATransport::LookupAddress(const transport::ReplicaAddress &addr)
 {
-        int res;
-        struct rdma_addrinfo hints;
-        hints.ai_family   = AF_INET;
-        hints.qp_type = IBV_RC;
-        hints.ai_flags    = 0;
-        struct rdma_addrinfo *ai;
-        if ((res = rdma_getaddrinfo(addr.host.c_str(), addr.port.c_str(),
-                                    &hints, &ai))) {
-            Panic("Failed to resolve %s:%s: %s",
-                  addr.host.c_str(), addr.port.c_str(), gai_strerror(res));
-        }
-        if (ai->ai_addr->sa_family != AF_INET) {
-            Panic("getaddrinfo returned a non IPv4 address");
-        }
-        RDMATransportAddress out =
+    int res;
+    struct rdma_addrinfo hints;
+    hints.ai_family   = AF_INET;
+    hints.qp_type = IBV_RC;
+    hints.ai_flags    = 0;
+    struct rdma_addrinfo *ai;
+    if ((res = rdma_getaddrinfo(addr.host.c_str(), addr.port.c_str(),
+                                &hints, &ai))) {
+        Panic("Failed to resolve %s:%s: %s",
+              addr.host.c_str(), addr.port.c_str(), gai_strerror(res));
+    }
+    if (ai->ai_addr->sa_family != AF_INET) {
+        Panic("getaddrinfo returned a non IPv4 address");
+    }
+    RDMATransportAddress out =
               RDMATransportAddress(*((sockaddr_in *)ai->ai_dst_addr));
-        freeaddrinfo(ai);
-        return out;
+    freeaddrinfo(ai);
+    return out;
 }
 
 RDMATransportAddress
@@ -143,6 +143,36 @@ RDMATransport::LookupAddress(const transport::Configuration &config,
 {
     const transport::ReplicaAddress &addr = config.replica(idx);
     return LookupAddress(addr);
+}
+
+int
+RDMATransport::PostReceive(RDMATransportRDMAListener *info)
+{
+    // post receive
+    struct ibv_recv_wr wr, *bad_wr;
+    struct ibv_sge sge;
+    wr.wr_id = MAGIC;
+    wr.sg_list = &sge;
+    wr.next = NULL;
+    wr.num_sge = 1;
+    sge.addr = (uintptr_t)&(info->recv);
+    sge.length = sizeof(Message);
+    sge.lkey = info->recvmr->lkey;
+    return ibv_post_recv(info->qp, wr, &bad_wr);
+}
+
+void
+RDMATransport::CleanupConnection(RDMATransportListener *info)
+{
+    rdma_disconnect(info->id);
+    ibv_destroy_cp(info->cp);
+    ibv_destroy_comp_channel(info->channel);
+    rdma_destroy_pd(info->pd);
+    rdma_destroy_qp(info->qp);
+    ibv_dereg_mr(info->sendmr);
+    ibv_dereg_mr(info->recvmr);
+    rdma_destroy_id(info->id);
+    delete info;
 }
 
 static void
@@ -169,9 +199,7 @@ BindToPort(struct rdma_cm_id *id, const string &host, const string &port)
         Panic("getaddrinfo returned a non IPv4 address");        
     }
     sin = *(sockaddr_in *)ai->ai_dst_addr;
-        
     freeaddrinfo(ai);
-
     Debug("Binding to %s %d RDMA", inet_ntoa(sin.sin_addr), htons(sin.sin_port));
 
     if (rdma_bind_addr(id, (sockaddr *)&sin, sizeof(sin)) < 0) {
@@ -184,57 +212,84 @@ RDMATransport::ConnectRDMA(TransportReceiver *src,
                            RDMATransportAddress &dst)
 {
     int res;
-    struct rdma_cm_id *id;
+    struct rdma_cm_event *event;
+    struct rdma_conn_params params;
+    struct RDMATransportRDMAListener *info;
     
+    // create an cm id for setting up the connection
+    struct rdma_cm_id *id;
     if ((rdma_create_id(NULL, &id, NULL, RDMA_PS_TCP)) != 0) {
         Panic("Could not create RDMA event id");
     }
 
-    res = rdma_resolve_addr(id, NULL,(sockaddr)dst.addr,1);
-    ASSERT(res == 0);
-    res = rdma_resolve_route(id, 1);
-    ASSERT(res == 0);
-    
-    //get file descriptor
-    int fd = ec->fd;
-    // Put it in non-blocking mode
-    if (fcntl(fd, F_SETFL, O_NONBLOCK, 1)) {
-        PWarning("Failed to set O_NONBLOCK");
+    // convert regular address into an rdma address
+    if (res = rdma_resolve_addr(id, NULL,(sockaddr)dst.addr,1)) {
+        Panic("Could not resolve IP to an RDMA address");
     }
 
-    ConnectRDMA(src, id);
+    // find path to rdma address
+    if (res = rdma_resolve_route(id, 1)) {
+        Panic("Could not resolve route to RDMA address");
+    }
+
+    // set up connection
+    ConnectRDMA(src, dst, id);
+
+    // Get channel
+    params->initiator_depth = params->responder_resources = 1;
+    params->rnr_retry_count = 7; /* infinite retry */
+
+    if (res = rdma_connect(id, &params)) {
+        Panic("Could not connect RDMA");
+    }
 }
 
 void
 RDMATransport::ConnectRDMA(TransportReceiver *src,
-                           struct rdma_cm_id *dst)
+                           RDMATransportAddress &dst,
+                           struct rdma_cm_id *id)
 {
     RDMATransportRDMAListener *info = new RDMATransportRDMAListener();
     struct ibv_qp_init_attr *qp_attr;
-    struct event *ev;
-    struct ibv_pd *pd;
-    int res;
-
-    // Set up info
-    info->transport = this;
-    info->id = dst;
-    info->receiver = src;
-    info->replicaIdx = -1;
-    info->acceptEvent = NULL;
         
-    // Create new RDMA channel
-    pd = ibv_alloc_pd(dst->verbs);
-    params->initiator_depth = params->responder_resources = 1;
-    params->rnr_retry_count = 7; /* infinite retry */
+    // Set up our needed info
+    info->transport = this;
+    info->receiver = src;
+    info->id = id;
+        
+    // set up new RDMA channel and queue pairs
+    if ((info->pd = ibv_alloc_pd(id->verbs)) == NULL) {
+        delete info;
+        PWarning("Failed to allocate pd");
+        return;
+    }
+    if ((info->channel = ibv_create_comp_channel) == NULL) {
+        delete info;
+        PWarning("Could not create completion channel");
+        return;
+    }
+    if ((info->cq = ibv_create_cq(id->verbs, 10, NULL, info->channel, 0)) == NULL) {
+        ibv_destroy_comp_channel(info->channel);
+        delete info;
+        PWarning("Could not create completion channel");
+        return;
+    }
+
+    if (ibv_req_notify_cq(info->cq, 0) != 0) {
+        Panic("Can't set up notifications");
+    }
+        
     qp_attr->qp_type = IBV_QPT_RC;
     qp_attr->cap.max_send_wr = 10;
     qp_attr->cap.max_recv_wr = 10;
     qp_attr->cap.max_send_sge = 1;
     qp_attr->cap.max_recv_sge = 1;
-    res = rdma_create_qp(id, pd, &qp_attr);
-    ASSERT(res == 0);
+    if (rdma_create_qp(id, pd, &qp_attr) != 0) {
+        Panic("Could not create RDMA queue pair");
+    }
 
-    // register memory
+    
+    // Register memory for communications
     if ((info->sendmr = ibv_reg_mr(info->pd,
                                    &info->send,
                                    sizeof(Message),
@@ -242,7 +297,7 @@ RDMATransport::ConnectRDMA(TransportReceiver *src,
         Panic("Could not register send buffer");
     }
 
-    if ((info->recvmr = ibv_reg_mr(info=>pd,
+    if ((info->recvmr = ibv_reg_mr(info->pd,
                                    info->recv,
                                    sizeof(Message),
                                    IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE))== 0) {
@@ -250,20 +305,19 @@ RDMATransport::ConnectRDMA(TransportReceiver *src,
     }
 
     // Put the connection in non-blocking mode
-    if (fcntl(dst->channel->fd, F_SETFL, O_NONBLOCK, 1)) {
+    if (fcntl(info->channel->fd, F_SETFL, O_NONBLOCK, 1)) {
         PWarning("Failed to set O_NONBLOCK");
     }
 
-    // Create an event
-    struct event *ev = event_new(libeventBase, dst->channel->fd,
-                                 EV_READ|EV_WRITE,
-                                 RDMAReadableCallback, (void *)info);
-    event_add(ev, NULL);
-    info->connectionEvents.push_back(ev);
-    
+    // Create an libevent event for the channel
+    info->libevent = event_new(libeventBase, info->channel->fd,
+                               EV_READ|EV_WRITE,
+                               RDMAReadableCallback, (void *)info);
+    event_add(info->libevent, NULL);
 
-	transport->rdmaOutgoing[dst] = ev; 
-	transport->rdmaAddresses.insert(pair<struct event*, RDMATransportAddress>(ev,dst));
+    // Set up mappings
+    transport->rdmaOutgoing[dst] = info;
+    transport->rdmaAddresses[info] = dst;
 }
 
 void
@@ -280,16 +334,16 @@ RDMATransport::Register(TransportReceiver *receiver,
     }
     
     // Create a RDMA channel
-    struct rdma_event_channel *ec = NULL;
+    struct rdma_event_channel *channel;
     if((ec = rdma_create_event_channel()) == 0) {
         Panic("Could not create RDMA event channel");
     }
-    struct rdma_cm_id *listener = NULL;
-    if ((rdma_create_id(ec, &listener, NULL, RDMA_PS_TCP)) != 0) {
+    struct rdma_cm_id *acceptID;
+    if ((rdma_create_id(ec, &acceptID, NULL, RDMA_PS_TCP)) != 0) {
         Panic("Could not create RDMA event id");
     }
     //get file descriptor
-    int fd = ec->fd;
+    int fd = channel->fd;
     // Put it in non-blocking mode
     if (fcntl(fd, F_SETFL, O_NONBLOCK, 1)) {
         PWarning("Failed to set O_NONBLOCK");
@@ -299,25 +353,24 @@ RDMATransport::Register(TransportReceiver *receiver,
     // host/port
     const string &host = config.replica(replicaIdx).host;
     const string &port = config.replica(replicaIdx).port;
-    BindToPort(listener, host, port);
+    BindToPort(acceptID, host, port);
     
     // Listen for connections
-    if (rdma_listen(listener, 10) < 0) {
+    if (rdma_listen(acceptID, 10) != 0) {
         PPanic("Failed to listen for RDMA connections");
     }
         
-    // Create event to accept connections
-    RDMATransportRDMAConnection *info = new RDMATransportRDMAConnection();
+    // Set up our own info for this connection
+    RDMATransportRDMAListener *info = new RDMATransportRDMAListener();
     info->transport = this;
     info->receiver = receiver;
-    info->id = listener;
+    info->id = acceptID;
     info->replicaIdx = replicaIdx;
-    event_add(event_new(libeventBase, fd,
-                        EV_READ | EV_PERSIST,
-                        RDMAAcceptCallback, (void *)info),
-              NULL);
-    rdmaConnections.push_back(info);
-
+    info->libevent = event_new(libeventBase, fd,
+                               EV_READ | EV_PERSIST,
+                               RDMAAcceptCallback, (void *)info);
+    event_add(info->libevent, NULL);
+    
     // Tell the receiver its address
     struct sockaddr_in sin;
     socklen_t sinsize = sizeof(sin);
@@ -343,50 +396,28 @@ RDMATransport::SendMessageInternal(TransportReceiver *src,
         kv = rdmaOutgoing.find(dst);
     }
     
-    struct event *ev = kv->second;
+    struct RDMATransportRDMAListener *info = kv->second;
     ASSERT(ev != NULL);
 
-    // Serialize message
-    string data = m.SerializeAsString();
-    string type = m.GetTypeName();
-    size_t typeLen = type.length();
-    size_t dataLen = data.length();
-    size_t totalLen = (typeLen + sizeof(typeLen) +
-                       dataLen + sizeof(dataLen) +
-                       sizeof(totalLen) +
-                       sizeof(uint32_t));
+    // set up message
+    info->send = m;
+    struct ibv_send_wr wr, *bad_wr;
+    struct ibv_sge;
+    wr.wr_id = MAGIC;
+    wr.wr_opcode = IBV_WR_SEND;
+    wr.sge_list = &sge;
+    wr.num_sge = 1;
+    wr.send_flags = IBV_SEND_SIGNALED;
 
-    Debug("Sending %ld byte %s message to server over RDMA",
-          totalLen, type.c_str());
+    sge.addr = (uintptr_t) &(info->send);
+    sge.length = sizeof(Message);
+    sge.lkey = info->sendmr->lkey;
+
+    ibv_post_send(info->qp, &wr, &bad_wr);
     
-    char buf[totalLen];
-    char *ptr = buf;
-
-    *((uint32_t *) ptr) = MAGIC;
-    ptr += sizeof(uint32_t);
-    ASSERT((size_t)(ptr-buf) < totalLen);
-    
-    *((size_t *) ptr) = totalLen;
-    ptr += sizeof(size_t);
-    ASSERT((size_t)(ptr-buf) < totalLen);
-
-    *((size_t *) ptr) = typeLen;
-    ptr += sizeof(size_t);
-    ASSERT((size_t)(ptr-buf) < totalLen);
-
-    ASSERT((size_t)(ptr+typeLen-buf) < totalLen);
-    memcpy(ptr, type.c_str(), typeLen);
-    ptr += typeLen;
-    *((size_t *) ptr) = dataLen;
-    ptr += sizeof(size_t);
-
-    ASSERT((size_t)(ptr-buf) < totalLen);
-    ASSERT((size_t)(ptr+dataLen-buf) == totalLen);
-    memcpy(ptr, data.c_str(), dataLen);
-    ptr += dataLen;
-
-    if (event_write(ev, buf, totalLen) < 0) {
-        Warning("Failed to write to RDMA buffer");
+    // Post receive to get the response
+    if (PostReceive(info) != 0) {
+        Warning("Sent message but failed to post receive for reply");
         return false;
     }
     
@@ -525,49 +556,53 @@ RDMATransport::SignalCallback(evutil_socket_t fd, short what, void *arg)
 
 
 void
-RDMATransport::RDMAListenerCallback(evutil_socket_t fd, short what, void *arg)
+RDMATransport::RDMAAcceptCallback(evutil_socket_t fd, short what, void *arg)
 {
-    RDMATransportRDMAConnection *info = (RDMATransportRDMAListener *)arg;
-    struct rdma_cm_event *ev;
-    rdma_cm_get_event(info->channel, &event);
+    RDMATransportRDMAListener *info = (RDMATransportRDMAListener *)arg;
+    struct rdma_cm_event *event;
+    rdma_cm_get_event(info->id->channel, &event);
 
-    switch(ev->event) {
+    switch(event->event) {
     case RDMA_CM_EVENT_CONNECT_REQUEST:
-        RDMAAcceptCallback(ev);
-        return;
-    case RDMA_CM_EVENT_ESTABLISHED:
-        // set a flag?
-        Warning("Connection established on outgoing RDMA connection");
-        return;
+    {
+        // Move the new cm into synchronous mode
+        rdma_migrate_id(event->id, NULL);
+        RDMATransportAddress addr((sockaddr_in) rdma_get_peer_addr(event->id));
+        ConnectRDMA(transport, addr, event->id);
+
+        // Post receive before accepting the connection
+        PostReceive(info);
+        
+        // Accept a connection
+        struct rdma_conn_params params;
+        params.initiator_depth = params->responder_resources = 1;
+        params.rnr_retry_count = 7; /* infinite retry */
+        if ((rdma_accept(event->listen_id, &params)) < 0) {
+            PWarning("Failed to accept incoming RDMA connection");
+            
+            break;
+        }
+        rdma_ack_cm_event(event);
+        rdma_cm_get_event(info->id->channel, &event);
+        if (event->event == RDMA_CM_EVENT_ESTABLISHED) {
+            Debug("Opened incoming RDMA connection from %s:%d",
+                  rdma_get_dst_addr(event->id),
+                  rdma_get_dst_port(event->id));
+        } else {
+            Warning("Could not open requested RDMA connection");
+        }        
+        break;
     case RDMA_CM_EVENT_DISCONNECTED:
-        Warning("EOF on outgoing RDMA connection to server");
-        event_free(bev);
+        Warning("EOF on listening port");
+        event_free(info->ev);
+        rdma_destroy_event_channel(info->id->channel);
+        rdma_destroy_id(info->id);
         auto it2 = transport->rdmaOutgoing.find(addr);
         transport->rdmaOutgoing.erase(it2);
-        transport->rdmaAddresses.erase(bev);
-        return;
+        delete info;
+        break;
     }
-}
-
-void
-RDMATransport::RDMAAcceptCallback(RDMATransportRDMALIstener *info,
-                                  struct rdma_cm_event *event)
-{
-    RDMATransport *transport = info->transport;
-    struct rdma_conn_param param;
-
-    // Accept a connection
-    if ((rdma_accept(event->listen_id, &param)) < 0) {
-        PWarning("Failed to accept incoming RDMA connection");
-        rdma_ack_cm_event(event);
-        return;
-    }
-    
-    ConnectRDMA(transport, event->id);
     rdma_ack_cm_event(event);
-    Debug("Opened incoming RDMA connection from %s:%d",
-          rdma_get_dst_addr(event->id),
-          rdma_get_dst_port(event->id));
 }
 
 void
@@ -575,101 +610,34 @@ RDMATransport::RDMAReadableCallback(struct event *bev, void *arg)
 {
     RDMATransportRDMAListener *info = (RDMATransportRDMAListener *)arg;
     RDMATransport *transport = info->transport;
-    struct evbuffer *evbuf = event_get_input(bev);
-
-    Debug("Readable on event %p", bev);
+    ibv_cq *cq;
+    ibv_cq_context *context;
+    ibv_get_cq_events(info->channel, &cq, &context);
     
-    uint32_t *magic;
-    magic = (uint32_t *)evbuffer_pullup(evbuf, sizeof(*magic));
-    if (magic == NULL) {
-        return;
+    struct ibv_wc wc;
+    while (ibv_poll_cq(cq, 1, &wc) > 0) {
+        if (wc.status == IBV_WC_SUCCESS) {
+            switch (wc.opcode) {
+            case IBV_WR_SEND:
+                break;
+            case IBV_WR_RECV:
+                auto addr = transport->rdmaAddresses.find(bev);
+                ASSERT(addr != transport->rdmaAddresses.end());
+
+                // Dispatch
+                info->receiver->ReceiveMessage(addr->second,
+                                               info->recv.msg.GetTypeName(),
+                                               info->recv.msg);
+                Debug("Done processing %s message",
+                      info->recv.msg.GetTypeName().c_str());
+            }
+        } else {
+            Warning("Something failed!");
+        }
     }
-    ASSERT(*magic == MAGIC);
-    
-    size_t *sz;
-    unsigned char *x = evbuffer_pullup(evbuf, sizeof(*magic) + sizeof(*sz));
-    
-    sz = (size_t *) (x + sizeof(*magic));
-    if (x == NULL) {
-        return;
+    ibv_ack_cq_events(cq, 1);
+    if (ibv_req_notify_cq(cq, 0) != 0) {
+        Panic("Can't set up notifications");
     }
-    size_t totalSize = *sz;
-    ASSERT(totalSize < 1073741826);
-    
-    if (evbuffer_get_length(evbuf) < totalSize) {
-        Debug("Don't have %ld bytes for a message yet, only %ld",
-               totalSize, evbuffer_get_length(evbuf));
-        return;
-    }
-    Debug("Receiving %ld byte message", totalSize);
 
-    char buf[totalSize];
-    size_t copied = evbuffer_remove(evbuf, buf, totalSize);
-    ASSERT(copied == totalSize);
-    
-    // Parse message
-    char *ptr = buf + sizeof(*sz) + sizeof(*magic);
-
-    size_t typeLen = *((size_t *)ptr);
-    ptr += sizeof(size_t);
-    ASSERT((size_t)(ptr-buf) < totalSize);
-    
-    ASSERT((size_t)(ptr+typeLen-buf) < totalSize);
-    string msgType(ptr, typeLen);
-    ptr += typeLen;
-    
-    size_t msgLen = *((size_t *)ptr);
-    ptr += sizeof(size_t);
-    ASSERT((size_t)(ptr-buf) < totalSize);
-    
-    ASSERT((size_t)(ptr+msgLen-buf) <= totalSize);
-    string msg(ptr, msgLen);
-    ptr += msgLen;
-
-    auto addr = transport->rdmaAddresses.find(bev);
-    ASSERT(addr != transport->rdmaAddresses.end());
-
-    // Dispatch
-    info->receiver->ReceiveMessage(addr->second, msgType, msg);
-    Debug("Done processing large %s message", msgType.c_str());
-}
-
-void
-RDMATransport::RDMAIncomingEventCallback(struct event *ev,
-                                         short what, void *arg)
-{
-    if (what & BEV_EVENT_ERROR) {
-        Warning("Error on incoming RDMA connection: %s",
-                evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
-        event_free(bev);
-        return;
-    } else if (what & BEV_EVENT_ERROR) {
-        Warning("EOF on incoming RDMA connection");
-        event_free(bev);
-        return;
-    }
-}
-
-void
-RDMATransport::RDMAOutgoingEventCallback(struct event *ev,
-                                         short what, void *arg)
-{
-    RDMATransportRDMAListener *info = (RDMATransportRDMAListener *)arg;
-    RDMATransport *transport = info->transport;
-    auto it = transport->rdmaAddresses.find(bev);    
-    ASSERT(it != transport->rdmaAddresses.end());
-    RDMATransportAddress addr = it->second;
-    
-    if (what & BEV_EVENT_CONNECTED) {
-        Debug("Established outgoing RDMA connection to server");
-    } else if (what & BEV_EVENT_ERROR) {
-        Warning("Error on outgoing RDMA connection to server: %s",
-                evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
-        event_free(bev);
-        auto it2 = transport->rdmaOutgoing.find(addr);
-        transport->rdmaOutgoing.erase(it2);
-        transport->rdmaAddresses.erase(bev);
-        return;
-    } else if (what & BEV_EVENT_EOF) {
-    }
 }

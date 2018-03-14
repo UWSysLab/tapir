@@ -89,23 +89,34 @@ private:
         event *ev;
         int id;
     };
-    struct RDMATransportRDMAConnection
+    struct RDMATransportRDMAListener
     {
         RDMATransport *transport;
         TransportReceiver *receiver;
+        // can find rdma cm channel in id
         struct rdma_cm_id *id;
-        int replicaIdx;
+        // protection domain
+        struct ibv_pd *pd;
+        // completion channel
+        struct ibv_comp_channel *channel;
+        // completion queue
+        struct ibv_cq *cq;
+        // queue pair
+        struct ibv_qp *qp;
+        // libevent event
+        event *libevent;
+        // message passing space
         Message send;
         ibv_mr *sendmr;
         Message recv;
         ibv_mr *recvmr;
-        std::list<struct event *> connectionEvents;
     };
     event_base *libeventBase;
     int lastTimerId;
     std::map<int, RDMATransportTimerInfo *> timers;
-    std::list<RDMATransportRDMAConnection *> connections;
-    std::map<RDMATransportAddress, struct RDMATransportConnection *> rdmaOutgoing;
+    std::list<RDMATransportRDMAListener *> connections;
+    std::map<RDMATransportAddress &, struct RDMATransportRDMAListener *> rdmaOutgoing;
+    std::map<struct RDMATransportRDMAListener *, RDMATransportAddress &> rdmaAddresses;
     
     bool SendMessageInternal(TransportReceiver *src,
                              const RDMATransportAddress &dst,
