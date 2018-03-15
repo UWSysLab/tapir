@@ -11,7 +11,7 @@
 
 #include "lib/assert.h"
 #include "lib/message.h"
-#include "lib/udptransport.h"
+#include "lib/rdmatransport.h"
 #include "lib/configuration.h"
 #include "replication/ir/record.h"
 #include "replication/common/replica.h"
