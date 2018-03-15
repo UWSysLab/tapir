@@ -8,7 +8,7 @@ LD = g++
 EXPAND = lib/tmpl/expand
 
 #CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -O2 -DNASSERT
-CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized 
+CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -lrdmacm -libverbs
 CXXFLAGS := -g -std=c++0x
 LDFLAGS := -levent_pthreads
 ## Debian package: check
