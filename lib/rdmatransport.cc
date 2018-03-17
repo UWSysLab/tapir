@@ -288,18 +288,9 @@ RDMATransport::ConnectRDMA(TransportReceiver *src,
         Panic("Could not create RDMA queue pair");
     }
 
-    
-    // Register memory for communications
-    if ((info->sendmr = ibv_reg_mr(info->pd,
-                                   &info->send,
-                                   sizeof(Message),
-                                   IBV_ACCESS_LOCAL_WRITE)) == 0) {
-        Panic("Could not register send buffer");
-    }
-
     if ((info->recvmr = ibv_reg_mr(info->pd,
                                    info->recv,
-                                   sizeof(Message),
+                                   sizeof(message),
                                    IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE))== 0) {
         Panic("Could not register receive buffer");
     }
@@ -399,8 +390,18 @@ RDMATransport::SendMessageInternal(TransportReceiver *src,
     struct RDMATransportRDMAListener *info = kv->second;
     ASSERT(ev != NULL);
 
+    
+    
+    // Register memory for communications
+    if ((info->sendmr = ibv_reg_mr(info->pd,
+                                   &m,
+                                   sizeof(m),
+                                   IBV_ACCESS_LOCAL_WRITE)) == 0) {
+        Panic("Could not register send buffer");
+    }
+
+
     // set up message
-    info->send = m;
     struct ibv_send_wr wr, *bad_wr;
     struct ibv_sge;
     wr.wr_id = MAGIC;
@@ -409,7 +410,7 @@ RDMATransport::SendMessageInternal(TransportReceiver *src,
     wr.num_sge = 1;
     wr.send_flags = IBV_SEND_SIGNALED;
 
-    sge.addr = (uintptr_t) &(info->send);
+    sge.addr = (uintptr_t) &m;
     sge.length = sizeof(Message);
     sge.lkey = info->sendmr->lkey;
 
@@ -620,16 +621,16 @@ RDMATransport::RDMAReadableCallback(struct event *bev, void *arg)
             switch (wc.opcode) {
             case IBV_WR_SEND:
                 break;
-            case IBV_WR_RECV:
+            case IBV_WR_RECV: {
                 auto addr = transport->rdmaAddresses.find(bev);
                 ASSERT(addr != transport->rdmaAddresses.end());
 
                 // Dispatch
                 info->receiver->ReceiveMessage(addr->second,
-                                               info->recv.msg.GetTypeName(),
-                                               info->recv.msg);
+                                               info->recv.GetTypeName(),
+                                               info->recv);
                 Debug("Done processing %s message",
-                      info->recv.msg.GetTypeName().c_str());
+                      info->recv.GetTypeName().c_str());
             }
         } else {
             Warning("Something failed!");

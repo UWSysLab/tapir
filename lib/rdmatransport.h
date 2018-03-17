@@ -33,7 +33,7 @@
 #define _LIB_RDMATRANSPORT_H_
 
 #include "lib/configuration.h"
-#Include "lib/transport.h"
+#include "lib/transport.h"
 #include "lib/transportcommon.h"
 
 #include <event2/event.h>
@@ -46,7 +46,7 @@
 #include <random>
 #include <mutex>
 #include <netinet/in.h>
-#include <rdma/rdma_cm.h>
+#include <rdma/rdma_cma.h>
 
 class RDMATransportAddress : public TransportAddress
 {
@@ -106,9 +106,9 @@ private:
         // libevent event
         event *libevent;
         // message passing space
-        Message send;
+        message send;
         ibv_mr *sendmr;
-        Message recv;
+        message recv;
         ibv_mr *recvmr;
     };
     event_base *libeventBase;
@@ -149,3 +149,5 @@ private:
     static void RDMAOutgoingEventCallback(struct bufferevent *bev,
                                          short what, void *arg);
 };
+
+#endif
