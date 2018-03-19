@@ -48,6 +48,8 @@
 #include <netinet/in.h>
 #include <rdma/rdma_cma.h>
 
+#define RDMA_MAX_STRING_SIZE 4096
+
 class RDMATransportAddress : public TransportAddress
 {
 public:
@@ -106,17 +108,19 @@ private:
         // libevent event
         event *libevent;
         // message passing space
-        message send;
-        ibv_mr *sendmr;
-        message recv;
-        ibv_mr *recvmr;
+        string sendType;
+        string sendData;
+        ibv_mr *sendmr[2];
+        string recvType;
+        string recvData;
+        ibv_mr *recvmr[2];
     };
     event_base *libeventBase;
     int lastTimerId;
     std::map<int, RDMATransportTimerInfo *> timers;
     std::list<RDMATransportRDMAListener *> connections;
-    std::map<RDMATransportAddress &, struct RDMATransportRDMAListener *> rdmaOutgoing;
-    std::map<struct RDMATransportRDMAListener *, RDMATransportAddress &> rdmaAddresses;
+    std::map<RDMATransportAddress, struct RDMATransportRDMAListener *> rdmaOutgoing;
+    std::map<struct RDMATransportRDMAListener *, RDMATransportAddress> rdmaAddresses;
     
     bool SendMessageInternal(TransportReceiver *src,
                              const RDMATransportAddress &dst,
@@ -127,10 +131,12 @@ private:
     RDMATransportAddress
     LookupAddress(const transport::Configuration &cfg,
                   int replicaIdx);
+    int PostReceive(RDMATransportRDMAListener *info);
     const RDMATransportAddress *
     LookupMulticastAddress(const transport::Configuration*config) { return NULL; };
-
     void ConnectRDMA(TransportReceiver *src, const RDMATransportAddress &dst);
+    void ConnectRDMA(TransportReceiver *src, const RDMATransportAddress &dst,
+                     struct rdma_cm_id *id);
     void OnTimer(RDMATransportTimerInfo *info);
     static void TimerCallback(evutil_socket_t fd,
                               short what, void *arg);
@@ -140,10 +146,8 @@ private:
                                short what, void *arg);
     static void RDMAAcceptCallback(evutil_socket_t fd, short what,
                                   void *arg);
-    static void RDMAReadableCallback(struct bufferevent *bev,
+    static void RDMAReadableCallback(struct event *bev,
                                     void *arg);
-    static void RDMAEventCallback(struct bufferevent *bev,
-                                 short what, void *arg);
     static void RDMAIncomingEventCallback(struct bufferevent *bev,
                                          short what, void *arg);
     static void RDMAOutgoingEventCallback(struct bufferevent *bev,

@@ -52,7 +52,10 @@ The repo is structured as follows:
 ## Compiling & Running
 You can compile all of the TAPIR executables by running make in the root directory
 
-TAPIR depends on protobufs, opensslgi and libevent, so you will need those development libraries installed on your machine. On Linux, this can be done through apt.
+TAPIR depends on protobufs, opensslgi and libevent, so you will need
+those development libraries installed on your machine. On Linux, this
+can be done through apt (libssl-dev, protobuf-dev). For rdma, you will
+also need the ibverb devel libraries and the rdmacm devel library.
 
 ## Contact and Questions
 Please email Irene at iyzhang@cs.washington.edu, Dan at drkp@cs.washington.edu and Naveen at naveenks@cs.washington.edu
