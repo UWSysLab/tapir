@@ -10,7 +10,7 @@ EXPAND = lib/tmpl/expand
 #CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -O2 -DNASSERT
 CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -lrdmacm -libverbs
 CXXFLAGS := -g -std=c++0x
-LDFLAGS := -levent_pthreads
+LDFLAGS := -levent_pthreads -lrdmacm -libverbs
 ## Debian package: check
 #CHECK_CFLAGS := $(shell pkg-config --cflags check)
 #CHECK_LDFLAGS := $(shell pkg-config --cflags --libs check)

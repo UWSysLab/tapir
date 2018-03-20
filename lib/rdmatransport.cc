@@ -47,7 +47,7 @@
 #include <netdb.h>
 #include <signal.h>
 
-const size_t MAX_RDMA_SIZE = 100; // XXX
+const size_t MAX_RDMA_SIZE = 4096; // XXX
 const uint32_t MAGIC = 0x06121983;
 
 using std::pair;
@@ -123,7 +123,8 @@ RDMATransport::LookupAddress(const transport::ReplicaAddress &addr)
     hints.ai_qp_type = IBV_QPT_RC;
     hints.ai_flags    = 0;
     struct rdma_addrinfo *ai;
-    if ((res = rdma_getaddrinfo(addr.host.c_str(), addr.port.c_str(),
+    if ((res = rdma_getaddrinfo((char *)addr.host.c_str(),
+                                (char *)addr.port.c_str(),
                                 &hints, &ai))) {
         Panic("Failed to resolve %s:%s: %s",
               addr.host.c_str(), addr.port.c_str(), gai_strerror(res));
@@ -158,24 +159,26 @@ RDMATransport::PostReceive(RDMATransportRDMAListener *info)
     wr.num_sge = 2;
     
     sge[0].addr = (uintptr_t) &(info->recvType);
-    sge[0].length = RDMA_MAX_STRING_SIZE;
+    sge[0].length = MAX_RDMA_SIZE;
     sge[0].lkey = info->recvmr[0]->lkey;
     sge[1].addr = (uintptr_t) &(info->recvData);
-    sge[1].length = RDMA_MAX_STRING_SIZE;
+    sge[1].length = MAX_RDMA_SIZE;
     sge[1].lkey = info->recvmr[1]->lkey;
     return ibv_post_recv(info->qp, &wr, &bad_wr);
 }
 
 void
-RDMATransport::CleanupConnection(RDMATransportListener *info)
+RDMATransport::CleanupConnection(RDMATransportRDMAListener *info)
 {
     rdma_disconnect(info->id);
-    ibv_destroy_cp(info->cp);
+    ibv_destroy_cq(info->cq);
     ibv_destroy_comp_channel(info->channel);
-    rdma_destroy_pd(info->pd);
-    rdma_destroy_qp(info->qp);
-    ibv_dereg_mr(info->sendmr);
-    ibv_dereg_mr(info->recvmr);
+    //rdma_destroy_pd(info->pd);
+    rdma_destroy_qp(info->id);
+    ibv_dereg_mr(info->sendmr[0]);
+    ibv_dereg_mr(info->sendmr[1]);
+    ibv_dereg_mr(info->recvmr[0]);
+    ibv_dereg_mr(info->recvmr[1]);
     rdma_destroy_id(info->id);
     delete info;
 }
@@ -188,12 +191,12 @@ BindToPort(struct rdma_cm_id *id, const string &host, const string &port)
     // might be a service name)
     struct rdma_addrinfo hints;
     hints.ai_family   = AF_INET;
-    hints.qp_type = IBV_QPT_RC;
+    hints.ai_qp_type = IBV_QPT_RC;
     hints.ai_flags    = AI_PASSIVE;
     struct rdma_addrinfo *ai;
     int res;
-    if ((res = rdma_getaddrinfo(host.c_str(),
-                                port.c_str(),
+    if ((res = rdma_getaddrinfo((char *)host.c_str(),
+                                (char *)port.c_str(),
                                 &hints, &ai))) {
         Panic("Failed to resolve host/port %s:%s: %s",
               host.c_str(), port.c_str(), gai_strerror(res));
@@ -205,19 +208,17 @@ BindToPort(struct rdma_cm_id *id, const string &host, const string &port)
     sin = *(sockaddr_in *)ai->ai_dst_addr;
     Debug("Binding to %s %d RDMA", inet_ntoa(sin.sin_addr), htons(sin.sin_port));
 
-    if (rdma_bind_addr(id, (sockaddr *)&sin, sizeof(sin)) < 0) {
+    if (rdma_bind_addr(id, (sockaddr *)&sin) < 0) {
         PPanic("Failed to bind to RDMA channel");
     }
 }
 
 void
 RDMATransport::ConnectRDMA(TransportReceiver *src,
-                           RDMATransportAddress &dst)
+                           const RDMATransportAddress &dst)
 {
     int res;
-    struct rdma_cm_event *event;
-    struct rdma_conn_params params;
-    struct RDMATransportRDMAListener *info;
+    struct rdma_conn_param params;
     
     // create an cm id for setting up the connection
     struct rdma_cm_id *id;
@@ -226,12 +227,12 @@ RDMATransport::ConnectRDMA(TransportReceiver *src,
     }
 
     // convert regular address into an rdma address
-    if (res = rdma_resolve_addr(id, NULL,(sockaddr)dst.addr,1)) {
+    if ((res = rdma_resolve_addr(id, NULL, (sockaddr*)&dst.addr,1)) != 0) {
         Panic("Could not resolve IP to an RDMA address");
     }
 
     // find path to rdma address
-    if (res = rdma_resolve_route(id, 1)) {
+    if ((res = rdma_resolve_route(id, 1)) != 0) {
         Panic("Could not resolve route to RDMA address");
     }
 
@@ -239,10 +240,10 @@ RDMATransport::ConnectRDMA(TransportReceiver *src,
     ConnectRDMA(src, dst, id);
 
     // Get channel
-    params->initiator_depth = params->responder_resources = 1;
-    params->rnr_retry_count = 7; /* infinite retry */
+    params.initiator_depth = params.responder_resources = 1;
+    params.rnr_retry_count = 7; /* infinite retry */
 
-    if (res = rdma_connect(id, &params)) {
+    if ((res = rdma_connect(id, &params)) != 0) {
         Panic("Could not connect RDMA");
     }
 }
@@ -266,7 +267,8 @@ RDMATransport::ConnectRDMA(TransportReceiver *src,
         PWarning("Failed to allocate pd");
         return;
     }
-    if ((info->channel = ibv_create_comp_channel) == NULL) {
+    
+    if ((info->channel = ibv_create_comp_channel(id->verbs)) == NULL) {
         delete info;
         PWarning("Could not create completion channel");
         return;
@@ -287,7 +289,7 @@ RDMATransport::ConnectRDMA(TransportReceiver *src,
     qp_attr->cap.max_recv_wr = 10;
     qp_attr->cap.max_send_sge = 1;
     qp_attr->cap.max_recv_sge = 1;
-    if (rdma_create_qp(id, pd, &qp_attr) != 0) {
+    if (rdma_create_qp(id, info->pd, qp_attr) != 0) {
         Panic("Could not create RDMA queue pair");
     }
 
@@ -295,26 +297,26 @@ RDMATransport::ConnectRDMA(TransportReceiver *src,
     // Register memory for communications
     if ((info->sendmr[0] = ibv_reg_mr(info->pd,
                                       &info->sendType,
-                                      RDMA_MAX_STRING_SIZE,
+                                      MAX_RDMA_SIZE,
                                       IBV_ACCESS_LOCAL_WRITE)) == 0) {
         Panic("Could not register send buffer");
     }
     if ((info->sendmr[1] = ibv_reg_mr(info->pd,
                                       &info->sendData,
-                                      RDMA_MAX_STRING_SIZE,
+                                      MAX_RDMA_SIZE,
                                       IBV_ACCESS_LOCAL_WRITE)) == 0) {
         Panic("Could not register send buffer");
     }
     
     if ((info->recvmr[0] = ibv_reg_mr(info->pd,
                                       &info->recvType,
-                                      RDMA_MAX_STRING_SIZE,
+                                      MAX_RDMA_SIZE,
                                       IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE))== 0) {
         Panic("Could not register receive buffer");
     }
     if ((info->recvmr[1] = ibv_reg_mr(info->pd,
                                       &info->recvData,
-                                      RDMA_MAX_STRING_SIZE,
+                                      MAX_RDMA_SIZE,
                                       IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE))== 0) {
         Panic("Could not register receive buffer");
     }
@@ -325,14 +327,16 @@ RDMATransport::ConnectRDMA(TransportReceiver *src,
     }
 
     // Create an libevent event for the channel
-    info->libevent = event_new(libeventBase, info->channel->fd,
+    info->libevent = event_new(libeventBase,
+                               info->channel->fd,
                                EV_READ|EV_WRITE,
-                               RDMAReadableCallback, (void *)info);
+                               &RDMAReadableCallback,
+                               (void *)info);
     event_add(info->libevent, NULL);
 
     // Set up mappings
     info->transport->rdmaOutgoing[dst] = info;
-    info->transport->rdmaAddresses[info] = dst;
+    info->transport->rdmaAddresses.insert(pair<struct RDMATransportRDMAListener *, RDMATransportAddress>(info,dst));
 }
 
 void
@@ -423,12 +427,12 @@ RDMATransport::SendMessageInternal(TransportReceiver *src,
 
     // first, write message type
     info->sendType = m.GetTypeName();
-    ASSERT(info->sendType.length() < RDMA_MAX_STRING_SIZE);
+    ASSERT(info->sendType.length() < MAX_RDMA_SIZE);
     sge[0].addr = (uintptr_t) &info->sendType;
     sge[0].length = info->sendType.length();
     sge[0].lkey = info->sendmr[0]->lkey;
     info->sendData = m.SerializeAsString();
-    ASSERT(info->sendData.length() < RDMA_MAX_STRING_SIZE);
+    ASSERT(info->sendData.length() < MAX_RDMA_SIZE);
     sge[1].addr = (uintptr_t) &info->sendData;
     sge[1].length = info->sendData.length();
     sge[1].lkey = info->sendmr[1]->lkey;
@@ -582,8 +586,8 @@ RDMATransport::RDMAAcceptCallback(evutil_socket_t fd, short what, void *arg)
     RDMATransport *transport = info->transport;
     struct rdma_cm_event *event;
     rdma_get_cm_event(info->id->channel, &event);
-    sockaddr_in *sock_addr = (sockaddr_in *)rdma_get_peer_addr(event->id);
-    RDMATransportAddress addr(*sock_addr);
+    sockaddr_in *sin = (sockaddr_in *)rdma_get_peer_addr(event->id);
+    RDMATransportAddress addr(*sin);
 
     switch(event->event) {
     case RDMA_CM_EVENT_CONNECT_REQUEST:
@@ -608,8 +612,8 @@ RDMATransport::RDMAAcceptCallback(evutil_socket_t fd, short what, void *arg)
         rdma_get_cm_event(info->id->channel, &event);
         if (event->event == RDMA_CM_EVENT_ESTABLISHED) {
             Debug("Opened incoming RDMA connection from %s:%d",
-                  inet_ntoa(sock_addr->sin_addr),
-                  sock_addr->sin_port);
+                  inet_ntoa(sin->sin_addr),
+                  sin->sin_port);
         } else {
             Warning("Could not open requested RDMA connection");
         }        
@@ -635,12 +639,12 @@ RDMATransport::RDMAAcceptCallback(evutil_socket_t fd, short what, void *arg)
 }
 
 void
-RDMATransport::RDMAReadableCallback(struct event *bev, void *arg)
+RDMATransport::RDMAReadableCallback(evutil_socket_t fd, short what, void *arg)
 {
     RDMATransportRDMAListener *info = (RDMATransportRDMAListener *)arg;
     RDMATransport *transport = info->transport;
-    ibv_cq *cq;
-    ibv_context *context;
+    struct ibv_cq *cq;
+    struct ibv_context *context;
     ibv_get_cq_event(info->channel, &cq, (void**)&context);
     
     struct ibv_wc wc;

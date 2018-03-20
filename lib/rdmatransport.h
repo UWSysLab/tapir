@@ -48,8 +48,6 @@
 #include <netinet/in.h>
 #include <rdma/rdma_cma.h>
 
-#define RDMA_MAX_STRING_SIZE 4096
-
 class RDMATransportAddress : public TransportAddress
 {
 public:
@@ -137,6 +135,7 @@ private:
     void ConnectRDMA(TransportReceiver *src, const RDMATransportAddress &dst);
     void ConnectRDMA(TransportReceiver *src, const RDMATransportAddress &dst,
                      struct rdma_cm_id *id);
+    void CleanupConnection(RDMATransportRDMAListener *info);
     void OnTimer(RDMATransportTimerInfo *info);
     static void TimerCallback(evutil_socket_t fd,
                               short what, void *arg);
@@ -146,12 +145,8 @@ private:
                                short what, void *arg);
     static void RDMAAcceptCallback(evutil_socket_t fd, short what,
                                   void *arg);
-    static void RDMAReadableCallback(struct event *bev,
+    static void RDMAReadableCallback(evutil_socket_t fd, short what,
                                     void *arg);
-    static void RDMAIncomingEventCallback(struct bufferevent *bev,
-                                         short what, void *arg);
-    static void RDMAOutgoingEventCallback(struct bufferevent *bev,
-                                         short what, void *arg);
 };
 
 #endif
