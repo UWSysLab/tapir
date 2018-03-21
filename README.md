@@ -58,6 +58,7 @@ TAPIR depends on protobufs, libevent and openssl, so you will need the following
 - libevent-pthreads
 - libevent-dev
 - libssl-dev
+- protobuf-compiler
 
 ## Contact and Questions
 Please email Irene at iyzhang@cs.washington.edu, Dan at drkp@cs.washington.edu and Naveen at naveenks@cs.washington.edu
