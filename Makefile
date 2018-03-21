@@ -237,6 +237,12 @@ clean:
 	$(call trace,RM,binaries,rm -f $(BINS) $(TEST_BINS))
 	$(call trace,RM,objects,rm -rf .obj)
 
+#
+# Debugging
+#
+print-%:
+	@echo '$*=$($*)'
+
 ##################################################################
 # Targets
 #

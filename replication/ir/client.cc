@@ -225,8 +225,8 @@ IRClient::ConsensusSlowPath(const uint64_t reqId)
         req->timer->Start();
     } else {
         Warning("Could not send finalize message to replicas");
-	pendingReqs.erase(reqId);
-	delete req;
+        pendingReqs.erase(reqId);
+        delete req;
     }
 }
 
@@ -412,9 +412,12 @@ IRClient::HandleConsensusReply(const TransportAddress &remote,
                     req->continuation(req->request, result.first);
                     req->continuationInvoked = true;
                 }
-                break;
+                return;
             }
         }
+
+        // Otherwise no matching results, so take slow path
+        ConsensusSlowPath(reqId);
     }
 }
 
