@@ -16,14 +16,14 @@ trap '{
 }' INT
 
 # Paths to source code and logfiles.
-srcdir="/homes/sys/naveenks/Research/Tapir"
-logdir="/biggerraid/users/naveenks/tapir"
+srcdir="/home/irene/tapir"
+logdir="/home/irene/tapir/log"
 
 # Machines on which replicas are running.
-replicas=("breakout" "pitfall" "qbert")
+replicas=("localhost" "localhost" "localhost")
 
 # Machines on which clients are running.
-clients=("spyhunter")
+clients=("localhost")
 
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
 store="tapirstore"      # Which store (strongstore, weakstore, tapirstore)
@@ -31,7 +31,7 @@ mode="txn-l"            # Mode for storage system.
 
 nshard=1     # number of shards
 nclient=1    # number of clients to run (per machine)
-nkeys=100000 # number of keys to use
+nkeys=10     # number of keys to use
 rtime=10     # duration to run
 
 tlen=2       # transaction length
