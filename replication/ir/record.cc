@@ -29,35 +29,52 @@
  **********************************************************************/
 
 #include "replication/ir/record.h"
+
+#include <utility>
+
 #include "lib/assert.h"
 
 namespace replication {
 namespace ir {
 
-RecordEntry &
-Record::Add(view_t view, opid_t opid, const Request &request,
-            RecordEntryState state)
-{
-    RecordEntry entry;
-    entry.view = view;
-    entry.opid = opid;
-    entry.request = request;
-    entry.state = state;
+Record::Record(const proto::RecordProto &record_proto) {
+    for (const proto::RecordEntryProto &entry_proto : record_proto.entry()) {
+        const view_t view = entry_proto.view();
+        const opid_t opid = std::make_pair(entry_proto.opid().clientid(),
+                                     entry_proto.opid().clientreqid());
+        Request request;
+        request.set_op(entry_proto.op());
+        request.set_clientid(entry_proto.opid().clientid());
+        request.set_clientreqid(entry_proto.opid().clientreqid());
+        proto::RecordEntryState state = entry_proto.state();
+        proto::RecordEntryType type = entry_proto.type();
+        const std::string& result = entry_proto.result();
+        Add(view, opid, request, state, type, result);
+    }
+}
 
+RecordEntry &
+Record::Add(const RecordEntry& entry) {
     // Make sure this isn't a duplicate
-    ASSERT(entries.count(opid) == 0);
-    
-    entries[opid] = entry;
-    return entries[opid];
+    ASSERT(entries.count(entry.opid) == 0);
+    entries[entry.opid] = entry;
+    return entries[entry.opid];
 }
 
 RecordEntry &
 Record::Add(view_t view, opid_t opid, const Request &request,
-            RecordEntryState state, const string &result)
+            proto::RecordEntryState state, proto::RecordEntryType type)
 {
-    RecordEntry entry = Add(view, opid, request, state);
-    entry.result = result;
+    return Add(RecordEntry(view, opid, state, type, request, ""));
+}
 
+RecordEntry &
+Record::Add(view_t view, opid_t opid, const Request &request,
+            proto::RecordEntryState state, proto::RecordEntryType type,
+            const string &result)
+{
+    RecordEntry &entry = Add(view, opid, request, state, type);
+    entry.result = result;
     return entries[opid];
 }
 
@@ -76,7 +93,7 @@ Record::Find(opid_t opid)
 
 
 bool
-Record::SetStatus(opid_t op, RecordEntryState state)
+Record::SetStatus(opid_t op, proto::RecordEntryState state)
 {
     RecordEntry *entry = Find(op);
     if (entry == NULL) {
@@ -116,11 +133,32 @@ Record::Remove(opid_t opid)
 {
     entries.erase(opid);
 }
-    
+
 bool
 Record::Empty() const
 {
     return entries.empty();
+}
+
+void
+Record::ToProto(proto::RecordProto *proto) const
+{
+    for (const std::pair<const opid_t, RecordEntry> &p : entries) {
+        const RecordEntry &entry = p.second;
+        proto::RecordEntryProto *entry_proto = proto->add_entry();
+
+        entry_proto->set_view(entry.view);
+        entry_proto->mutable_opid()->set_clientid(entry.opid.first);
+        entry_proto->mutable_opid()->set_clientreqid(entry.opid.second);
+        entry_proto->set_state(entry.state);
+        entry_proto->set_type(entry.type);
+        entry_proto->set_op(entry.request.op());
+        entry_proto->set_result(entry.result);
+    }
+}
+
+const std::map<opid_t, RecordEntry> &Record::Entries() const {
+    return entries;
 }
 
 } // namespace ir

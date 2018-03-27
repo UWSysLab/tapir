@@ -49,11 +49,12 @@ public:
              uint64_t clientid = 0);
     virtual ~VRClient();
     virtual void Invoke(const string &request,
-                        continuation_t continuation);
+                        continuation_t continuation,
+                        error_continuation_t error_continuation = nullptr);
     virtual void InvokeUnlogged(int replicaIdx,
                                 const string &request,
                                 continuation_t continuation,
-                                timeout_continuation_t timeoutContinuation = nullptr,
+                                error_continuation_t error_continuation = nullptr,
                                 uint32_t timeout = DEFAULT_UNLOGGED_OP_TIMEOUT);
     virtual void ReceiveMessage(const TransportAddress &remote,
                                 const string &type, const string &data);
@@ -80,14 +81,14 @@ protected:
 
     struct PendingUnloggedRequest : public PendingRequest
     {
-	timeout_continuation_t timeoutContinuation;
+	error_continuation_t error_continuation;
         inline PendingUnloggedRequest(string request,
 				      uint64_t clientReqId,
 				      continuation_t continuation,
 				      Timeout *timer,
-				      timeout_continuation_t timeoutContinuation)
+				      error_continuation_t error_continuation)
             : PendingRequest(request, clientReqId, continuation, timer),
-              timeoutContinuation(timeoutContinuation) { };
+              error_continuation(error_continuation) { };
     };
 
     std::unordered_map<uint64_t, PendingRequest *> pendingReqs;

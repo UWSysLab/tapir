@@ -60,7 +60,7 @@ class VRApp : public AppReplica {
 
 public:
     VRApp(std::vector<string> *o, std::vector<string> *u) : ops(o), unloggedOps(u) { }
-    
+
     void ReplicaUpcall(opnum_t opnum, const string &req, string &reply) {
         ops->push_back(req);
         reply = "reply: " + req;
@@ -71,7 +71,7 @@ public:
         reply = "unlreply: " + req;
     }
 };
-    
+
 class VRTest : public  ::testing::TestWithParam<int>
 {
 protected:
@@ -82,7 +82,7 @@ protected:
     std::vector<std::vector<string> > ops;
     std::vector<std::vector<string> > unloggedOps;
     int requestNum;
-    
+
     virtual void SetUp() {
         std::vector<transport::ReplicaAddress> replicaAddrs =
             { { "localhost", "12345" },
@@ -91,7 +91,7 @@ protected:
         config = new transport::Configuration(3, 1, replicaAddrs);
 
         transport = new SimulatedTransport();
-        
+
         ops.resize(config->n);
         unloggedOps.resize(config->n);
 
@@ -118,24 +118,24 @@ protected:
     virtual string LastRequestOp() {
         return RequestOp(requestNum);
     }
-    
+
     virtual void ClientSendNext(Client::continuation_t upcall) {
         requestNum++;
         client->Invoke(LastRequestOp(), upcall);
     }
 
     virtual void ClientSendNextUnlogged(int idx, Client::continuation_t upcall,
-                                        Client::timeout_continuation_t timeoutContinuation = nullptr,
+                                        Client::error_continuation_t error_continuation = nullptr,
                                         uint32_t timeout = Client::DEFAULT_UNLOGGED_OP_TIMEOUT) {
         requestNum++;
-        client->InvokeUnlogged(idx, LastRequestOp(), upcall, timeoutContinuation, timeout);
+        client->InvokeUnlogged(idx, LastRequestOp(), upcall, error_continuation, timeout);
     }
-    
+
     virtual void TearDown() {
         for (auto x : replicas) {
             delete x;
         }
-        
+
         replicas.clear();
         ops.clear();
         unloggedOps.clear();
@@ -157,7 +157,7 @@ TEST_P(VRTest, OneOp)
         EXPECT_EQ(ops[0].back(), req);
         transport->CancelAllTimers();
     };
-    
+
     ClientSendNext(upcall);
     transport->Run();
 
@@ -178,10 +178,10 @@ TEST_P(VRTest, Unlogged)
         transport->CancelAllTimers();
     };
     int timeouts = 0;
-    auto timeout = [&](const string &req) {
+    auto timeout = [&](const string &req, ErrorCode) {
         timeouts++;
     };
-    
+
     ClientSendNextUnlogged(1, upcall, timeout);
     transport->Run();
 
@@ -199,7 +199,7 @@ TEST_P(VRTest, UnloggedTimeout)
         transport->CancelAllTimers();
     };
     int timeouts = 0;
-    auto timeout = [&](const string &req) {
+    auto timeout = [&](const string &req, ErrorCode) {
         timeouts++;
     };
 
@@ -245,7 +245,7 @@ TEST_P(VRTest, ManyOps)
             transport->CancelAllTimers();
         }
     };
-    
+
     ClientSendNext(upcall);
     transport->Run();
 
@@ -253,7 +253,7 @@ TEST_P(VRTest, ManyOps)
     for (int i = 0; i < config->n; i++) {
         EXPECT_EQ(10, ops[i].size());
         for (int j = 0; j < 10; j++) {
-            EXPECT_EQ(RequestOp(j), ops[i][j]);            
+            EXPECT_EQ(RequestOp(j), ops[i][j]);
         }
     }
 }
@@ -274,7 +274,7 @@ TEST_P(VRTest, FailedReplica)
             transport->CancelAllTimers();
         }
     };
-    
+
     ClientSendNext(upcall);
 
     // Drop messages to or from replica 1
@@ -286,7 +286,7 @@ TEST_P(VRTest, FailedReplica)
                              }
                              return true;
                          });
-    
+
     transport->Run();
 
     // By now, they all should have executed the last request.
@@ -296,7 +296,7 @@ TEST_P(VRTest, FailedReplica)
         }
         EXPECT_EQ(10, ops[i].size());
         for (int j = 0; j < 10; j++) {
-            EXPECT_EQ(RequestOp(j), ops[i][j]);            
+            EXPECT_EQ(RequestOp(j), ops[i][j]);
         }
     }
 }
@@ -322,7 +322,7 @@ TEST_P(VRTest, StateTransfer)
             transport->CancelAllTimers();
         }
     };
-    
+
     ClientSendNext(upcall);
 
     // Drop messages to or from replica 1
@@ -334,14 +334,14 @@ TEST_P(VRTest, StateTransfer)
                              }
                              return true;
                          });
-    
+
     transport->Run();
 
     // By now, they all should have executed the last request.
     for (int i = 0; i < config->n; i++) {
         EXPECT_EQ(10, ops[i].size());
         for (int j = 0; j < 10; j++) {
-            EXPECT_EQ(RequestOp(j), ops[i][j]);            
+            EXPECT_EQ(RequestOp(j), ops[i][j]);
         }
     }
 }
@@ -370,9 +370,9 @@ TEST_P(VRTest, FailedLeader)
             transport->CancelAllTimers();
         }
     };
-    
+
     ClientSendNext(upcall);
-    
+
     transport->Run();
 
     // By now, they all should have executed the last request.
@@ -382,7 +382,7 @@ TEST_P(VRTest, FailedLeader)
         }
         EXPECT_EQ(10, ops[i].size());
         for (int j = 0; j < 10; j++) {
-            EXPECT_EQ(RequestOp(j), ops[i][j]);            
+            EXPECT_EQ(RequestOp(j), ops[i][j]);
         }
     }
 }
@@ -412,11 +412,11 @@ TEST_P(VRTest, DroppedReply)
                              return true;
                          });
     ClientSendNext(upcall);
-    
+
     transport->Run();
 
     EXPECT_TRUE(received);
-    
+
     // Each replica should have executed only one request
     for (int i = 0; i < config->n; i++) {
         EXPECT_EQ(1, ops[i].size());
@@ -457,18 +457,18 @@ TEST_P(VRTest, DroppedReplyThenFailedLeader)
                              }
                              return true;
                          });
-    
+
     ClientSendNext(upcall);
-    
+
     transport->Run();
 
     EXPECT_TRUE(received);
-    
+
     // Each replica should have executed only one request
     // (and actually the faulty one should too, but don't check that)
     for (int i = 0; i < config->n; i++) {
         if (i != 0) {
-            EXPECT_EQ(1, ops[i].size());            
+            EXPECT_EQ(1, ops[i].size());
         }
     }
 }
@@ -477,7 +477,7 @@ TEST_P(VRTest, ManyClients)
 {
     const int NUM_CLIENTS = 10;
     const int MAX_REQS = 100;
-    
+
     std::vector<VRClient *> clients;
     std::vector<int> lastReq;
     std::vector<Client::continuation_t> upcalls;
@@ -522,7 +522,7 @@ TEST_P(VRTest, Stress)
     const int MAX_REQS = 100;
     const int MAX_DELAY = 1;
     const int DROP_PROBABILITY = 10; // 1/x
-    
+
     std::vector<VRClient *> clients;
     std::vector<int> lastReq;
     std::vector<Client::continuation_t> upcalls;
@@ -540,7 +540,7 @@ TEST_P(VRTest, Stress)
     }
 
     srand(time(NULL));
-    
+
     // Delay messages from clients by a random amount, and drop some
     // of them
     transport->AddFilter(10, [=](TransportReceiver *src, int srcIdx,
@@ -551,7 +551,7 @@ TEST_P(VRTest, Stress)
                              }
                              return ((rand() % DROP_PROBABILITY) != 0);
                          });
-    
+
     // This could take a while; simulate two hours
     transport->Timer(7200000, [&]() {
             transport->CancelAllTimers();

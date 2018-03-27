@@ -52,6 +52,16 @@ struct ReplicaAddress
     inline bool operator!=(const ReplicaAddress &other) const {
         return !(*this == other);
     }
+    bool operator<(const ReplicaAddress &other) const;
+    bool operator<=(const ReplicaAddress &other) const {
+        return *this < other || *this == other;
+    }
+    bool operator>(const ReplicaAddress &other) const {
+        return !(*this <= other);
+    }
+    bool operator>=(const ReplicaAddress &other) const {
+        return !(*this < other);
+    }
 };
 
 
@@ -69,10 +79,20 @@ public:
     int QuorumSize() const;
     int FastQuorumSize() const;
     bool operator==(const Configuration &other) const;
-    inline bool operator!= (const Configuration &other) const {
+    inline bool operator!=(const Configuration &other) const {
         return !(*this == other);
     }
-    
+    bool operator<(const Configuration &other) const;
+    bool operator<=(const Configuration &other) const {
+        return *this < other || *this == other;
+    }
+    bool operator>(const Configuration &other) const {
+        return !(*this <= other);
+    }
+    bool operator>=(const Configuration &other) const {
+        return !(*this < other);
+    }
+
 public:
     int n;                      // number of replicas
     int f;                      // number of failures tolerated

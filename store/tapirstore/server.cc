@@ -76,7 +76,7 @@ Server::ExecConsensusUpcall(const string &str1, string &str2)
     Reply reply;
     int status;
     Timestamp proposed;
-    
+
     request.ParseFromString(str1);
 
     switch (request.op()) {
@@ -105,7 +105,7 @@ Server::UnloggedUpcall(const string &str1, string &str2)
     Request request;
     Reply reply;
     int status;
-    
+
     request.ParseFromString(str1);
 
     switch (request.op()) {
@@ -134,6 +134,20 @@ Server::UnloggedUpcall(const string &str1, string &str2)
 }
 
 void
+Server::Sync(const std::map<opid_t, RecordEntry>& record)
+{
+    Panic("Unimplemented!");
+}
+
+std::map<opid_t, std::string>
+Server::Merge(const std::map<opid_t, std::vector<RecordEntry>> &d,
+              const std::map<opid_t, std::vector<RecordEntry>> &u,
+              const std::map<opid_t, std::string> &majority_results_in_d)
+{
+    Panic("Unimplemented!");
+}
+
+void
 Server::Load(const string &key, const string &value, const Timestamp timestamp)
 {
     store->Load(key, value, timestamp);
@@ -158,7 +172,7 @@ main(int argc, char **argv)
         case 'c':
             configPath = optarg;
             break;
-            
+
         case 'i':
         {
             char *strtolPtr;
@@ -169,7 +183,7 @@ main(int argc, char **argv)
             }
             break;
         }
-        
+
         case 'm':
         {
             if (strcasecmp(optarg, "txn-l") == 0) {
@@ -251,7 +265,7 @@ main(int argc, char **argv)
     tapirstore::Server server(linearizable);
 
     replication::ir::IRReplica replica(config, index, &transport, &server);
-    
+
     if (keyPath) {
         string key;
         std::ifstream in;
@@ -263,7 +277,7 @@ main(int argc, char **argv)
 
         for (unsigned int i = 0; i < nKeys; i++) {
             getline(in, key);
-            
+
             uint64_t hash = 5381;
             const char* str = key.c_str();
             for (unsigned int j = 0; j < key.length(); j++) {

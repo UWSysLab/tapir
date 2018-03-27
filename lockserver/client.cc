@@ -30,107 +30,14 @@
 
 #include "lockserver/client.h"
 
-namespace {
-
-void
-usage()
-{
-    printf("Unknown command.. Try again!\n");
-    printf("Usage: exit | q | lock <key> | unlock <key>\n");
-}
-
-} // namespace
-
-int
-main(int argc, char **argv)
-{
-    const char *configPath = NULL;
-
-    // Parse arguments
-    int opt;
-    while ((opt = getopt(argc, argv, "c:")) != -1) {
-        switch (opt) {
-        case 'c':
-            configPath = optarg;
-            break;
-
-        default:
-            fprintf(stderr, "Unknown argument %s\n", argv[optind]);
-        }
-    }
-
-    if (!configPath) {
-        fprintf(stderr, "option -c is required\n");
-        return EXIT_FAILURE;
-    }
-
-    lockserver::LockClient locker(configPath);
-
-    char c, cmd[2048], *tok;
-    int clen, status;
-    string key, value;
-
-    while (1) {
-        printf(">> ");
-        fflush(stdout);
-
-        clen = 0;
-        while ((c = getchar()) != '\n')
-            cmd[clen++] = c;
-        cmd[clen] = '\0';
-
-        tok = strtok(cmd, " ,.-");
-        if (tok == NULL) continue;
-
-        if (strcasecmp(tok, "exit") == 0 || strcasecmp(tok, "q") == 0) {
-            printf("Exiting..\n");
-            break;
-        } else if (strcasecmp(tok, "lock") == 0) {
-            tok = strtok(NULL, " ,.-");
-            if (tok == NULL) {
-                usage();
-                continue;
-            }
-            key = string(tok);
-            status = locker.lock(key);
-
-            if (status) {
-                printf("Lock Successful\n");
-            } else {
-                printf("Failed to acquire lock..\n");
-            }
-        } else if (strcasecmp(tok, "unlock") == 0) {
-            tok = strtok(NULL, " ,.-");
-            if (tok == NULL) {
-                usage();
-                continue;
-            }
-            key = string(tok);
-            locker.unlock(key);
-            printf("Unlock Successful\n");
-        } else {
-            usage();
-        }
-        fflush(stdout);
-    }
-
-    return EXIT_SUCCESS;
-}
-
 namespace lockserver {
 
 using namespace std;
 using namespace proto;
 
-LockClient::LockClient(const string &configPath) : transport(0.0, 0.0, 0)
-{
-    // Load configuration
-    std::ifstream configStream(configPath);
-    if (configStream.fail()) {
-        Panic("Unable to read configuration file: %s\n", configPath.c_str());
-    }
-    transport::Configuration config(configStream);
-
+LockClient::LockClient(Transport *transport,
+                       const transport::Configuration &config)
+    : transport(transport) {
     client_id = 0;
     while (client_id == 0) {
         random_device rd;
@@ -139,23 +46,14 @@ LockClient::LockClient(const string &configPath) : transport(0.0, 0.0, 0)
         client_id = dis(gen);
     }
 
-    client = new replication::ir::IRClient(config, &transport, client_id);
-
-    /* Run the transport in a new thread. */
-    clientTransport = new thread(&LockClient::run_client, this);
+    client = new replication::ir::IRClient(config, transport, client_id);
 }
 
 LockClient::~LockClient() { }
 
 void
-LockClient::run_client()
-{
-    transport.Run();
-}
-
-bool
-LockClient::lock(const string &key)
-{
+LockClient::lock_async(const std::string &key) {
+    ASSERT(waiting == nullptr);
     Debug("Sending LOCK");
 
     string request_str;
@@ -166,7 +64,7 @@ LockClient::lock(const string &key)
     request.SerializeToString(&request_str);
 
     waiting = new Promise(1000);
-    transport.Timer(0, [=]() {
+    transport->Timer(0, [=]() {
             client->InvokeConsensus(request_str,
                 bind(&LockClient::Decide,
                     this,
@@ -174,11 +72,21 @@ LockClient::lock(const string &key)
                 bind(&LockClient::LockCallback,
                     this,
                     placeholders::_1,
+                    placeholders::_2),
+                bind(&LockClient::ErrorCallback,
+                    this,
+                    placeholders::_1,
                     placeholders::_2));
             });
+}
+
+bool
+LockClient::lock_wait() {
+    ASSERT(waiting != nullptr);
 
     int status = waiting->GetReply();
     delete waiting;
+    waiting = nullptr;
 
     if (status == 0) {
         return true;
@@ -189,8 +97,8 @@ LockClient::lock(const string &key)
 }
 
 void
-LockClient::unlock(const string &key)
-{
+LockClient::unlock_async(const std::string &key) {
+    ASSERT(waiting == nullptr);
     Debug("Sending UNLOCK");
 
     string request_str;
@@ -201,31 +109,53 @@ LockClient::unlock(const string &key)
     request.SerializeToString(&request_str);
 
     waiting = new Promise(1000);
-    transport.Timer(0, [=]() {
+    transport->Timer(0, [=]() {
             client->InvokeInconsistent(request_str,
                 bind(&LockClient::UnlockCallback,
                     this,
                     placeholders::_1,
                     placeholders::_2));
             });
+}
 
+void
+LockClient::unlock_wait() {
     waiting->GetReply();
     delete waiting;
+    waiting = nullptr;
+}
+
+bool
+LockClient::lock(const string &key)
+{
+    lock_async(key);
+    return lock_wait();
+}
+
+void
+LockClient::unlock(const string &key)
+{
+    unlock_async(key);
+    return unlock_wait();
 }
 
 string
-LockClient::Decide(const set<string> &results)
+LockClient::Decide(const map<string, std::size_t> &results)
 {
     // If a majority say lock, we say lock.
     int success_count = 0;
     string key;
-    for (string s : results) {
+    for (const auto& string_and_count : results) {
+        const string& s = string_and_count.first;
+        const std::size_t count = string_and_count.second;
+
         Reply reply;
         reply.ParseFromString(s);
         key = reply.key();
 
-        if (reply.status() == 0)
-            success_count ++;
+        if (reply.status() == 0) {
+            success_count += count;
+        }
     }
 
     string final_reply_str;
@@ -260,6 +190,17 @@ LockClient::UnlockCallback(const std::string &request_str, const std::string &re
     Promise *w = waiting;
     waiting = NULL;
     w->Reply(0);
+}
+
+void
+LockClient::ErrorCallback(const std::string &request_str,
+                          replication::ErrorCode err)
+{
+    Debug("Error Callback: %s %s", request_str.c_str(),
+          replication::ErrorCodeToString(err).c_str());
+    Promise *w = waiting;
+    waiting = NULL;
+    w->Reply(-3);  // Invalid command.
 }
 
 } // namespace lockserver

@@ -30,66 +30,9 @@
 
 #include "lockserver/server.h"
 
-int
-main(int argc, char **argv)
-{
-    int index = -1;
-    const char *configPath = NULL;
-
-    // Parse arguments
-    int opt;
-    char *strtolPtr;
-    while ((opt = getopt(argc, argv, "c:i:")) != -1) {
-        switch (opt) {
-        case 'c':
-            configPath = optarg;
-            break;
-            
-        case 'i':
-            index = strtol(optarg, &strtolPtr, 10);
-            if ((*optarg == '\0') || (*strtolPtr != '\0') || (index < 0)) {
-                fprintf(stderr, "option -i requires a numeric arg\n");
-            }
-            break;
-        
-        default:
-            fprintf(stderr, "Unknown argument %s\n", argv[optind]);
-        }
-    }
-
-    if (!configPath) {
-        fprintf(stderr, "option -c is required\n");
-        return EXIT_FAILURE;
-    }
-
-    if (index == -1) {
-        fprintf(stderr, "option -i is required\n");
-        return EXIT_FAILURE;
-    }
-
-    // Load configuration
-    std::ifstream configStream(configPath);
-    if (configStream.fail()) {
-        fprintf(stderr, "unable to read configuration file: %s\n", configPath);
-        return EXIT_FAILURE;
-    }
-    transport::Configuration config(configStream);
-
-    if (index >= config.n) {
-        fprintf(stderr, "replica index %d is out of bounds; "
-                "only %d replicas defined\n", index, config.n);
-        return EXIT_FAILURE;
-    }
-
-    UDPTransport transport(0.0, 0.0, 0);
-
-    lockserver::LockServer server;
-    replication::ir::IRReplica replica(config, index, &transport, &server);
-    
-    transport.Run();
-
-    return EXIT_SUCCESS;
-}
+#include <algorithm>
+#include <iterator>
+#include <unordered_set>
 
 namespace lockserver {
 
@@ -171,6 +114,133 @@ void
 LockServer::UnloggedUpcall(const string &str1, string &str2)
 {
     Debug("Unlogged: %s\n", str1.c_str());
+}
+
+void
+LockServer::Sync(const std::map<opid_t, RecordEntry>& record) {
+    locks.clear();
+
+    struct KeyLockInfo {
+        std::unordered_set<uint64_t> locked;
+        std::unordered_set<uint64_t> unlocked;
+    };
+    std::unordered_map<std::string, KeyLockInfo> key_lock_info;
+
+    for (const std::pair<const opid_t, RecordEntry> &p : record) {
+        const opid_t &opid = p.first;
+        const RecordEntry &entry = p.second;
+
+        Request request;
+        request.ParseFromString(entry.request.op());
+        Reply reply;
+        reply.ParseFromString(entry.result);
+        KeyLockInfo &info = key_lock_info[request.key()];
+
+        Debug("Sync opid=(%lu, %lu), clientid=%lu, key=%s, type=%d, status=%d.",
+              opid.first, opid.second, request.clientid(),
+              request.key().c_str(), request.type(), reply.status());
+
+        if (request.type() && reply.status() == 0) {
+            // Lock.
+            info.locked.insert(request.clientid());
+        } else if (!request.type() && reply.status() == 0) {
+            // Unlock.
+            info.unlocked.insert(request.clientid());
+        }
+    }
+
+    for (const std::pair<const std::string, KeyLockInfo> &p : key_lock_info) {
+        const std::string &key = p.first;
+        const KeyLockInfo &info = p.second;
+        std::unordered_set<uint64_t> diff;
+        std::set_difference(std::begin(info.locked), std::end(info.locked),
+                            std::begin(info.unlocked), std::end(info.unlocked),
+                            std::inserter(diff, diff.begin()));
+
+        ASSERT(diff.size() == 0 || diff.size() == 1);
+        if (diff.size() == 1) {
+            uint64_t client_id = *std::begin(diff);
+            Debug("Assigning lock %lu: %s", client_id, key.c_str());
+            locks[key] = client_id;
+        }
+    }
+}
+
+std::map<opid_t, std::string>
+LockServer::Merge(const std::map<opid_t, std::vector<RecordEntry>> &d,
+                  const std::map<opid_t, std::vector<RecordEntry>> &u,
+                  const std::map<opid_t, std::string> &majority_results_in_d) {
+    // First note that d and u only contain consensus operations, and lock
+    // requests are the only consensus operations (unlock is an inconsistent
+    // operation), so d and u only contain lock requests. To merge, we grant
+    // any majority successful lock request in d if it does not conflict with a
+    // currently held lock. We do not grant any other lock request.
+
+    std::map<opid_t, std::string> results;
+
+    using EntryVec = std::vector<RecordEntry>;
+    for (const std::pair<const opid_t, EntryVec>& p: d) {
+        const opid_t &opid = p.first;
+        const EntryVec &entries = p.second;
+
+        // Get the request and reply.
+        const RecordEntry &entry = *std::begin(entries);
+
+        Request request;
+        request.ParseFromString(entry.request.op());
+
+        Reply reply;
+        auto iter = majority_results_in_d.find(opid);
+        ASSERT(iter != std::end(majority_results_in_d));
+        reply.ParseFromString(iter->second);
+
+        // Form the final result.
+        const bool operation_successful = reply.status() == 0;
+        if (operation_successful) {
+            // If the lock was successful, then we acquire the lock so long as
+            // it is not already held.
+            const std::string &key = reply.key();
+            if (locks.count(key) == 0) {
+                Debug("Assigning lock %lu: %s", request.clientid(),
+                      key.c_str());
+                locks[key] = request.clientid();
+                results[opid] = iter->second;
+            } else {
+                Debug("Rejecting lock %lu: %s", request.clientid(),
+                      key.c_str());
+                reply.set_status(-1);
+                std::string s;
+                reply.SerializeToString(&s);
+                results[opid] = s;
+            }
+        } else {
+            // If the lock was not successful, then we maintain this as the
+            // majority result.
+            results[opid] = iter->second;
+        }
+    }
+
+    // We reject all lock requests in u. TODO: We could acquire a lock if
+    // it is free, but it's simplest to just reject them unilaterally.
+    for (const std::pair<const opid_t, EntryVec>& p: u) {
+        const opid_t &opid = p.first;
+        const EntryVec &entries = p.second;
+
+        const RecordEntry &entry = *std::begin(entries);
+        Request request;
+        request.ParseFromString(entry.request.op());
+
+        Debug("Rejecting lock %lu: %s", request.clientid(),
+              request.key().c_str());
+        Reply reply;
+        reply.set_key(request.key());
+        reply.set_status(-1);
+        std::string s;
+        reply.SerializeToString(&s);
+        results[opid] = s;
+    }
+
+    return results;
 }
 
 } // namespace lockserver

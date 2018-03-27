@@ -42,6 +42,7 @@
 #include "store/common/frontend/txnclient.h"
 #include "store/tapirstore/tapir-proto.pb.h"
 
+#include <map>
 #include <string>
 
 namespace tapirstore {
@@ -50,7 +51,7 @@ class ShardClient : public TxnClient
 {
 public:
     /* Constructor needs path to shard config. */
-    ShardClient( const std::string &configPath, 
+    ShardClient( const std::string &configPath,
         Transport *transport,
         uint64_t client_id,
         int shard,
@@ -64,21 +65,21 @@ public:
             Promise *promise = NULL);
     void Get(uint64_t id,
             const std::string &key,
-            const Timestamp &timestamp, 
+            const Timestamp &timestamp,
             Promise *promise = NULL);
     void Put(uint64_t id,
 	     const std::string &key,
 	     const std::string &value,
 	     Promise *promise = NULL);
-    void Prepare(uint64_t id, 
+    void Prepare(uint64_t id,
                  const Transaction &txn,
                  const Timestamp &timestamp = Timestamp(),
                  Promise *promise = NULL);
-    void Commit(uint64_t id, 
+    void Commit(uint64_t id,
                 const Transaction &txn,
                 uint64_t timestamp,
                 Promise *promise = NULL);
-    void Abort(uint64_t id, 
+    void Abort(uint64_t id,
                const Transaction &txn,
                Promise *promise = NULL);
 
@@ -91,10 +92,10 @@ private:
 
     replication::ir::IRClient *client; // Client proxy.
     Promise *waiting; // waiting thread
-    Promise *blockingBegin; // block until finished 
+    Promise *blockingBegin; // block until finished
 
     /* Tapir's Decide Function. */
-    std::string TapirDecide(const std::set<std::string> &results);
+    std::string TapirDecide(const std::map<std::string, std::size_t> &results);
 
     /* Timeout for Get requests, which only go to one replica. */
     void GetTimeout();
