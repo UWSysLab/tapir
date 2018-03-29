@@ -646,17 +646,13 @@ RDMATransport::RDMAAcceptCallback(evutil_socket_t fd, short what, void *arg)
     rdma_get_cm_event(info->id->channel, &event);
     sockaddr_in *sin = (sockaddr_in *)rdma_get_peer_addr(event->id);
     RDMATransportAddress addr(*sin);
-    Debug("Accept callback from: %s:%u",
-          inet_ntoa(sin->sin_addr),
-          sin->sin_port);
 
     switch(event->event) {
     case RDMA_CM_EVENT_CONNECT_REQUEST:
     {
-        if (transport->rdmaOutgoing.find(addr) != transport->rdmaOutgoing.end()) {
-            // we have a connection open already
-            break;
-        }
+        Debug("Accept callback from: %s:%u",
+              inet_ntoa(sin->sin_addr),
+              sin->sin_port);
         // Set up queue pairs for the new connection
         transport->ConnectRDMA(info->receiver, addr, event->id);
         RDMATransportRDMAListener *newconn = transport->rdmaOutgoing[addr];
@@ -694,6 +690,7 @@ RDMATransport::RDMAAcceptCallback(evutil_socket_t fd, short what, void *arg)
         break;
     case RDMA_CM_EVENT_ROUTE_RESOLVED:
     case RDMA_CM_EVENT_ADDR_RESOLVED:
+        Debug("Route or addr resolved");
         break;
     default:
         Warning("Unexpected event on listening socket: %u", event->event);
@@ -720,10 +717,13 @@ RDMATransport::RDMAIncomingCallback(evutil_socket_t fd, short what, void *arg)
         CleanupConnection(info);
         break;
     }
+    case RDMA_CM_EVENT_ADDR_RESOLVED:
     case RDMA_CM_EVENT_ROUTE_RESOLVED:
         Debug("Resolved route");
+        break;
     case RDMA_CM_EVENT_CONNECT_ERROR:
         Debug("Error on connection");
+        break;
     case RDMA_CM_EVENT_ESTABLISHED:
         Debug("Opened incoming RDMA connection");
         break;
