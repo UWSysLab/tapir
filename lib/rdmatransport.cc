@@ -653,6 +653,10 @@ RDMATransport::RDMAAcceptCallback(evutil_socket_t fd, short what, void *arg)
     switch(event->event) {
     case RDMA_CM_EVENT_CONNECT_REQUEST:
     {
+        if (transport->rdmaOutgoing.find(addr) != transport->rdmaOutgoing.end()) {
+            // we have a connection open already
+            break;
+        }
         // Set up queue pairs for the new connection
         transport->ConnectRDMA(info->receiver, addr, event->id);
         RDMATransportRDMAListener *newconn = transport->rdmaOutgoing[addr];
