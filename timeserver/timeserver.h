@@ -11,7 +11,7 @@
 
 #include "lib/configuration.h"
 #include "replication/common/replica.h"
-#include "lib/udptransport.h"
+#include "lib/rdmatransport.h"
 #include "replication/vr/replica.h"
 
 #include <string>

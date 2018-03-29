@@ -156,9 +156,10 @@ main(int argc, char **argv)
     while ((opt = getopt(argc, argv, "c:i:m:e:s:f:n:N:k:")) != -1) {
         switch (opt) {
         case 'c':
+        {
             configPath = optarg;
             break;
-            
+        }   
         case 'i':
         {
             char *strtolPtr;
@@ -169,7 +170,6 @@ main(int argc, char **argv)
             }
             break;
         }
-        
         case 'm':
         {
             if (strcasecmp(optarg, "txn-l") == 0) {
@@ -220,7 +220,6 @@ main(int argc, char **argv)
             keyPath = optarg;
             break;
         }
-
         default:
             fprintf(stderr, "Unknown argument %s\n", argv[optind]);
         }
@@ -246,7 +245,7 @@ main(int argc, char **argv)
                 "only %d replicas defined\n", index, config.n);
     }
 
-    RDMATransport transport(0.0, 0.0, 0);
+    RDMATransport transport(0.0, 0.0, 0, true);
 
     tapirstore::Server server(linearizable);
 
@@ -277,6 +276,7 @@ main(int argc, char **argv)
         in.close();
     }
 
+    fprintf(stderr, "Completed setup. Running server ...");
     transport.Run();
 
     return 0;

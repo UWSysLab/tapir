@@ -97,14 +97,11 @@ private:
         struct rdma_cm_id *id;
         // protection domain
         struct ibv_pd *pd;
-        // completion channel
-        struct ibv_comp_channel *channel;
         // completion queue
         struct ibv_cq *cq;
-        // queue pair
-        struct ibv_qp *qp;
         // libevent event
-        event *libevent;
+        event *cmevent;
+        event *cqevent;
         // message passing space
         string sendType;
         string sendData;
@@ -129,13 +126,15 @@ private:
     RDMATransportAddress
     LookupAddress(const transport::Configuration &cfg,
                   int replicaIdx);
+    RDMATransportAddress*
+    BindToPort(struct rdma_cm_id *id, const string &host, const string &port);
     int PostReceive(RDMATransportRDMAListener *info);
     const RDMATransportAddress *
     LookupMulticastAddress(const transport::Configuration*config) { return NULL; };
     void ConnectRDMA(TransportReceiver *src, const RDMATransportAddress &dst);
     void ConnectRDMA(TransportReceiver *src, const RDMATransportAddress &dst,
                      struct rdma_cm_id *id);
-    void CleanupConnection(RDMATransportRDMAListener *info);
+    static void CleanupConnection(RDMATransportRDMAListener *info);
     void OnTimer(RDMATransportTimerInfo *info);
     static void TimerCallback(evutil_socket_t fd,
                               short what, void *arg);
@@ -145,8 +144,9 @@ private:
                                short what, void *arg);
     static void RDMAAcceptCallback(evutil_socket_t fd, short what,
                                   void *arg);
+    static void RDMAIncomingCallback(evutil_socket_t fd, short what, void *arg);
     static void RDMAReadableCallback(evutil_socket_t fd, short what,
-                                    void *arg);
+                                     void *arg);
 };
 
 #endif

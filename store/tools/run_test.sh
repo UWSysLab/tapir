@@ -17,7 +17,7 @@ trap '{
 
 # Paths to source code and logfiles.
 srcdir="/home/irene/tapir"
-logdir="/home/irene/tapir/log"
+logdir="/home/irene/tapir/logs"
 
 # Machines on which replicas are running.
 replicas=("localhost" "localhost" "localhost")
