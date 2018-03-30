@@ -130,7 +130,7 @@ IRClient::InvokeConsensus(const string &request,
 				    std::move(timer),
 				    std::move(transition_to_slow_path_timer),
 				    config.QuorumSize(),
-				    config.QuorumSize() + ceil(0.5 * config.QuorumSize()),
+				    config.FastQuorumSize(),
 				    decide,
                     error_continuation);
 
