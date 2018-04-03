@@ -9,6 +9,40 @@ message OpID {
     required uint64 clientreqid = 2;
 }
 
+// For the view change and recovery protocol, a replica stores two things on
+// disk: (1) its current view and (2) the latest view during which it was
+// NORMAL. Replicas pack this information into this proto buf and serialize it
+// to disk.
+message PersistedViewInfo {
+  required uint64 view = 1;
+  required uint64 latest_normal_view = 2;
+}
+
+enum RecordEntryState {
+    RECORD_STATE_TENTATIVE = 0;
+    RECORD_STATE_FINALIZED = 1;
+}
+
+enum RecordEntryType {
+    RECORD_TYPE_INCONSISTENT = 0;
+    RECORD_TYPE_CONSENSUS = 1;
+}
+
+message RecordEntryProto {
+  required uint64 view = 1;
+  required OpID opid = 2;
+  required RecordEntryState state = 3;
+  required RecordEntryType type = 4;
+  required bytes op = 5;
+  required bytes result = 6;
+}
+
+// TODO: Currently, replicas send entire records to one another. Figure out if
+// there is a more efficient way to exchange records.
+message RecordProto {
+  repeated RecordEntryProto entry = 1;
+}
+
 message ProposeInconsistentMessage {
     required replication.Request req = 1;
 }
@@ -17,6 +51,7 @@ message ReplyInconsistentMessage {
     required uint64 view = 1;
     required uint32 replicaIdx = 2;
     required OpID opid = 3;
+    required bool finalized = 4;
 }
 
 message FinalizeInconsistentMessage {
@@ -38,11 +73,25 @@ message ReplyConsensusMessage {
     required uint32 replicaIdx = 2;
     required OpID opid = 3;
     required bytes result = 4;
+    required bool finalized = 5;
 }
 
 message FinalizeConsensusMessage {
     required OpID opid = 1;
     required bytes result = 2;
+}
+
+message DoViewChangeMessage {
+    required uint32 replicaIdx = 1;
+    // record is optional because a replica only sends its record to the
+    // leader of the new view.
+    optional RecordProto record = 2;
+    required uint64 new_view = 3;
+    required uint64 latest_normal_view = 4;
+}
+message StartViewMessage {
+    required RecordProto record = 1;
+    required uint64 new_view = 2;
 }
 
 message UnloggedRequestMessage {

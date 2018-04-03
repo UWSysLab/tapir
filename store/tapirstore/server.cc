@@ -76,7 +76,7 @@ Server::ExecConsensusUpcall(const string &str1, string &str2)
     Reply reply;
     int status;
     Timestamp proposed;
-    
+
     request.ParseFromString(str1);
 
     switch (request.op()) {
@@ -105,7 +105,7 @@ Server::UnloggedUpcall(const string &str1, string &str2)
     Request request;
     Reply reply;
     int status;
-    
+
     request.ParseFromString(str1);
 
     switch (request.op()) {
@@ -131,6 +131,20 @@ Server::UnloggedUpcall(const string &str1, string &str2)
     default:
         Panic("Unrecognized Unlogged request.");
     }
+}
+
+void
+Server::Sync(const std::map<opid_t, RecordEntry>& record)
+{
+    Panic("Unimplemented!");
+}
+
+std::map<opid_t, std::string>
+Server::Merge(const std::map<opid_t, std::vector<RecordEntry>> &d,
+              const std::map<opid_t, std::vector<RecordEntry>> &u,
+              const std::map<opid_t, std::string> &majority_results_in_d)
+{
+    Panic("Unimplemented!");
 }
 
 void
@@ -245,12 +259,12 @@ main(int argc, char **argv)
                 "only %d replicas defined\n", index, config.n);
     }
 
-    RDMATransport transport(0.0, 0.0, 0, true);
+    TCPTransport transport(0.0, 0.0, 0, true);
 
     tapirstore::Server server(linearizable);
 
     replication::ir::IRReplica replica(config, index, &transport, &server);
-    
+
     if (keyPath) {
         string key;
         std::ifstream in;
@@ -262,7 +276,7 @@ main(int argc, char **argv)
 
         for (unsigned int i = 0; i < nKeys; i++) {
             getline(in, key);
-            
+
             uint64_t hash = 5381;
             const char* str = key.c_str();
             for (unsigned int j = 0; j < key.length(); j++) {

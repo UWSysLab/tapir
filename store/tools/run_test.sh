@@ -16,8 +16,8 @@ trap '{
 }' INT
 
 # Paths to source code and logfiles.
-srcdir="/home/irene/proj/tapir"
-logdir="/home/irene/proj/tapir/logs"
+srcdir="/home/irene/proj/msr/tapir"
+logdir="/home/irene/proj/msr/tapir/logs"
 
 # Machines on which replicas are running.
 replicas=("iyzhang-test" "iyzhang-test" "iyzhang-test")

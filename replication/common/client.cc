@@ -36,7 +36,19 @@
 #include <random>
 
 namespace replication {
-    
+
+std::string ErrorCodeToString(ErrorCode err) {
+    switch (err) {
+        case ErrorCode::TIMEOUT:
+            return "TIMEOUT";
+        case ErrorCode::MISMATCHED_CONSENSUS_VIEWS:
+            return "MISMATCHED_CONSENSUS_VIEWS";
+        default:
+            Assert(false);
+            return "";
+    }
+}
+
 Client::Client(const transport::Configuration &config, Transport *transport,
                uint64_t clientid)
     : config(config), transport(transport)
@@ -61,7 +73,7 @@ Client::~Client()
 {
 
 }
-    
+
 void
 Client::ReceiveMessage(const TransportAddress &remote,
                        const string &type, const string &data)
@@ -69,5 +81,5 @@ Client::ReceiveMessage(const TransportAddress &remote,
     Panic("Received unexpected message type: %s",
           type.c_str());
 }
-    
+
 } // namespace replication

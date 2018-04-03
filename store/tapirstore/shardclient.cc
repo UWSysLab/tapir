@@ -40,7 +40,7 @@ ShardClient::ShardClient(const string &configPath,
                        Transport *transport, uint64_t client_id, int
                        shard, int closestReplica)
     : client_id(client_id), transport(transport), shard(shard)
-{ 
+{
     ifstream configStream(configPath);
     if (configStream.fail()) {
         Panic("Unable to read configuration file: %s\n", configPath.c_str());
@@ -63,7 +63,7 @@ ShardClient::ShardClient(const string &configPath,
 }
 
 ShardClient::~ShardClient()
-{ 
+{
     delete client;
 }
 
@@ -98,7 +98,7 @@ ShardClient::Get(uint64_t id, const string &key, Promise *promise)
     int timeout = (promise != NULL) ? promise->GetTimeout() : 1000;
 
     transport->Timer(0, [=]() {
-	    waiting = promise;    
+	    waiting = promise;
         client->InvokeUnlogged(replica,
                                request_str,
                                bind(&ShardClient::GetCallback,
@@ -181,20 +181,23 @@ ShardClient::Prepare(uint64_t id, const Transaction &txn,
 }
 
 std::string
-ShardClient::TapirDecide(const std::set<std::string> &results)
+ShardClient::TapirDecide(const std::map<std::string, std::size_t> &results)
 {
-    // If a majority say prepare_ok, 
+    // If a majority say prepare_ok,
     int ok_count = 0;
     Timestamp ts = 0;
     string final_reply_str;
     Reply final_reply;
 
-    for (string s : results) {
+    for (const auto& string_and_count : results) {
+        const std::string &s = string_and_count.first;
+        const std::size_t count = string_and_count.second;
+
         Reply reply;
         reply.ParseFromString(s);
-	
+
 	if (reply.status() == REPLY_OK) {
-	    ok_count++;
+	    ok_count += count;
 	} else if (reply.status() == REPLY_FAIL) {
 	    return s;
 	} else if (reply.status() == REPLY_RETRY) {
@@ -245,7 +248,7 @@ void
 ShardClient::Abort(uint64_t id, const Transaction &txn, Promise *promise)
 {
     Debug("[shard %i] Sending ABORT [%lu]", shard, id);
-    
+
     // create abort request
     string request_str;
     Request request;

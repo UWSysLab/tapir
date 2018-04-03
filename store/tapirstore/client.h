@@ -36,6 +36,8 @@
 #include "lib/message.h"
 #include "lib/configuration.h"
 #include "lib/rdmatransport.h"
+#include "lib/tcptransport.h"
+#include "lib/udptransport.h"
 #include "replication/ir/client.h"
 #include "store/common/timestamp.h"
 #include "store/common/truetime.h"
@@ -82,7 +84,7 @@ private:
     std::set<int> participants;
 
     // Transport used by IR client proxies.
-    RDMATransport transport;
+    TCPTransport transport;
     
     // Thread running the transport event loop.
     std::thread *clientTransport;

@@ -38,7 +38,7 @@
 SimulatedTransportAddress::SimulatedTransportAddress(int addr)
     : addr(addr)
 {
-    
+
 }
 
 int
@@ -70,7 +70,7 @@ SimulatedTransport::SimulatedTransport()
 
 SimulatedTransport::~SimulatedTransport()
 {
-    
+
 }
 
 void
@@ -99,12 +99,12 @@ SimulatedTransport::SendMessageInternal(TransportReceiver *src,
                                         bool multicast)
 {
     ASSERT(!multicast);
-    
+
     int dst = dstAddr.addr;
-    
+
     Message *msg = m.New();
     msg->CheckTypeAndMergeFrom(m);
-    
+
     int srcAddr =
         dynamic_cast<const SimulatedTransportAddress &>(src->GetAddress()).addr;
 
@@ -119,11 +119,11 @@ SimulatedTransport::SendMessageInternal(TransportReceiver *src,
             return true;
         }
     }
-                      
+
     string msgData;
     msg->SerializeToString(&msgData);
     delete msg;
-    
+
     QueuedMessage q(dst, srcAddr, m.GetTypeName(), msgData);
 
     if (delay == 0) {
@@ -133,7 +133,7 @@ SimulatedTransport::SendMessageInternal(TransportReceiver *src,
                 queue.push_back(q);
             });
     }
-    return true;    
+    return true;
 }
 
 SimulatedTransportAddress
@@ -144,7 +144,7 @@ SimulatedTransport::LookupAddress(const transport::Configuration &cfg,
     // idx match. This is the least efficient possible way to do this,
     // but that's why this is the simulated transport not the real
     // one... (And we only have to do this once at runtime.)
-    
+
 
     for (auto & kv : configurations) {
         if (*(kv.second) == cfg) {
@@ -157,7 +157,7 @@ SimulatedTransport::LookupAddress(const transport::Configuration &cfg,
             }
         }
     }
-    
+
     Panic("No replica %d was registered", idx);
 }
 
@@ -171,7 +171,7 @@ void
 SimulatedTransport::Run()
 {
     LookupAddresses();
-    
+
     do {
         // Process queue
         while (!queue.empty()) {
@@ -190,7 +190,7 @@ SimulatedTransport::Run()
             timers.erase(iter);
             cb();
         }
-        
+
         // ...then retry to see if there are more queued messages to
         // deliver first
     } while (!queue.empty() || (processTimers && !timers.empty()));
@@ -234,7 +234,7 @@ SimulatedTransport::CancelTimer(int id)
             iter++;
         }
     }
-    
+
     return found;
 }
 

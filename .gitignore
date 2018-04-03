@@ -1,6 +1,8 @@
 .obj/
-lockserver/client
-lockserver/server
+
+lockserver/client-main
+lockserver/server-main
+lockserver/lockserver-repl
 store/benchmark/benchClient
 store/benchmark/retwisClient
 store/benchmark/terminalClient
@@ -8,6 +10,15 @@ store/strongstore/server
 store/tapirstore/server
 store/weakstore/server
 timeserver/timeserver
+
+lib/tests/configuration-test
+lib/tests/simtransport-test
+lockserver/tests/lockserver-test
+replication/ir/tests/ir-test
+replication/vr/tests/vr-test
+store/common/backend/tests/kvstore-test
+store/common/backend/tests/lockserver-test
+store/common/backend/tests/versionstore-test
 
 ################################################################################
 # vim
