@@ -50,7 +50,7 @@ IRReplica::IRReplica(transport::Configuration config, int myIdx,
         PersistViewInfo();
         BroadcastDoViewChangeMessages();
     } else {
-        PersistViewInfo();
+        //  PersistViewInfo();
     }
 
     // TODO: Figure out a good view change timeout.
@@ -58,7 +58,7 @@ IRReplica::IRReplica(transport::Configuration config, int myIdx,
     view_change_timeout = std::unique_ptr<Timeout>(
         new Timeout(transport, view_change_timeout_ms,
                     [this]() { this->HandleViewChangeTimeout(); }));
-    view_change_timeout->Start();
+    //view_change_timeout->Start();
 }
 
 IRReplica::~IRReplica() { }
