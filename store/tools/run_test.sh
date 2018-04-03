@@ -16,11 +16,11 @@ trap '{
 }' INT
 
 # Paths to source code and logfiles.
-srcdir="/home/irene/tapir"
-logdir="/home/irene/tapir/logs"
+srcdir="/home/irene/proj/tapir"
+logdir="/home/irene/proj/tapir/logs"
 
 # Machines on which replicas are running.
-replicas=("localhost" "localhost" "localhost")
+replicas=("iyzhang-test" "iyzhang-test" "iyzhang-test")
 
 # Machines on which clients are running.
 clients=("localhost")
@@ -85,7 +85,7 @@ count=0
 for host in ${clients[@]}
 do
   ssh $host "$srcdir/store/tools/start_client.sh \"$srcdir/store/benchmark/$client \
-  -c $srcdir/store/tools/shard -N $nshard -f $srcdir/store/tools/keys \
+  -c $srcdir/store/tools/shard -r 0 -N $nshard -f $srcdir/store/tools/keys \
   -d $rtime -l $tlen -w $wper -k $nkeys -m $mode -e $err -s $skew -z $zalpha\" \
   $count $nclient $logdir"
 

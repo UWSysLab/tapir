@@ -42,7 +42,7 @@
 #define DEFAULT_MULTICAST_TIMEOUT_MS 500
 
 // Timeouts for various operations
-#define GET_TIMEOUT 250
+#define GET_TIMEOUT 10000
 #define GET_RETRIES 3
 // Only used for QWStore
 #define PUT_TIMEOUT 250

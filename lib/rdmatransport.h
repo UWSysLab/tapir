@@ -48,6 +48,8 @@
 #include <netinet/in.h>
 #include <rdma/rdma_cma.h>
 
+const size_t MAX_RDMA_SIZE = 4096; // Our RDMA buffers
+
 class RDMATransportAddress : public TransportAddress
 {
 public:
@@ -103,11 +105,11 @@ private:
         event *cmevent;
         event *cqevent;
         // message passing space
-        string sendType;
-        string sendData;
+        char sendType[MAX_RDMA_SIZE];
+        char sendData[MAX_RDMA_SIZE];
         ibv_mr *sendmr[2];
-        string recvType;
-        string recvData;
+        char recvType[MAX_RDMA_SIZE];
+        char recvData[MAX_RDMA_SIZE];
         ibv_mr *recvmr[2];
     };
     event_base *libeventBase;
@@ -128,7 +130,7 @@ private:
                   int replicaIdx);
     RDMATransportAddress*
     BindToPort(struct rdma_cm_id *id, const string &host, const string &port);
-    int PostReceive(RDMATransportRDMAListener *info);
+    static int PostReceive(RDMATransportRDMAListener *info);
     const RDMATransportAddress *
     LookupMulticastAddress(const transport::Configuration*config) { return NULL; };
     void ConnectRDMA(TransportReceiver *src, const RDMATransportAddress &dst);
