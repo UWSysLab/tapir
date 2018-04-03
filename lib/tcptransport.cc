@@ -223,6 +223,15 @@ TCPTransport::ConnectTCP(TransportReceiver *src, const TCPTransportAddress &dst)
         Panic("Failed to enable bufferevent");
     }
 
+    // Tell the receiver its address
+    struct sockaddr_in sin;
+    socklen_t sinsize = sizeof(sin);
+    if (getsockname(fd, (sockaddr *) &sin, &sinsize) < 0) {
+        PPanic("Failed to get socket name");
+    }
+    TCPTransportAddress *addr = new TCPTransportAddress(sin);
+    src->SetAddress(addr);
+
     tcpOutgoing[dst] = bev;
     tcpAddresses.insert(pair<struct bufferevent*, TCPTransportAddress>(bev,dst));
 
@@ -243,7 +252,7 @@ TCPTransport::Register(TransportReceiver *receiver,
 
     // Clients don't need to accept TCP connections
     if (replicaIdx == -1) {
-	return;
+        return;
     }
     
     // Create socket
