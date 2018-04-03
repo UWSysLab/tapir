@@ -41,6 +41,7 @@
 #include <set>
 #include <string>
 #include <thread>
+#include <random>
 
 namespace lockserver {
 
