@@ -407,7 +407,16 @@ RDMATransport::ConnectRDMA(TransportReceiver *src,
                               &RDMAReadableCallback,
                               (void *)info);
     event_add(info->cqevent, NULL);
-                            
+
+    // Tell the receiver its address
+    struct sockaddr_in sin;
+    socklen_t sinsize = sizeof(sin);
+    if (getsockname(fd, (sockaddr *) &sin, &sinsize) < 0) {
+        PPanic("Failed to get socket name");
+    }
+    RDMATransportAddress *addr = new RDMATransportAddress(sin);
+    src->SetAddress(addr);
+
     // Set up mappings
     info->transport->rdmaOutgoing[dst] = info;
     info->transport->rdmaAddresses.insert(pair<struct RDMATransportRDMAListener *, RDMATransportAddress>(info,dst));

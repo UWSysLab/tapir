@@ -16,11 +16,11 @@ trap '{
 }' INT
 
 # Paths to source code and logfiles.
-srcdir="/home/irene/proj/msr/tapir"
-logdir="/home/irene/proj/msr/tapir/logs"
+srcdir="/home/irene/proj/tapir"
+logdir="/home/irene/proj/tapir/logs"
 
 # Machines on which replicas are running.
-replicas=("iyzhang-test" "iyzhang-test" "iyzhang-test")
+replicas=("localhost" "localhost" "localhost")
 
 # Machines on which clients are running.
 clients=("localhost")
@@ -32,8 +32,8 @@ mode="txn-l"            # Mode for storage system.
 nshard=1     # number of shards
 nclient=1    # number of clients to run (per machine)
 nkeys=10     # number of keys to use
-rtime=10     # duration to run
-
+rtime=9     # duration to run
+nthread=1
 tlen=2       # transaction length
 wper=0       # writes percentage
 err=0        # error
