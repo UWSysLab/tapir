@@ -85,6 +85,7 @@ TCPTransport::LookupAddress(const transport::ReplicaAddress &addr)
 {
         int res;
         struct addrinfo hints;
+        memset(&hints, 0, sizeof(hints));
         hints.ai_family   = AF_INET;
         hints.ai_socktype = SOCK_STREAM;
         hints.ai_protocol = 0;
@@ -196,6 +197,13 @@ TCPTransport::ConnectTCP(TransportReceiver *src, const TCPTransportAddress &dst)
         PWarning("Failed to set O_NONBLOCK on outgoing TCP socket");
     }
 
+    // Set TCP_NODELAY
+    int n = 1;
+    if (setsockopt(fd, IPPROTO_TCP,
+                   TCP_NODELAY, (char *)&n, sizeof(n)) < 0) {
+        PWarning("Failed to set TCP_NODELAY on TCP listening socket");
+    }
+
     TCPTransportTCPListener *info = new TCPTransportTCPListener();
     info->transport = this;
     info->acceptFd = 0;
@@ -221,6 +229,15 @@ TCPTransport::ConnectTCP(TransportReceiver *src, const TCPTransportAddress &dst)
     if (bufferevent_enable(bev, EV_READ|EV_WRITE) < 0) {
         Panic("Failed to enable bufferevent");
     }
+
+    // Tell the receiver its address
+    struct sockaddr_in sin;
+    socklen_t sinsize = sizeof(sin);
+    if (getsockname(fd, (sockaddr *) &sin, &sinsize) < 0) {
+        PPanic("Failed to get socket name");
+    }
+    TCPTransportAddress *addr = new TCPTransportAddress(sin);
+    src->SetAddress(addr);
 
     tcpOutgoing[dst] = bev;
     tcpAddresses.insert(pair<struct bufferevent*, TCPTransportAddress>(bev,dst));
@@ -525,6 +542,13 @@ TCPTransport::TCPAcceptCallback(evutil_socket_t fd, short what, void *arg)
             PWarning("Failed to set O_NONBLOCK");
         }
 
+            // Set TCP_NODELAY
+        int n = 1;
+        if (setsockopt(newfd, IPPROTO_TCP,
+                       TCP_NODELAY, (char *)&n, sizeof(n)) < 0) {
+            PWarning("Failed to set TCP_NODELAY on TCP listening socket");
+        }
+
         // Create a buffered event
         bev = bufferevent_socket_new(transport->libeventBase, newfd,
                                      BEV_OPT_CLOSE_ON_FREE);
@@ -552,59 +576,62 @@ TCPTransport::TCPReadableCallback(struct bufferevent *bev, void *arg)
 
     Debug("Readable on bufferevent %p", bev);
     
-    uint32_t *magic;
-    magic = (uint32_t *)evbuffer_pullup(evbuf, sizeof(*magic));
-    if (magic == NULL) {
-        return;
+
+    while (evbuffer_get_length(evbuf) > 0) {
+        uint32_t *magic;
+        magic = (uint32_t *)evbuffer_pullup(evbuf, sizeof(*magic));
+        if (magic == NULL) {
+            return;
+        }
+        ASSERT(*magic == MAGIC);
+    
+        size_t *sz;
+        unsigned char *x = evbuffer_pullup(evbuf, sizeof(*magic) + sizeof(*sz));
+        
+        sz = (size_t *) (x + sizeof(*magic));
+        if (x == NULL) {
+            return;
+        }
+        size_t totalSize = *sz;
+        ASSERT(totalSize < 1073741826);
+        
+        if (evbuffer_get_length(evbuf) < totalSize) {
+            Debug("Don't have %ld bytes for a message yet, only %ld",
+                  totalSize, evbuffer_get_length(evbuf));
+            return;
+        }
+        Debug("Receiving %ld byte message", totalSize);
+        
+        char buf[totalSize];
+        size_t copied = evbuffer_remove(evbuf, buf, totalSize);
+        ASSERT(copied == totalSize);
+        
+        // Parse message
+        char *ptr = buf + sizeof(*sz) + sizeof(*magic);
+        
+        size_t typeLen = *((size_t *)ptr);
+        ptr += sizeof(size_t);
+        ASSERT((size_t)(ptr-buf) < totalSize);
+        
+        ASSERT((size_t)(ptr+typeLen-buf) < totalSize);
+        string msgType(ptr, typeLen);
+        ptr += typeLen;
+        
+        size_t msgLen = *((size_t *)ptr);
+        ptr += sizeof(size_t);
+        ASSERT((size_t)(ptr-buf) < totalSize);
+        
+        ASSERT((size_t)(ptr+msgLen-buf) <= totalSize);
+        string msg(ptr, msgLen);
+        ptr += msgLen;
+        
+        auto addr = transport->tcpAddresses.find(bev);
+        ASSERT(addr != transport->tcpAddresses.end());
+        
+        // Dispatch
+        info->receiver->ReceiveMessage(addr->second, msgType, msg);
+        Debug("Done processing large %s message", msgType.c_str());
     }
-    ASSERT(*magic == MAGIC);
-    
-    size_t *sz;
-    unsigned char *x = evbuffer_pullup(evbuf, sizeof(*magic) + sizeof(*sz));
-    
-    sz = (size_t *) (x + sizeof(*magic));
-    if (x == NULL) {
-        return;
-    }
-    size_t totalSize = *sz;
-    ASSERT(totalSize < 1073741826);
-    
-    if (evbuffer_get_length(evbuf) < totalSize) {
-        Debug("Don't have %ld bytes for a message yet, only %ld",
-               totalSize, evbuffer_get_length(evbuf));
-        return;
-    }
-    Debug("Receiving %ld byte message", totalSize);
-
-    char buf[totalSize];
-    size_t copied = evbuffer_remove(evbuf, buf, totalSize);
-    ASSERT(copied == totalSize);
-    
-    // Parse message
-    char *ptr = buf + sizeof(*sz) + sizeof(*magic);
-
-    size_t typeLen = *((size_t *)ptr);
-    ptr += sizeof(size_t);
-    ASSERT((size_t)(ptr-buf) < totalSize);
-    
-    ASSERT((size_t)(ptr+typeLen-buf) < totalSize);
-    string msgType(ptr, typeLen);
-    ptr += typeLen;
-    
-    size_t msgLen = *((size_t *)ptr);
-    ptr += sizeof(size_t);
-    ASSERT((size_t)(ptr-buf) < totalSize);
-    
-    ASSERT((size_t)(ptr+msgLen-buf) <= totalSize);
-    string msg(ptr, msgLen);
-    ptr += msgLen;
-
-    auto addr = transport->tcpAddresses.find(bev);
-    ASSERT(addr != transport->tcpAddresses.end());
-
-    // Dispatch
-    info->receiver->ReceiveMessage(addr->second, msgType, msg);
-    Debug("Done processing large %s message", msgType.c_str());
 }
 
 void
