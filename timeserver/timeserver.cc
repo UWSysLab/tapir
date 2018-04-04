@@ -46,10 +46,9 @@ main(int argc, char **argv)
     int index = -1;
     const char *configPath = NULL;
     char *strtolPtr;
-
     // Parse arguments
     int opt;
-    while ((opt = getopt(argc, argv, "c:i:")) != -1) {
+    while ((opt = getopt(argc, argv, "c:i:t:")) != -1) {
         switch (opt) {
         case 'c':
             configPath = optarg;
@@ -62,7 +61,6 @@ main(int argc, char **argv)
                 Usage(argv[0]);
             }
             break;
-
         default:
             fprintf(stderr, "Unknown argument %s\n", argv[optind]);
             break;
@@ -93,12 +91,16 @@ main(int argc, char **argv)
         Usage(argv[0]);
     }
 
-    TCPTransport transport(0.0, 0.0, 0);
-
+#if TRANSPORT == UDP
+    UDPTransport transport(0.0, 0.0, 0);;
+#elif TRANSPORT == TCP
+    TCPTransport transport(0.0, 0.0, 0);;
+#elif TRANSPORT == RDMA
+    RDMATransport transport(0.0, 0.0, 0);;
+#endif
     TimeStampServer server;
     replication::vr::VRReplica replica(config, index, &transport, 1, &server);
 
     transport.Run();
-
     return 0;
 }

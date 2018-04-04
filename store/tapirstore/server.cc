@@ -167,7 +167,7 @@ main(int argc, char **argv)
 
     // Parse arguments
     int opt;
-    while ((opt = getopt(argc, argv, "c:i:m:e:s:f:n:N:k:")) != -1) {
+    while ((opt = getopt(argc, argv, "c:i:m:e:s:f:n:N:k:t:")) != -1) {
         switch (opt) {
         case 'c':
         {
@@ -259,7 +259,13 @@ main(int argc, char **argv)
                 "only %d replicas defined\n", index, config.n);
     }
 
-    TCPTransport transport(0.0, 0.0, 0, true);
+#if TRANSPORT == UDP
+    UDPTransport transport(0.0, 0.0, 0);;
+#elif TRANSPORT == TCP
+    TCPTransport transport(0.0, 0.0, 0);;
+#elif TRANSPORT == RDMA
+    RDMATransport transport(0.0, 0.0, 0);;
+#endif
 
     tapirstore::Server server(linearizable);
 
@@ -292,6 +298,5 @@ main(int argc, char **argv)
 
     fprintf(stderr, "Completed setup. Running server ...");
     transport.Run();
-
     return 0;
 }

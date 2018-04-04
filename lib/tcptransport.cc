@@ -173,6 +173,7 @@ TCPTransport::TCPTransport(double dropRate, double reorderRate,
             event_add(x, NULL);
         }
     }
+    Debug("Using TCP transport");
 }
 
 TCPTransport::~TCPTransport()

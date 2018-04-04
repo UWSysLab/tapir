@@ -215,6 +215,7 @@ UDPTransport::UDPTransport(double dropRate, double reorderRate,
             event_add(x, NULL);
         }
     }
+    Debug("Using UDP Transport");
 }
 
 UDPTransport::~UDPTransport()

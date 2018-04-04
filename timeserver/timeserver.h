@@ -11,9 +11,13 @@
 
 #include "lib/configuration.h"
 #include "replication/common/replica.h"
-#include "lib/rdmatransport.h"
-#include "lib/tcptransport.h"
+#if TRANSPORT == UDP
 #include "lib/udptransport.h"
+#elif TRANSPORT == TCP
+#include "lib/tcptransport.h"
+#elif TRANSPORT == RDMA
+#include "lib/rdmatransport.h"
+#endif
 #include "replication/vr/replica.h"
 
 #include <string>

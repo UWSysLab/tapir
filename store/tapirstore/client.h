@@ -35,9 +35,15 @@
 #include "lib/assert.h"
 #include "lib/message.h"
 #include "lib/configuration.h"
-#include "lib/rdmatransport.h"
-#include "lib/tcptransport.h"
+#include "lib/transport.h"
+#if TRANSPORT == UDP
 #include "lib/udptransport.h"
+#elif TRANSPORT == TCP
+#include "lib/tcptransport.h"
+#elif TRANSPORT == RDMA
+#include "lib/rdmatransport.h"
+#endif
+
 #include "replication/ir/client.h"
 #include "store/common/timestamp.h"
 #include "store/common/truetime.h"
@@ -84,7 +90,13 @@ private:
     std::set<int> participants;
 
     // Transport used by IR client proxies.
+#if TRANSPORT == UDP
+    UDPTransport transport;
+#elif TRANSPORT == TCP
     TCPTransport transport;
+#elif TRANSPORT == RDMA
+    RDMATransport transport;
+#endif
     
     // Thread running the transport event loop.
     std::thread *clientTransport;

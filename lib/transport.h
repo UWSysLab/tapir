@@ -40,6 +40,11 @@
 #define REPLICA_NETWORK_DELAY 0
 #define READ_AT_LEADER 1
 
+#define UDP 0
+#define TCP 1
+#define RDMA 2
+#define TRANSPORT RDMA
+
 class TransportAddress
 {
 public:

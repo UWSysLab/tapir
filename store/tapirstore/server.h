@@ -37,9 +37,13 @@
 #include "store/common/truetime.h"
 #include "store/tapirstore/store.h"
 #include "store/tapirstore/tapir-proto.pb.h"
-#include "lib/rdmatransport.h"
-#include "lib/tcptransport.h"
+#if TRANSPORT == UDP
 #include "lib/udptransport.h"
+#elif TRANSPORT == TCP
+#include "lib/tcptransport.h"
+#elif TRANSPORT == RDMA
+#endif
+#include "lib/rdmatransport.h"
 
 namespace tapirstore {
 

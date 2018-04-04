@@ -35,9 +35,9 @@ namespace tapirstore {
 
 using namespace std;
 
-Client::Client(const string configPath, int nShards,
-                int closestReplica, TrueTime timeServer)
-    : nshards(nShards), transport(0.0, 0.0, 0, true), timeServer(timeServer)
+    Client::Client(const string configPath, int nShards,
+                   int closestReplica, TrueTime timeServer)
+        : nshards(nShards), transport(0.0, 0.0, 0, true), timeServer(timeServer)
 {
     // Initialize all state here;
     client_id = 0;
