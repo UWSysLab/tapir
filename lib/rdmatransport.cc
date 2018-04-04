@@ -410,10 +410,7 @@ RDMATransport::ConnectRDMA(TransportReceiver *src,
 
     // Tell the receiver its address
     struct sockaddr_in sin;
-    socklen_t sinsize = sizeof(sin);
-    if (getsockname(fd, (sockaddr *) &sin, &sinsize) < 0) {
-        PPanic("Failed to get socket name");
-    }
+    memset(&sin, 0, sizeof(sin));
     RDMATransportAddress *addr = new RDMATransportAddress(sin);
     src->SetAddress(addr);
 

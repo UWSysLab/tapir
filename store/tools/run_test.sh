@@ -20,10 +20,10 @@ srcdir="/home/irene/proj/tapir"
 logdir="/home/irene/proj/tapir/logs"
 
 # Machines on which replicas are running.
-replicas=("localhost" "localhost" "localhost")
+replicas=("iyzhang-test" "iyzhang-test" "iyzhang-test")
 
 # Machines on which clients are running.
-clients=("localhost")
+clients=("iyzhang-desktop")
 
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
 store="tapirstore"      # Which store (strongstore, weakstore, tapirstore)
