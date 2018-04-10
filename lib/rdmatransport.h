@@ -105,12 +105,10 @@ private:
         event *cmevent;
         event *cqevent;
         // message passing space
-        char sendType[MAX_RDMA_SIZE];
         char sendData[MAX_RDMA_SIZE];
-        ibv_mr *sendmr[2];
-        char recvType[MAX_RDMA_SIZE];
+        ibv_mr *sendmr;
         char recvData[MAX_RDMA_SIZE];
-        ibv_mr *recvmr[2];
+        ibv_mr *recvmr;
     };
     event_base *libeventBase;
     int lastTimerId;

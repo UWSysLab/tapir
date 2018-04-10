@@ -100,7 +100,7 @@ Server::ExecConsensusUpcall(const string &str1, string &str2)
 void
 Server::UnloggedUpcall(const string &str1, string &str2)
 {
-    Debug("Received Consensus Request: %s", str1.c_str());
+    Debug("Received Unlogged Request: %s", str1.c_str());
 
     Request request;
     Reply reply;
