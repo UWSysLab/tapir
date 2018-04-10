@@ -763,62 +763,65 @@ RDMATransport::RDMAReadableCallback(evutil_socket_t fd, short what, void *arg)
     struct ibv_cq *cq;
     struct ibv_context *context;
     ASSERT(fcntl(info->cq->channel->fd, F_GETFL) & O_NONBLOCK);
+    int numEvents = 0;
+    
+    while (ibv_get_cq_event(info->cq->channel, &cq, (void**)&context) == 0) {
+        numEvents++;
+    }
 
-    if (ibv_get_cq_event(info->cq->channel, &cq, (void**)&context) == 0) {
-        ibv_ack_cq_events(cq, 1);
-        if (ibv_req_notify_cq(cq, 0) != 0) {
-            Panic("Can't set up notifications");
-        }
+    ibv_ack_cq_events(cq, numEvents);
+    if (ibv_req_notify_cq(cq, 0) != 0) {
+        Panic("Can't set up notifications");
+    }
         
-        struct ibv_wc wc;
-        while (ibv_poll_cq(cq, 1, &wc) > 0) {
-            if (wc.status == IBV_WC_SUCCESS) {
-                ASSERT(wc.wr_id == MAGIC);
-                switch (wc.opcode) {
-                case IBV_WC_SEND:
-                {
-                    Debug("Successfully sent %u bytes over RDMA",
-                          wc.byte_len);
-                    break;
-                }
-                case IBV_WC_RECV:
-                {
-                    auto addr = transport->rdmaAddresses.find(info);
-                    ASSERT(addr != transport->rdmaAddresses.end());
-
-                    char *ptr = (char *)&info->recvData;
-                    uint32_t magic = *((uint32_t *)ptr);
-                    if (magic == MAGIC) {
-                        ptr += sizeof(magic);
-                        size_t totalSize = *((size_t *)ptr);
-                        ASSERT(totalSize < MAX_RDMA_SIZE);
-                        ptr += sizeof(totalSize);
-                        size_t typeLen = *((size_t *)ptr);
-                        ptr += sizeof(typeLen);
-                        string type(ptr, typeLen);
-                        ptr += typeLen;
-                        size_t msgLen = *((size_t *)ptr);
-                        ptr += sizeof(msgLen);
-                        string data(ptr, msgLen);;
-                        // Dispatch
-                        info->receiver->ReceiveMessage(addr->second,
-                                                       type,
-                                                       data);
-                        Debug("Done processing %s message",
-                              type.c_str());
-                    } else {
-                        Warning("No Magic: %u", magic);
-                        //ASSERT(magic == MAGIC);
-                    }
-                    break;
-                }
-                default:
-                    //ignore
-                    break;
-                }
-            } else {
-                Warning("Something failed!");
+    struct ibv_wc wc;
+    while (ibv_poll_cq(cq, 1, &wc) > 0) {
+        if (wc.status == IBV_WC_SUCCESS) {
+            ASSERT(wc.wr_id == MAGIC);
+            switch (wc.opcode) {
+            case IBV_WC_SEND:
+            {
+                //Debug("Successfully sent %u bytes over RDMA",
+                //      wc.byte_len);
+                break;
             }
+            case IBV_WC_RECV:
+            {
+                auto addr = transport->rdmaAddresses.find(info);
+                ASSERT(addr != transport->rdmaAddresses.end());
+                //Debug("Received %u bytes over RDMA", wc.byte_len);
+                char *ptr = (char *)&info->recvData;
+                uint32_t magic = *((uint32_t *)ptr);
+                if (magic == MAGIC) {
+                    ptr += sizeof(magic);
+                    size_t totalSize = *((size_t *)ptr);
+                    ASSERT(totalSize < MAX_RDMA_SIZE);
+                    ptr += sizeof(totalSize);
+                    size_t typeLen = *((size_t *)ptr);
+                    ptr += sizeof(typeLen);
+                    string type(ptr, typeLen);
+                    ptr += typeLen;
+                    size_t msgLen = *((size_t *)ptr);
+                    ptr += sizeof(msgLen);
+                    string data(ptr, msgLen);;
+                    // Dispatch
+                    info->receiver->ReceiveMessage(addr->second,
+                                                   type,
+                                                   data);
+                    Debug("Done processing %s message",
+                          type.c_str());
+                } else {
+                    Warning("No Magic: %u", magic);
+                    //ASSERT(magic == MAGIC);
+                }
+                break;
+            }
+            default:
+                //ignore
+                break;
+            }
+        } else {
+            Warning("Something failed!");
         }
     }
 

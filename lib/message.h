@@ -111,11 +111,10 @@ static __attribute__((unused)) signed char _Message_FileDebugFlag = -1;
 static inline bool
 Message_DebugEnabled(const char *fname)
 {
-    return true;
-        // if (_Message_FileDebugFlag >= 0)
-        //         return _Message_FileDebugFlag;
-        // _Message_FileDebugFlag = _Message_DebugEnabled(fname);
-        // return true;//_Message_FileDebugFlag;
+    if (_Message_FileDebugFlag >= 0)
+        return _Message_FileDebugFlag;
+    _Message_FileDebugFlag = _Message_DebugEnabled(fname);
+    return _Message_FileDebugFlag;
 }
 
 #include "hash.h"
