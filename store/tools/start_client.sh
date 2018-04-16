@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#export DEBUG=all
+
 if [ "$#" -ne 4 ]; then
   echo "Usage: $0 command begin_id ncopies" >&2
   exit 1

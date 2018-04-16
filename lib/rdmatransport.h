@@ -106,8 +106,10 @@ private:
         event *cqevent;
         // message passing space
         char sendData[MAX_RDMA_SIZE];
+        char *sendPtr;
         ibv_mr *sendmr;
         char recvData[MAX_RDMA_SIZE];
+        char *recvPtr;
         ibv_mr *recvmr;
     };
     event_base *libeventBase;

@@ -112,7 +112,7 @@ static inline bool
 Message_DebugEnabled(const char *fname)
 {
     if (_Message_FileDebugFlag >= 0)
-        return _Message_FileDebugFlag;
+         return _Message_FileDebugFlag;
     _Message_FileDebugFlag = _Message_DebugEnabled(fname);
     return _Message_FileDebugFlag;
 }

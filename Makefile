@@ -8,10 +8,10 @@ LD = g++
 EXPAND = lib/tmpl/expand
 
 
-CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -O2 -DNASSERT -lrdmacm -libverbs
-#CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -lrdmacm -libverbs
+CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -O2 -DNASSERT
+#CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized 
 CXXFLAGS := -g -std=c++0x
-LDFLAGS := -levent_pthreads -lrdmacm -libverbs
+LDFLAGS := -levent_pthreads 
 ## Debian package: check
 #CHECK_CFLAGS := $(shell pkg-config --cflags check)
 #CHECK_LDFLAGS := $(shell pkg-config --cflags --libs check)
@@ -31,6 +31,12 @@ LIBSSL_CFLAGS := $(shell pkg-config --cflags openssl)
 LIBSSL_LDFLAGS := $(shell pkg-config --libs openssl)
 CFLAGS += $(LIBSSL_CFLAGS)
 LDFLAGS += $(LIBSSL_LDFLAGS)
+#JEMALLOC_LDFLAGS := -L`jemalloc-config --libdir` -Wl,-rpath,`jemalloc-config --libdir` -ljemalloc `jemalloc-config --libs`
+#LDFLAGS += $(JEMALLOC_LDFLAGS)
+RDMA_CFLAGS := -lrdmacm -libverbs
+RDMA_LDFLAGS := -lrdmacm -libverbs
+CFLAGS += $(RDMA_CFLAGS)
+LDFLAGS += $(RDMA_LDFLAGS)
 
 
 # Google test framework. This doesn't use pkgconfig
