@@ -353,8 +353,8 @@ RDMATransport::ConnectRDMA(TransportReceiver *src,
     qp_attr.send_cq = info->cq;
     qp_attr.recv_cq = info->cq;
     qp_attr.qp_type = IBV_QPT_RC;
-    qp_attr.cap.max_send_wr = 10;
-    qp_attr.cap.max_recv_wr = 10;
+    qp_attr.cap.max_send_wr = 20;
+    qp_attr.cap.max_recv_wr = 20;
     qp_attr.cap.max_send_sge = 1;
     qp_attr.cap.max_recv_sge = 1;
     if (rdma_create_qp(id, info->pd, &qp_attr) != 0) {
