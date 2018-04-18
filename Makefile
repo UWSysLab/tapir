@@ -31,7 +31,6 @@ LIBSSL_CFLAGS := $(shell pkg-config --cflags openssl)
 LIBSSL_LDFLAGS := $(shell pkg-config --libs openssl)
 CFLAGS += $(LIBSSL_CFLAGS)
 LDFLAGS += $(LIBSSL_LDFLAGS)
-#JEMALLOC_LDFLAGS := -L`jemalloc-config --libdir` -Wl,-rpath,`jemalloc-config --libdir` -ljemalloc `jemalloc-config --libs`
 #LDFLAGS += $(JEMALLOC_LDFLAGS)
 RDMA_CFLAGS := -lrdmacm -libverbs
 RDMA_LDFLAGS := -lrdmacm -libverbs
