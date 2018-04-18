@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export DEBUG=all
+#export DEBUG=all
 
 shard=$1    # which shard is this
 config=$2   # path to config file

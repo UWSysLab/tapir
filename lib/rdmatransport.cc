@@ -859,6 +859,8 @@ RDMATransport::RDMAReadableCallback(evutil_socket_t fd, short what, void *arg)
             }
         } else {
             Warning("Something failed!");
+            CleanupConnection(info);
+            return;
         }
     }
 
