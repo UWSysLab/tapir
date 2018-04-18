@@ -209,22 +209,22 @@ RDMATransport::CleanupConnection(RDMATransportRDMAListener *info)
 RDMATransportAddress*
 RDMATransport::BindToPort(struct rdma_cm_id *id, const string &host, const string &port)
 {
-     struct sockaddr_in sin;
-    int res;
-    struct addrinfo hints;
-    memset(&hints, 0, sizeof(hints));
+    
+    struct sockaddr_in sin;
+    // look up its hostname and port number (which
+    // might be a service name)
+    struct rdma_addrinfo hints;
+    memset(hints, 0, sizeof(hints));
     hints.ai_family   = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_protocol = 0;
+    hints.ai_qp_type = IBV_QPT_RC;
     hints.ai_flags    = AI_PASSIVE;
-    struct addrinfo *ai;
-    if ((res = getaddrinfo(host.c_str(), port.c_str(),
-                           &hints, &ai))) {
-        Panic("Failed to resolve %s:%s: %s",
+    struct rdma_addrinfo *ai;
+    int res;
+    if ((res = rdma_getaddrinfo((char *)host.c_str(),
+                                (char *)port.c_str(),
+                                &hints, &ai))) {
+        Panic("Failed to resolve host/port %s:%s: %s",
               host.c_str(), port.c_str(), gai_strerror(res));
-    }
-    if (ai->ai_addr->sa_family != AF_INET) {
-        Panic("getaddrinfo returned a non IPv4 address");
     }
     ASSERT(ai->ai_family == AF_INET);
     if (ai->ai_family != AF_INET) {
@@ -236,7 +236,6 @@ RDMATransport::BindToPort(struct rdma_cm_id *id, const string &host, const strin
     if (rdma_bind_addr(id, (sockaddr *)&sin) < 0) {
         PPanic("Failed to bind to RDMA channel");
     }
-    freeaddrinfo(ai);
     return new RDMATransportAddress(sin);
 }
 
