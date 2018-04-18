@@ -120,25 +120,32 @@ RDMATransport::~RDMATransport()
 RDMATransportAddress
 RDMATransport::LookupAddress(const transport::ReplicaAddress &addr)
 {
+    struct sockaddr_in sin;
     int res;
-    struct rdma_addrinfo hints;
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof(hints));
     hints.ai_family   = AF_INET;
-    hints.ai_qp_type = IBV_QPT_RC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = 0;
     hints.ai_flags    = 0;
-    struct rdma_addrinfo *ai;
-    if ((res = rdma_getaddrinfo((char *)addr.host.c_str(),
-                                (char *)addr.port.c_str(),
-                                &hints, &ai))) {
+    struct addrinfo *ai;
+    if ((res = getaddrinfo(addr.host.c_str(), addr.port.c_str(),
+                           &hints, &ai))) {
         Panic("Failed to resolve %s:%s: %s",
               addr.host.c_str(), addr.port.c_str(), gai_strerror(res));
     }
-    if (ai->ai_family != AF_INET) {
+    if (ai->ai_addr->sa_family != AF_INET) {
         Panic("getaddrinfo returned a non IPv4 address");
     }
+    ASSERT(ai->ai_family == AF_INET);
+    if (ai->ai_family != AF_INET) {
+        Panic("getaddrinfo returned a non IPv4 address");        
+    }
+    sin = *(sockaddr_in *)ai->ai_addr;
     RDMATransportAddress out =
-              RDMATransportAddress(*((sockaddr_in *)ai->ai_dst_addr));
+              RDMATransportAddress(sin);
     // Don't need to free for rdma?
-    //rdma_freeaddrinfo(ai);
+    freeaddrinfo(ai);
     return out;
 }
 
@@ -202,31 +209,34 @@ RDMATransport::CleanupConnection(RDMATransportRDMAListener *info)
 RDMATransportAddress*
 RDMATransport::BindToPort(struct rdma_cm_id *id, const string &host, const string &port)
 {
-    struct sockaddr_in sin;
-    // look up its hostname and port number (which
-    // might be a service name)
-    struct rdma_addrinfo hints;
-    hints.ai_family   = AF_INET;
-    hints.ai_qp_type = IBV_QPT_RC;
-    hints.ai_flags    = AI_PASSIVE;
-    struct rdma_addrinfo *ai;
+     struct sockaddr_in sin;
     int res;
-    if ((res = rdma_getaddrinfo((char *)host.c_str(),
-                                (char *)port.c_str(),
-                                &hints, &ai))) {
-        Panic("Failed to resolve host/port %s:%s: %s",
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family   = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = 0;
+    hints.ai_flags    = AI_PASSIVE;
+    struct addrinfo *ai;
+    if ((res = getaddrinfo(host.c_str(), port.c_str(),
+                           &hints, &ai))) {
+        Panic("Failed to resolve %s:%s: %s",
               host.c_str(), port.c_str(), gai_strerror(res));
+    }
+    if (ai->ai_addr->sa_family != AF_INET) {
+        Panic("getaddrinfo returned a non IPv4 address");
     }
     ASSERT(ai->ai_family == AF_INET);
     if (ai->ai_family != AF_INET) {
         Panic("getaddrinfo returned a non IPv4 address");        
     }
-    sin = *(sockaddr_in *)ai->ai_src_addr;
+    sin = *(sockaddr_in *)ai->ai_addr;
     Debug("Binding to %s %d RDMA", inet_ntoa(sin.sin_addr), htons(sin.sin_port));
 
     if (rdma_bind_addr(id, (sockaddr *)&sin) < 0) {
         PPanic("Failed to bind to RDMA channel");
     }
+    freeaddrinfo(ai);
     return new RDMATransportAddress(sin);
 }
 
