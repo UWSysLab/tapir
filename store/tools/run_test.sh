@@ -23,7 +23,8 @@ logdir="/home/irene/proj/tapir/logs"
 replicas=("iyzhang-test" "iyzhang-test" "iyzhang-test")
 
 # Machines on which clients are running.
-clients=("iyzhang-desktop")
+clients=("localhost")
+
 
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
 store="tapirstore"      # Which store (strongstore, weakstore, tapirstore)
@@ -31,9 +32,10 @@ mode="txn-l"            # Mode for storage system.
 
 nshard=1     # number of shards
 nclient=1    # number of clients to run (per machine)
-nkeys=10     # number of keys to use
-rtime=9     # duration to run
 nthread=1
+nkeys=100 # number of keys to use
+rtime=10     # duration to run
+
 tlen=2       # transaction length
 wper=0       # writes percentage
 err=0        # error
