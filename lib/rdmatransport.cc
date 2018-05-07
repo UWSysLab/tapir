@@ -157,7 +157,7 @@ RDMATransport::PostReceive(RDMATransportRDMAListener *info)
     // post receive
     struct ibv_recv_wr wr, *bad_wr = NULL;
     struct ibv_sge sge;
-    RDMABuf *buf = AllocBuffer(info->recvBuffers, 100);
+    RDMABuffer *buf = AllocRecvBuffer(info);
     memset(&wr, 0, sizeof(wr));
     wr.wr_id = (uint64_t)buf;
     wr.sg_list = &sge;
@@ -360,23 +360,7 @@ RDMATransport::ConnectRDMA(TransportReceiver *src,
     info->id->recv_cq_channel = channel;
     info->id->send_cq = info->cq;
     info->id->recv_cq = info->cq;
-are sbe    // Register memory for communications
-    if ((info->sendmr = ibv_reg_mr(info->pd,
-                                   &info->sendData,
-                                   MAX_RDMA_SIZE,
-                                   IBV_ACCESS_LOCAL_WRITE)) == 0) {
-        Panic("Could not register send buffer");
-    }
     
-    if ((info->recvmr = ibv_reg_mr(info->pd,
-                                   &info->recvData,
-                                   MAX_RDMA_SIZE,
-                                   IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE)) == 0) {
-        Panic("Could not register receive buffer");
-    }
-    info->sendPtr = (char *)&info->sendData;
-    info->recvPtr = (char *)&info->recvData;
-
     // Put the connection in non-blocking mode
     int fd = channel->fd;
     int flags = fcntl(fd, F_GETFL);
@@ -486,19 +470,38 @@ RDMATransport::Register(TransportReceiver *receiver,
 }
 
 RDMABuffer *
-TCPTransport::AllocBuffer(RDMABuffer *start,
-                          size_t size)
+RDMATransport::AllocSendBuffer(RDMATransportListener *info,
+                               size_t size)
 {
-    RDMABuffer *buf = start;
-    while (buf->inUse && buf->size < size) {
+    RDMABuffer *start, *buf = info->sendBuffers;
+    while (buf->inUse && buf->size < size)) {
         if (buf->next == start) {
-            return NULL;
+            // allocate a new region
+            void *newbuf = malloc(MAX_RDMA_SIZE);
+            // Register memory for communications
+            if ((info->sendmr = ibv_reg_mr(info->pd,
+                                           newbuf
+                                           MAX_RDMA_SIZE,
+                                           IBV_ACCESS_LOCAL_WRITE)) == 0) {
+                Panic("Could not register send buffer");
+            }
+            RDMABuffer *buf2 = (RDMABuffer *)newbuf;
+            buf2->start = newbuf + sizeof(RDMABuffer);
+            buf2->size = MAX_RDMA_SIZE - sizeof(RDMABuffer);
+            buf2->prev = buf;
+            buf2->next = start;
+            buf->next = buf2;
+            start->prev = buf2;
+            buf2->inUse = false;
+            buf = buf2;
+            Debug("Allocating new send buffer of size %u", MAX_RDMA_SIZE);
         } else {
             buf = buf->next;
         }
     }
-    
-    if (buf->size - size > sizeof(RDMABuffer) + 40) {
+
+    // if there is enough room left
+    if (size != 0 && buf->size - size > sizeof(RDMABuffer) + 40) {
         // create new buffer
         RDMABuffer *newbuf = (RDMABuffer *)(buf->start + size);
         newbuf->start = buf->start + size + sizeof(RDMABuffer);
@@ -512,8 +515,43 @@ TCPTransport::AllocBuffer(RDMABuffer *start,
     return buf;
 }
 
+RDMABuffer
+RDMATransport::AllocRecvBuffer(RDMATransportListener *info)
+{
+        
+    RDMABuffer *start, *buf = info->recvBuffers;
+    // put some lower bound on how big the buffer must be
+    while (buf->inUse && buf->size < 40)) {
+    if (buf->next == start) {
+        // allocate a new region
+        void *newbuf = malloc(MAX_RDMA_SIZE);
+        // Register memory for communications
+        if ((info->recvmr = ibv_reg_mr(info->pd,
+                                       &info->recvData,
+                                       MAX_RDMA_SIZE,
+                                       IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE)) == 0) {
+            Panic("Could not register receive buffer");
+        }
+        RDMABuffer *buf2 = (RDMABuffer *)newbuf;
+        buf2->start = newbuf + sizeof(RDMABuffer);
+        buf2->size = MAX_RDMA_SIZE - sizeof(RDMABuffer);
+        buf2->prev = buf;
+        buf2->next = start;
+        buf->next = buf2;
+        start->prev = buf2;
+        buf2->inUse = false;
+        buf = buf2;
+        Debug("Allocating new send buffer of size %u", MAX_RDMA_SIZE);
+    } else {
+        buf = buf->next;
+    }
+    
+    buf->inUse = true;
+    return buf;
+}
+
 void
-TCPTransport::FreeBuffer(RDMABuffer *buf)
+RDMATransport::FreeBuffer(RDMABuffer *buf)
 {
     // find start of free region
     RDMABuffer *prev = buf->prev;
@@ -532,7 +570,7 @@ TCPTransport::FreeBuffer(RDMABuffer *buf)
 }
 
 int
-TCPTransport::FlushSendQueue(RDMATransportListener *info)
+RDMATransport::FlushSendQueue(RDMATransportListener *info)
 {
     int totalSent = 0;
     
@@ -592,8 +630,8 @@ RDMATransport::SendMessageInternal(TransportReceiver *src,
     
     ASSERT(totalLen < MAX_RDMA_SIZE);
 
-    RDMABuffer *buf = AllocBuffer(info->sendBuffers,
-                                  totalLen);
+    RDMABuffer *buf = AllocSendBuffer(info,
+                                      totalLen);
     ASSERT(buf);
     
     // allocate buffer

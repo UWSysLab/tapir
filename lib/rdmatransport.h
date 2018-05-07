@@ -115,8 +115,8 @@ private:
         event *cmevent;
         event *cqevent;
         // message passing space
-        list<RDMABuffer *> sendQ;
-        list<RDMABuffer *> recvQ;
+        std::list<RDMABuffer *> sendQ;
+        std::list<RDMABuffer *> recvQ;
         RDMABuffer *sendBuffers;
         RDMABuffer *recvBuffers;
         int availableReceives;
@@ -133,20 +133,30 @@ private:
                              const RDMATransportAddress &dst,
                              const Message &m, bool multicast = false);
 
+    // Library functions for setting up the network
     RDMATransportAddress
     LookupAddress(const transport::ReplicaAddress &addr);
     RDMATransportAddress
     LookupAddress(const transport::Configuration &cfg,
                   int replicaIdx);
     RDMATransportAddress*
-    BindToPort(struct rdma_cm_id *id, const string &host, const string &port);
-    static int PostReceive(RDMATransportRDMAListener *info);
-    const RDMATransportAddress *
     LookupMulticastAddress(const transport::Configuration*config) { return NULL; };
+    const RDMATransportAddress *
+    BindToPort(struct rdma_cm_id *id, const string &host, const string &port);
     void ConnectRDMA(TransportReceiver *src, const RDMATransportAddress &dst);
     void ConnectRDMA(TransportReceiver *src, const RDMATransportAddress &dst,
                      struct rdma_cm_id *id);
     static void CleanupConnection(RDMATransportRDMAListener *info);
+    
+    // Libraries for managing rdma and buffers
+    int PostReceive(RDMATransportRDMAListener *info);
+    RDMABuffer * AllocSendBuffer(RDMATransportRDMAListener *info, size_t size);
+    RDMABuffer * AllocRecvBuffer(RDMATransportRDMAListener *info);
+    void FreeBuffer(RDMABuffer *buf);
+    int FlushSendQueue(RDMATransportRDMAListener *info);
+
+
+    // libevent callbacks
     void OnTimer(RDMATransportTimerInfo *info);
     static void TimerCallback(evutil_socket_t fd,
                               short what, void *arg);
