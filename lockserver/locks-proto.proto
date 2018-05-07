@@ -1,18 +1,19 @@
-syntax = "proto2";
+syntax = "proto3";
+option cc_enable_arenas = true;
 
 package lockserver.proto;
 
 message Request {
-  required uint64 clientid = 1;
-  required string key = 2;
-  required bool type = 3;
+  uint64 clientid = 1;
+  string key = 2;
+  bool type = 3;
   // true = lock
   // false = unlock
 }
 
 message Reply {
-  required string key = 1;
-  required int32 status = 2;
+  string key = 1;
+  int32 status = 2;
   // 0 = Operation Success
   // -1 = Held by someone else (for lock)
   // -2 = Not held by you (for unlock)

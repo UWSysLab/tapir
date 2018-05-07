@@ -514,13 +514,12 @@ RDMATransport::SendMessageInternal(TransportReceiver *src,
 
     // get message info
     string type = m.GetTypeName();
-    string data = m.SerializeAsString();
     size_t typeLen = type.length();
-    size_t dataLen = data.length();
+    size_t dataLen = m.ByteSizeLong()
     size_t totalLen = (typeLen + sizeof(typeLen) +
                        dataLen + sizeof(dataLen) +
                        sizeof(totalLen) +
-                       sizeof(uint32_t));
+                       sizeof(uint32_t ));
     
     ASSERT(totalLen < MAX_RDMA_SIZE);
 
@@ -528,7 +527,7 @@ RDMATransport::SendMessageInternal(TransportReceiver *src,
     if (info->sendPtr + totalLen > (char *)&info->sendData + MAX_RDMA_SIZE) {
         info->sendPtr = (char *)&info->sendData;
     }
-    char *ptr = info->sendPtr;
+    uint8_t *ptr = info->sendPtr;
 
     *((uint32_t *) ptr) = MAGIC;
     ptr += sizeof(uint32_t);
@@ -540,7 +539,7 @@ RDMATransport::SendMessageInternal(TransportReceiver *src,
     ptr += typeLen;
     *((size_t *) ptr) = dataLen;
     ptr += sizeof(size_t);
-    memcpy(ptr, data.c_str(), dataLen);
+    m.SerializeWithCachedSizesToArray(ptr);
     ptr += dataLen;
     ASSERT(ptr - info->sendPtr == totalLen);
     
@@ -552,7 +551,7 @@ RDMATransport::SendMessageInternal(TransportReceiver *src,
     wr.opcode = IBV_WR_SEND;
     wr.sg_list = &sge;
     wr.num_sge = 1;
-    wr.send_flags = IBV_SEND_SIGNALED;// | IBV_SEND_INLINE;
+    wr.send_flags = IBV_SEND_SIGNALED;
     wr.next = NULL;
 
     sge.addr = (uintptr_t)info->sendPtr;

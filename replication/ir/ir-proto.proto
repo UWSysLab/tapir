@@ -1,12 +1,13 @@
-syntax = "proto2";
+syntax = "proto3";
+option cc_enable_arenas = true;
 
 import "replication/common/request.proto";
 
 package replication.ir.proto;
 
 message OpID {
-    required uint64 clientid = 1;
-    required uint64 clientreqid = 2;
+    uint64 clientid = 1;
+    uint64 clientreqid = 2;
 }
 
 // For the view change and recovery protocol, a replica stores two things on
@@ -14,8 +15,8 @@ message OpID {
 // NORMAL. Replicas pack this information into this proto buf and serialize it
 // to disk.
 message PersistedViewInfo {
-  required uint64 view = 1;
-  required uint64 latest_normal_view = 2;
+  uint64 view = 1;
+  uint64 latest_normal_view = 2;
 }
 
 enum RecordEntryState {
@@ -29,12 +30,12 @@ enum RecordEntryType {
 }
 
 message RecordEntryProto {
-  required uint64 view = 1;
-  required OpID opid = 2;
-  required RecordEntryState state = 3;
-  required RecordEntryType type = 4;
-  required bytes op = 5;
-  required bytes result = 6;
+  uint64 view = 1;
+  OpID opid = 2;
+  RecordEntryState state = 3;
+  RecordEntryType type = 4;
+  bytes op = 5;
+  bytes result = 6;
 }
 
 // TODO: Currently, replicas send entire records to one another. Figure out if
@@ -44,61 +45,61 @@ message RecordProto {
 }
 
 message ProposeInconsistentMessage {
-    required replication.Request req = 1;
+    replication.Request req = 1;
 }
 
 message ReplyInconsistentMessage {
-    required uint64 view = 1;
-    required uint32 replicaIdx = 2;
-    required OpID opid = 3;
-    required bool finalized = 4;
+    uint64 view = 1;
+    uint32 replicaIdx = 2;
+    OpID opid = 3;
+    bool finalized = 4;
 }
 
 message FinalizeInconsistentMessage {
-    required OpID opid = 1;
+    OpID opid = 1;
 }
 
 message ConfirmMessage {
-    required uint64 view = 1;
-    required uint32 replicaIdx = 2;
-    required OpID opid = 3;
+    uint64 view = 1;
+    uint32 replicaIdx = 2;
+    OpID opid = 3;
 }
 
 message ProposeConsensusMessage {
-    required replication.Request req = 1;
+    replication.Request req = 1;
 }
 
 message ReplyConsensusMessage {
-    required uint64 view = 1;
-    required uint32 replicaIdx = 2;
-    required OpID opid = 3;
-    required bytes result = 4;
-    required bool finalized = 5;
+    uint64 view = 1;
+    uint32 replicaIdx = 2;
+    OpID opid = 3;
+    bytes result = 4;
+    bool finalized = 5;
 }
 
 message FinalizeConsensusMessage {
-    required OpID opid = 1;
-    required bytes result = 2;
+    OpID opid = 1;
+    bytes result = 2;
 }
 
 message DoViewChangeMessage {
-    required uint32 replicaIdx = 1;
-    // record is optional because a replica only sends its record to the
+    uint32 replicaIdx = 1;
+    // record is because a replica only sends its record to the
     // leader of the new view.
-    optional RecordProto record = 2;
-    required uint64 new_view = 3;
-    required uint64 latest_normal_view = 4;
+    RecordProto record = 2;
+    uint64 new_view = 3;
+    uint64 latest_normal_view = 4;
 }
 message StartViewMessage {
-    required RecordProto record = 1;
-    required uint64 new_view = 2;
+    RecordProto record = 1;
+    uint64 new_view = 2;
 }
 
 message UnloggedRequestMessage {
-    required replication.UnloggedRequest req = 1;
+    replication.UnloggedRequest req = 1;
 }
 
 message UnloggedReplyMessage {
-    required bytes reply = 1;
-    required uint64 clientreqid = 2;
+    bytes reply = 1;
+    uint64 clientreqid = 2;
 }

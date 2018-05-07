@@ -1,40 +1,41 @@
-syntax = "proto2";
+syntax = "proto3";
+option cc_enable_arenas = true;
 
 import "store/common/common-proto.proto";
 
 package tapirstore.proto;
 
 message GetMessage {
-    required string key = 1;
-    optional TimestampMessage timestamp = 2;
+    string key = 1;
+    TimestampMessage timestamp = 2;
 }
 
 message PrepareMessage {
-    required TransactionMessage txn = 1;
-    optional TimestampMessage timestamp = 2;
+    TransactionMessage txn = 1;
+    TimestampMessage timestamp = 2;
 }
 
 message CommitMessage {
-    required uint64 timestamp = 1;
+    uint64 timestamp = 1;
 }
 
 message AbortMessage {
-     required TransactionMessage txn = 1;
+     TransactionMessage txn = 1;
 }
 
 message Request {
      enum Operation {
-          GET = 1;
-          PREPARE = 2;
-          COMMIT = 3;
-          ABORT = 4;
+          GET = 0;
+          PREPARE = 1;
+          COMMIT = 2;
+          ABORT = 3;
      }	
-     required Operation op = 1;
-     required uint64 txnid = 2;
-     optional GetMessage get = 3;
-     optional PrepareMessage prepare = 4;
-     optional CommitMessage commit = 5;
-     optional AbortMessage abort = 6;
+     Operation op = 1;
+     uint64 txnid = 2;
+     GetMessage get = 3;
+     PrepareMessage prepare = 4;
+     CommitMessage commit = 5;
+     AbortMessage abort = 6;
 }
 
 message Reply {
@@ -42,7 +43,7 @@ message Reply {
      // -1 = failed
      // -2 = retry
      // -3 = abstain/no reply
-     required int32 status = 1;
-     optional string value = 2;
-     optional TimestampMessage timestamp = 3;
+     int32 status = 1;
+     string value = 2;
+     TimestampMessage timestamp = 3;
 }

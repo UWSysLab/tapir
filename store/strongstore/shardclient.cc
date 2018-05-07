@@ -258,7 +258,7 @@ ShardClient::GetCallback(const string &request_str, const string &reply_str)
     if (waiting != NULL) {
         Promise *w = waiting;
         waiting = NULL;
-        if (reply.has_timestamp()) {
+        if (reply.timestamp() != DEFAULT_TIMESTAMP) {
             w->Reply(reply.status(), Timestamp(reply.timestamp()), reply.value());
         } else {
             w->Reply(reply.status(), reply.value());
@@ -278,7 +278,7 @@ ShardClient::PrepareCallback(const string &request_str, const string &reply_str)
     if (waiting != NULL) {
         Promise *w = waiting;
         waiting = NULL;
-        if (reply.has_timestamp()) {
+        if (reply.timestamp() != DEFAULT_TIMESTAMP) {
             w->Reply(reply.status(), Timestamp(reply.timestamp(), 0));
         } else {
             w->Reply(reply.status(), Timestamp());
