@@ -91,6 +91,16 @@ private:
         event *ev;
         int id;
     };
+
+    struct RDMABuffer
+    {
+        char *start;
+        size_t size;
+        RDMABuffer *prev;
+        RDMABuffer *next;
+        bool inUse = false;
+    };
+        
     struct RDMATransportRDMAListener
     {
         RDMATransport *transport;
@@ -105,13 +115,13 @@ private:
         event *cmevent;
         event *cqevent;
         // message passing space
-        char sendData[MAX_RDMA_SIZE];
-        char *sendPtr;
-        ibv_mr *sendmr;
-        char recvData[MAX_RDMA_SIZE];
-        char *recvPtr;
-        ibv_mr *recvmr;
+        list<RDMABuffer *> sendQ;
+        list<RDMABuffer *> recvQ;
+        RDMABuffer *sendBuffers;
+        RDMABuffer *recvBuffers;
+        int availableReceives;
     };
+    
     event_base *libeventBase;
     int lastTimerId;
     std::map<int, RDMATransportTimerInfo *> timers;
