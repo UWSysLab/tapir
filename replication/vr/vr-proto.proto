@@ -1,97 +1,98 @@
-syntax = "proto2";
+syntax = "proto3";
+option cc_enable_arenas = true;
 
 import "replication/common/request.proto";
 
 package replication.vr.proto;
 
 message RequestMessage {
-    required replication.Request req = 1;
+    replication.Request req = 1;
 }
 
 message ReplyMessage {
-    required uint64 view = 1;
-    required uint64 opnum = 2;
-    required uint64 clientreqid = 3;
-    required bytes reply = 4;
+    uint64 view = 1;
+    uint64 opnum = 2;
+    uint64 clientreqid = 3;
+    bytes reply = 4;
 }
 
 message UnloggedRequestMessage {
-    required replication.UnloggedRequest req = 1;
+    replication.UnloggedRequest req = 1;
 }
 
 message UnloggedReplyMessage {
-    required bytes reply = 1;
-    required uint64 clientreqid = 2;
+    bytes reply = 1;
+    uint64 clientreqid = 2;
 }
 
 message PrepareMessage {
-    required uint64 view = 1;
-    required uint64 opnum = 2;
-    required uint64 batchstart = 3;
+    uint64 view = 1;
+    uint64 opnum = 2;
+    uint64 batchstart = 3;
     repeated Request request = 4;
 }
 
 message PrepareOKMessage {
-    required uint64 view = 1;
-    required uint64 opnum = 2;
-    required uint32 replicaIdx = 3;
+    uint64 view = 1;
+    uint64 opnum = 2;
+    uint32 replicaIdx = 3;
 }
 
 message CommitMessage {
-    required uint64 view = 1;
-    required uint64 opnum = 2;    
+    uint64 view = 1;
+    uint64 opnum = 2;    
 }
 
 message RequestStateTransferMessage {
-    required uint64 view = 1;
-    required uint64 opnum = 2;    
+    uint64 view = 1;
+    uint64 opnum = 2;    
 }
 
 message StateTransferMessage {
     message LogEntry {
-        required uint64 view = 1;
-        required uint64 opnum = 2;
-        required replication.Request request = 3;
-        optional uint32 state = 4;
-        optional bytes hash = 5;
+        uint64 view = 1;
+        uint64 opnum = 2;
+        replication.Request request = 3;
+        uint32 state = 4;
+        bytes hash = 5;
     }
-    required uint64 view = 1;
-    required uint64 opnum = 2;
+    uint64 view = 1;
+    uint64 opnum = 2;
     repeated LogEntry entries = 3;
 }
 
 message StartViewChangeMessage {
-    required uint64 view = 1;
-    required uint32 replicaIdx = 2;
-    required uint64 lastCommitted = 3;
+    uint64 view = 1;
+    uint32 replicaIdx = 2;
+    uint64 lastCommitted = 3;
 }
 
 message DoViewChangeMessage {
     message LogEntry {
-        required uint64 view = 1;
-        required uint64 opnum = 2;
-        required replication.Request request = 3;
-        optional uint32 state = 4;
-        optional bytes hash = 5;
+        uint64 view = 1;
+        uint64 opnum = 2;
+        replication.Request request = 3;
+        uint32 state = 4;
+        bytes hash = 5;
     }
-    required uint64 view = 1;
-    required uint64 lastNormalView = 2;
-    required uint64 lastOp = 3;
-    required uint64 lastCommitted = 4;
+    uint64 view = 1;
+    uint64 lastNormalView = 2;
+    uint64 lastOp = 3;
+    uint64 lastCommitted = 4;
     repeated LogEntry entries = 5;
-    required uint32 replicaIdx = 6;    
+    uint32 replicaIdx = 6;    
 }
 
 message StartViewMessage {
     message LogEntry {
-        required uint64 view = 1;
-        required uint64 opnum = 2;
-        required replication.Request request = 3;
-        optional uint32 state = 4;
-        optional bytes hash = 5;
+        uint64 view = 1;
+        uint64 opnum = 2;
+        replication.Request request = 3;
+        uint32 state = 4;
+        bytes hash = 5;
     }
-    required uint64 view = 1;
-    required uint64 lastOp = 2;
-    required uint64 lastCommitted = 3;
+    uint64 view = 1;
+    uint64 lastOp = 2;
+    uint64 lastCommitted = 3;
     repeated LogEntry entries = 4;
 }

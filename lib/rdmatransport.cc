@@ -582,14 +582,13 @@ RDMATransport::SendMessageInternal(TransportReceiver *src,
 
     // get message info
     string type = m.GetTypeName();
-    string data = m.SerializeAsString();
     size_t typeLen = type.length();
     size_t dataLen = data.length();
     int receivesize = recvQ.size();
     size_t totalLen = (typeLen + sizeof(typeLen) +
                        dataLen + sizeof(dataLen) +
                        sizeof(totalLen) +
-                       sizeof(uint32_t));
+                       sizeof(uint32_t ));
     
     ASSERT(totalLen < MAX_RDMA_SIZE);
 
@@ -609,12 +608,12 @@ RDMATransport::SendMessageInternal(TransportReceiver *src,
     ptr += typeLen;
     *((size_t *) ptr) = dataLen;
     ptr += sizeof(size_t);
-    memcpy(ptr, data.c_str(), dataLen);
+    m.SerializeWithCachedSizesToArray(ptr);
     ptr += dataLen;
     ASSERT(ptr - info->sendPtr == totalLen);
     
     info->sendQ.push_back(buf);
-    if (FlushSendQUeue(info) < 1) {
+    if (FlushSendQueue(info) < 1) {
         Warning("Could not send message");
     }
     return true;

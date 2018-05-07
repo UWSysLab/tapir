@@ -1,15 +1,16 @@
-syntax = "proto2";
+syntax = "proto3";
+option cc_enable_arenas = true;
 
 package replication;
 
 message Request {
-     required bytes op = 1;
-     required uint64 clientid = 2;
-     required uint64 clientreqid = 3;
+     bytes op = 1;
+     uint64 clientid = 2;
+     uint64 clientreqid = 3;
 }
 
 message UnloggedRequest {
-     required bytes op = 1;
-     required uint64 clientid = 2;
-     required uint64 clientreqid = 3;
+     bytes op = 1;
+     uint64 clientid = 2;
+     uint64 clientreqid = 3;
 }
