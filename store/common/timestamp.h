@@ -13,12 +13,13 @@
 #include "lib/message.h"
 #include "store/common/common-proto.pb.h"
 
+#define DEFAULT_TIMESTAMP 0
 class Timestamp
 {
 
 public:
-    Timestamp() : timestamp(0), id(0) { };
-    Timestamp(uint64_t t) : timestamp(t), id(0) { };
+    Timestamp() : timestamp(DEFAULT_TIMESTAMP), id(DEFAULT_TIMESTAMP) { };
+    Timestamp(uint64_t t) : timestamp(t), id(DEFAULT_TIMESTAMP) { };
     Timestamp(uint64_t t, uint64_t i) : timestamp(t), id(i) { };
     Timestamp(const TimestampMessage &msg) : timestamp(msg.timestamp()), id(msg.id()) { };
     ~Timestamp() { };
