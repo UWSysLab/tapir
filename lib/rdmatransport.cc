@@ -891,7 +891,8 @@ RDMATransport::RDMAReadableCallback(evutil_socket_t fd, short what, void *arg)
         }
 
         // process messages
-        for (auto &wc : wcs) {
+        for (int i = 0; i < num; i++) {
+            struct ibv_wc &wc = wcs[i];
             if (wc.status == IBV_WC_SUCCESS) {
                 switch (wc.opcode) {
                 case IBV_WC_SEND:
