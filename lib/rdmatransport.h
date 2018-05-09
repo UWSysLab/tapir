@@ -48,8 +48,9 @@
 #include <netinet/in.h>
 #include <rdma/rdma_cma.h>
 
-const size_t MAX_RDMA_SIZE = 4096; // Our RDMA buffers
-
+#define MAX_RDMA_SIZE 4096 // Our RDMA buffers
+#define DEFAULT_RECEIVE_NUM 4
+#define MAX_RECEIVE_NUM 64    
 class RDMATransportAddress : public TransportAddress
 {
 public:
@@ -94,7 +95,7 @@ private:
 
     struct RDMABuffer
     {
-        char *start;
+        uint8_t *start;
         size_t size;
         RDMABuffer *next;
         RDMABuffer *prev;
@@ -117,9 +118,9 @@ private:
         event *cqevent;
         // message passing space
         std::list<RDMABuffer *> sendQ;
-        std::list<RDMABuffer *> recvQ;
-        RDMABuffer *buffers;
-        int availableReceives;
+        RDMABuffer *buffers = NULL;
+        int posted = DEFAULT_RECEIVE_NUM;
+        
     };
     
     event_base *libeventBase;
@@ -143,16 +144,19 @@ private:
     LookupMulticastAddress(const transport::Configuration*config) { return NULL; };
     RDMATransportAddress *
     BindToPort(struct rdma_cm_id *id, const string &host, const string &port);
-    void ConnectRDMA(TransportReceiver *src, const RDMATransportAddress &dst);
-    void ConnectRDMA(TransportReceiver *src, const RDMATransportAddress &dst,
+    void ConnectRDMA(TransportReceiver *src,
+                     const RDMATransportAddress &dst);
+    void ConnectRDMA(TransportReceiver *src,
+                     const RDMATransportAddress &dst,
                      struct rdma_cm_id *id);
     static void CleanupConnection(RDMATransportRDMAListener *info);
     
     // Libraries for managing rdma and buffers
-    int PostReceive(RDMATransportRDMAListener *info);
-    RDMABuffer * AllocBuffer(RDMATransportRDMAListener *info, size_t size = 0);
-    void FreeBuffer(RDMABuffer *buf);
-    int FlushSendQueue(RDMATransportRDMAListener *info);
+    static int PostReceive(RDMATransportRDMAListener *info);
+    static RDMABuffer * AllocBuffer(RDMATransportRDMAListener *info,
+                             size_t size = 0);
+    static void FreeBuffer(RDMABuffer *buf);
+    static int FlushSendQueue(RDMATransportRDMAListener *info);
 
 
     // libevent callbacks
