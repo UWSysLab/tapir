@@ -541,17 +541,23 @@ RDMATransport::FreeBuffer(RDMABuffer *buf)
     // find start of free region
     RDMABuffer *prev = buf->prev;
     RDMABuffer *next = buf->next;
-    while (prev->inUse == false && prev->mr == buf->mr) {
+    while (prev->inUse == false &&
+           prev->mr == buf->mr &&
+           prev != info->buffers) {
         prev = prev->prev;
     }
-    while (next->inUse == false && next->mr == buf->mr) {
+    while (next->inUse == false &&
+           next->mr == buf->mr
+           next != info->buffers) {
         next = next->next;
     }
-    
-    RDMABuffer *newbuf = prev->next;
-    newbuf->next = next;
-    newbuf->size = (size_t)((uint8_t *)next - newbuf->start);
-    newbuf->inUse = false;
+
+    if (prev != buf->pref || next != buf->next) {
+        RDMABuffer *newbuf = prev->next;
+        newbuf->next = next;
+        newbuf->size = (size_t)((uint8_t *)next - newbuf->start);
+        newbuf->inUse = false;
+    }
 }
 
 int
@@ -620,6 +626,7 @@ RDMATransport::SendMessageInternal(TransportReceiver *src,
     RDMABuffer *buf = AllocBuffer(info,
                                   totalLen);
     ASSERT(buf);
+    ASSERT(buf->size == totalLen);
     
     // allocate buffer
     uint8_t *ptr = buf->start;
