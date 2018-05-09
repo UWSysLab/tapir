@@ -543,16 +543,16 @@ RDMATransport::FreeBuffer(RDMABuffer *buf)
     RDMABuffer *next = buf->next;
     while (prev->inUse == false &&
            prev->mr == buf->mr &&
-           prev != info->buffers) {
+           prev != next) {
         prev = prev->prev;
     }
     while (next->inUse == false &&
-           next->mr == buf->mr
-           next != info->buffers) {
+           next->mr == buf->mr &&
+           next != prev) {
         next = next->next;
     }
 
-    if (prev != buf->pref || next != buf->next) {
+    if (prev != buf->prev || next != buf->next) {
         RDMABuffer *newbuf = prev->next;
         newbuf->next = next;
         newbuf->size = (size_t)((uint8_t *)next - newbuf->start);
