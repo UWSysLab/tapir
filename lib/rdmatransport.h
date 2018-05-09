@@ -96,9 +96,10 @@ private:
     {
         char *start;
         size_t size;
-        RDMABuffer *prev;
         RDMABuffer *next;
+        RDMABuffer *prev;
         bool inUse = false;
+        struct ibv_mr *mr;
     };
         
     struct RDMATransportRDMAListener
@@ -117,8 +118,7 @@ private:
         // message passing space
         std::list<RDMABuffer *> sendQ;
         std::list<RDMABuffer *> recvQ;
-        RDMABuffer *sendBuffers;
-        RDMABuffer *recvBuffers;
+        RDMABuffer *buffers;
         int availableReceives;
     };
     
@@ -150,8 +150,7 @@ private:
     
     // Libraries for managing rdma and buffers
     int PostReceive(RDMATransportRDMAListener *info);
-    RDMABuffer * AllocSendBuffer(RDMATransportRDMAListener *info, size_t size);
-    RDMABuffer * AllocRecvBuffer(RDMATransportRDMAListener *info);
+    RDMABuffer * AllocBuffer(RDMATransportRDMAListener *info, size_t size = 0);
     void FreeBuffer(RDMABuffer *buf);
     int FlushSendQueue(RDMATransportRDMAListener *info);
 

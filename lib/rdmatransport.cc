@@ -470,84 +470,72 @@ RDMATransport::Register(TransportReceiver *receiver,
 }
 
 RDMABuffer *
-RDMATransport::AllocSendBuffer(RDMATransportListener *info,
-                               size_t size)
+RDMATransport::AllocBuffer(RDMATransportListener *info,
+                           size_t size = 0)
 {
-    RDMABuffer *start, *buf = info->sendBuffers;
-    while (buf->inUse && buf->size < size)) {
-        if (buf->next == start) {
-            // allocate a new region
-            void *newbuf = malloc(MAX_RDMA_SIZE);
-            // Register memory for communications
-            if ((info->sendmr = ibv_reg_mr(info->pd,
-                                           newbuf
-                                           MAX_RDMA_SIZE,
-                                           IBV_ACCESS_LOCAL_WRITE)) == 0) {
-                Panic("Could not register send buffer");
+    RDMABuffer *buf = info->buffers;
+
+    // allocate first buffer
+    if (info->buffers == NULL) {
+        RDMABuffer *newbuf = (RDMABuffer *)malloc(MAX_RDMA_SIZE);
+        newbuf->start = newbuf + sizeof(RDMABuffer);
+        newbuf->size = MAX_RDMA_SIZE - sizeof(RDMABuffer);
+        newbuf->next = newbuf;
+        newbuf->prev = newbuf;
+        newbuf->inUse = false;
+        // Register memory for communications
+        if ((newbuf->mr = ibv_reg_mr(info->pd,
+                                     newbuf
+                                     MAX_RDMA_SIZE,
+                                     IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE)) == 0) {
+            Panic("Could not register buffer");
+        }
+        info->buffers = newbuf;
+        Debug("Allocating new RDMA buffer of size %u", MAX_RDMA_SIZE);
+        buf = newbuf;
+    } else {
+        RDMABuffer *start = info->buffers;
+        // look for a buffer
+        while (buf->inUse &&
+               ((size == 0) ? buf->size < 40 : buf->size < size)) {
+            if (buf->next == start) {
+                // we don't have any free buffers
+                RDMABuffer *newbuf = (RDMABuffer *)malloc(MAX_RDMA_SIZE);
+                newbuf->start = newbuf + sizeof(RDMABuffer);
+                newbuf->size = MAX_RDMA_SIZE - sizeof(RDMABuffer);
+                newbuf->next = start;
+                newbuf->prev = buf;
+                newbuf->inUse = false;
+                // Register memory for communications
+                if ((newbuf->mr = ibv_reg_mr(info->pd,
+                                             newbuf
+                                             MAX_RDMA_SIZE,
+                                             IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE)) == 0) {
+                    Panic("Could not register buffer");
+                }
+                Debug("Allocating new RDMA buffer of size %u", MAX_RDMA_SIZE);
+                buf = newbuf;
+                buf = buf->next;
+                break;
             }
-            RDMABuffer *buf2 = (RDMABuffer *)newbuf;
-            buf2->start = newbuf + sizeof(RDMABuffer);
-            buf2->size = MAX_RDMA_SIZE - sizeof(RDMABuffer);
-            buf2->prev = buf;
-            buf2->next = start;
-            buf->next = buf2;
-            start->prev = buf2;
-            buf2->inUse = false;
-            buf = buf2;
-            Debug("Allocating new send buffer of size %u", MAX_RDMA_SIZE);
-        } else {
             buf = buf->next;
         }
-    }
-
-    // if there is enough room left
-    if (size != 0 && buf->size - size > sizeof(RDMABuffer) + 40) {
-        // create new buffer
-        RDMABuffer *newbuf = (RDMABuffer *)(buf->start + size);
-        newbuf->start = buf->start + size + sizeof(RDMABuffer);
-        newbuf->size = buf->size - size - sizeof(RDMABuffer);
-        newbuf->prev = buf;
-        newbuf->next = buf->next;
-        buf->next = newbuf;
-        newbuf->inUse = false;
-    }
-    buf->inUse = true;
-    return buf;
-}
-
-RDMABuffer
-RDMATransport::AllocRecvBuffer(RDMATransportListener *info)
-{
-        
-    RDMABuffer *start, *buf = info->recvBuffers;
-    // put some lower bound on how big the buffer must be
-    while (buf->inUse && buf->size < 40)) {
-    if (buf->next == start) {
-        // allocate a new region
-        void *newbuf = malloc(MAX_RDMA_SIZE);
-        // Register memory for communications
-        if ((info->recvmr = ibv_reg_mr(info->pd,
-                                       &info->recvData,
-                                       MAX_RDMA_SIZE,
-                                       IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE)) == 0) {
-            Panic("Could not register receive buffer");
-        }
-        RDMABuffer *buf2 = (RDMABuffer *)newbuf;
-        buf2->start = newbuf + sizeof(RDMABuffer);
-        buf2->size = MAX_RDMA_SIZE - sizeof(RDMABuffer);
-        buf2->prev = buf;
-        buf2->next = start;
-        buf->next = buf2;
-        start->prev = buf2;
-        buf2->inUse = false;
-        buf = buf2;
-        Debug("Allocating new send buffer of size %u", MAX_RDMA_SIZE);
-    } else {
-        buf = buf->next;
-    }
     
-    buf->inUse = true;
-    return buf;
+        // if this is a bounded allocation and there is enough room left to create a new buffer
+        if (size != 0 && buf->size - size > sizeof(RDMABuffer) + 40) {
+            // create new buffer
+            RDMABuffer *newbuf = (RDMABuffer *)(buf->start + size);
+            newbuf->start = buf->start + size + sizeof(RDMABuffer);
+            newbuf->size = buf->size - size - sizeof(RDMABuffer);
+            newbuf->next = buf->next;
+            newbuf->prev = buf;
+            buf->next->prev = newbuf
+            buf->next = newbuf;
+            newbuf->inUse = false;
+            newbuf->mr = buf->mr;
+        }
+        buf->inUse = true;
+        return buf;
 }
 
 void
