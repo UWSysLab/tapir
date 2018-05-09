@@ -139,9 +139,9 @@ private:
     RDMATransportAddress
     LookupAddress(const transport::Configuration &cfg,
                   int replicaIdx);
-    RDMATransportAddress*
+    const RDMATransportAddress*
     LookupMulticastAddress(const transport::Configuration*config) { return NULL; };
-    const RDMATransportAddress *
+    RDMATransportAddress *
     BindToPort(struct rdma_cm_id *id, const string &host, const string &port);
     void ConnectRDMA(TransportReceiver *src, const RDMATransportAddress &dst);
     void ConnectRDMA(TransportReceiver *src, const RDMATransportAddress &dst,

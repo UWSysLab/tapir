@@ -157,7 +157,7 @@ RDMATransport::PostReceive(RDMATransportRDMAListener *info)
     // post receive
     struct ibv_recv_wr wr, *bad_wr = NULL;
     struct ibv_sge sge;
-    RDMABuffer *buf = AllocRecvBuffer(info);
+    RDMABuffer *buf = AllocBuffer(info);
     memset(&wr, 0, sizeof(wr));
     wr.wr_id = (uint64_t)buf;
     wr.sg_list = &sge;
@@ -165,7 +165,7 @@ RDMATransport::PostReceive(RDMATransportRDMAListener *info)
     wr.num_sge = 1;
     sge.addr = (uintptr_t)buf->start;
     sge.length = buf->size;
-    sge.lkey = info->recvmr->lkey;
+    sge.lkey = buf->mr->lkey;
     return ibv_post_recv(info->id->qp, &wr, &bad_wr);
 }
 
@@ -179,8 +179,8 @@ RDMATransport::CleanupConnection(RDMATransportRDMAListener *info)
     
     if (info->cqevent) {
         event_free(info->cqevent);
-        ibv_dereg_mr(info->sendmr);
-        ibv_dereg_mr(info->recvmr);
+        //ibv_dereg_mr(info->sendmr);
+        //ibv_dereg_mr(info->recvmr);
 
         // rdma_destroy_qp(info->id);
         //ibv_destroy_comp_channel(info->cq->channel);
@@ -469,8 +469,8 @@ RDMATransport::Register(TransportReceiver *receiver,
     Debug("Accepting connections on RDMA port %s", port.c_str());
 }
 
-RDMABuffer *
-RDMATransport::AllocBuffer(RDMATransportListener *info,
+struct RDMABuffer *
+RDMATransport::AllocBuffer(struct RDMATransportListener *info,
                            size_t size = 0)
 {
     RDMABuffer *buf = info->buffers;
@@ -544,10 +544,10 @@ RDMATransport::FreeBuffer(RDMABuffer *buf)
     // find start of free region
     RDMABuffer *prev = buf->prev;
     RDMABuffer *next = buf->next;
-    while (prev->inUse == false) {
+    while (prev->inUse == false && prev->mr == buf->mr) {
         prev = prev->prev;
     }
-    while (next->inUse == false) {
+    while (next->inUse == false && next->mr == buf->mr) {
         next = next->next;
     }
     
@@ -576,7 +576,7 @@ RDMATransport::FlushSendQueue(RDMATransportListener *info)
 
         sge.addr = (uintptr_t)buf->start;
         sge.length = buf->size;
-        sge.lkey = info->sendmr->lkey;
+        sge.lkey = buf->mr->lkey;
 
         if (ibv_post_send(info->id->qp, &wr, &bad_wr) != 0) {
             Panic("Could not send message: %s", strerror(errno));
@@ -618,8 +618,8 @@ RDMATransport::SendMessageInternal(TransportReceiver *src,
     
     ASSERT(totalLen < MAX_RDMA_SIZE);
 
-    RDMABuffer *buf = AllocSendBuffer(info,
-                                      totalLen);
+    RDMABuffer *buf = AllocBuffer(info,
+                                  totalLen);
     ASSERT(buf);
     
     // allocate buffer
