@@ -95,6 +95,7 @@ private:
 
     struct RDMABuffer
     {
+        int magic;
         uint8_t *start;
         size_t size;
         RDMABuffer *next;

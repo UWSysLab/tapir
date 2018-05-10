@@ -475,7 +475,8 @@ RDMATransport::AllocBuffer(RDMATransportRDMAListener *info,
     // allocate first buffer
     if (info->buffers == NULL) {
         RDMABuffer *newbuf = (RDMABuffer *)malloc(MAX_RDMA_SIZE);
-        newbuf->start = (uint8_t *)newbuf + sizeof(RDMABuffer);
+        newbuf->magic = MAGIC;
+        newbuf->start = (uint8_t *)(newbuf + 1);
         newbuf->size = MAX_RDMA_SIZE - sizeof(RDMABuffer);
         newbuf->next = newbuf;
         newbuf->prev = newbuf;
@@ -497,10 +498,13 @@ RDMATransport::AllocBuffer(RDMATransportRDMAListener *info,
             if (buf->next == info->buffers) {
                 // we don't have any free buffers
                 RDMABuffer *newbuf = (RDMABuffer *)malloc(MAX_RDMA_SIZE);
-                newbuf->start = (uint8_t *)newbuf + sizeof(RDMABuffer);
+                newbuf->magic = MAGIC;
+                newbuf->start = (uint8_t *)(newbuf + 1);
                 newbuf->size = MAX_RDMA_SIZE - sizeof(RDMABuffer);
                 newbuf->next = info->buffers;
                 newbuf->prev = buf;
+                info->buffers->prev = newbuf;
+                buf->next = newbuf;
                 newbuf->inUse = false;
                 // Register memory for communications
                 if ((newbuf->mr = ibv_reg_mr(info->pd,
@@ -512,21 +516,25 @@ RDMATransport::AllocBuffer(RDMATransportRDMAListener *info,
                 Debug("Allocating new RDMA buffer of size %i", MAX_RDMA_SIZE);
                 buf = newbuf;
                 buf = buf->next;
+                ASSERT(buf->magic == MAGIC);
                 break;
             }
             buf = buf->next;
+            ASSERT(buf->magic == MAGIC);
         }
     
         // if this is a bounded allocation and there is enough room left to create a new buffer
         if (size != 0 && buf->size - size > sizeof(RDMABuffer) + 40) {
             // create new buffer
             RDMABuffer *newbuf = (RDMABuffer *)(buf->start + size);
+            newbuf->magic = MAGIC;
             newbuf->start = buf->start + size + sizeof(RDMABuffer);
             newbuf->size = buf->size - size - sizeof(RDMABuffer);
             newbuf->next = buf->next;
             newbuf->prev = buf;
             buf->next->prev = newbuf;
             buf->next = newbuf;
+            buf->size = size;
             newbuf->inUse = false;
             newbuf->mr = buf->mr;
         }
@@ -541,20 +549,32 @@ RDMATransport::FreeBuffer(RDMABuffer *buf)
     // find start of free region
     RDMABuffer *prev = buf->prev;
     RDMABuffer *next = buf->next;
-    while (prev->inUse == false &&
-           prev->mr == buf->mr &&
-           prev != next) {
+    buf->inUse = false;
+    ASSERT(prev->magic == MAGIC);
+    ASSERT(next->magic == MAGIC);
+    
+    while (prev != buf->next &&
+           prev < buf &&
+           prev->inUse == false &&
+           prev->mr == buf->mr) {
         prev = prev->prev;
+        ASSERT(prev->magic == MAGIC);
     }
-    while (next->inUse == false &&
-           next->mr == buf->mr &&
-           next != prev) {
+    
+    while (next != buf->prev &&
+           next > buf &&
+           next->inUse == false &&
+           next->mr == buf->mr) {
         next = next->next;
+        ASSERT(prev->magic == MAGIC);
     }
 
     if (prev != buf->prev || next != buf->next) {
         RDMABuffer *newbuf = prev->next;
+        ASSERT(newbuf->magic == MAGIC);
         newbuf->next = next;
+        next->prev = newbuf;
+        newbuf->start = (uint8_t*)(newbuf + 1);
         newbuf->size = (size_t)((uint8_t *)next - newbuf->start);
         newbuf->inUse = false;
     }
@@ -626,7 +646,7 @@ RDMATransport::SendMessageInternal(TransportReceiver *src,
     RDMABuffer *buf = AllocBuffer(info,
                                   totalLen);
     ASSERT(buf);
-    ASSERT(buf->size == totalLen);
+    ASSERT(buf->size >= totalLen);
     
     // allocate buffer
     uint8_t *ptr = buf->start;
@@ -640,9 +660,9 @@ RDMATransport::SendMessageInternal(TransportReceiver *src,
     ptr += typeLen;
     *((size_t *) ptr) = dataLen;
     ptr += sizeof(size_t);
-    m.SerializeWithCachedSizesToArray(ptr);
+    m.SerializeToArray(ptr, dataLen);
     ptr += dataLen;
-    ASSERT(ptr - info->sendPtr == totalLen);
+    ASSERT(ptr = buf->start + buf->size);
     
     info->sendQ.push_back(buf);
     if (FlushSendQueue(info) < 1) {
