@@ -158,6 +158,7 @@ RDMATransport::PostReceive(RDMATransportRDMAListener *info)
     struct ibv_recv_wr wr, *bad_wr = NULL;
     struct ibv_sge sge;
     RDMABuffer *buf = AllocBuffer(info);
+    Debug("Post Receive bufsize %u %lx", buf->size, buf);
     memset(&wr, 0, sizeof(wr));
     wr.wr_id = (uint64_t)buf;
     wr.sg_list = &sge;
@@ -167,11 +168,13 @@ RDMATransport::PostReceive(RDMATransportRDMAListener *info)
     sge.length = buf->size;
     sge.lkey = buf->mr->lkey;
     return ibv_post_recv(info->id->qp, &wr, &bad_wr);
+        
 }
 
 void
 RDMATransport::CleanupConnection(RDMATransportRDMAListener *info)
 {
+    Debug("Cleaning up connection");
     if (info->cmevent) {
         // listening port
         event_free(info->cmevent);
@@ -187,13 +190,13 @@ RDMATransport::CleanupConnection(RDMATransportRDMAListener *info)
             }
         } while (buf->next != info->buffers);
 
-        // rdma_destroy_qp(info->id);
-        //ibv_destroy_comp_channel(info->cq->channel);
-        //ibv_destroy_cq(info->cq); 
-        //ibv_dealloc_pd(info->pd);
+        rdma_destroy_qp(info->id);
+        ibv_destroy_comp_channel(info->cq->channel);
+        ibv_destroy_cq(info->cq); 
+        ibv_dealloc_pd(info->pd);
     }
     
-    //rdma_destroy_id(info->id);
+    rdma_destroy_id(info->id);
     delete info;
 }
 
@@ -470,8 +473,7 @@ RDMATransport::RDMABuffer *
 RDMATransport::AllocBuffer(RDMATransportRDMAListener *info,
                            size_t size)
 {
-    RDMABuffer *buf = info->buffers;
-
+    ASSERT(size < 200);
     // allocate first buffer
     if (info->buffers == NULL) {
         RDMABuffer *newbuf = (RDMABuffer *)malloc(MAX_RDMA_SIZE);
@@ -480,7 +482,7 @@ RDMATransport::AllocBuffer(RDMATransportRDMAListener *info,
         newbuf->size = MAX_RDMA_SIZE - sizeof(RDMABuffer);
         newbuf->next = newbuf;
         newbuf->prev = newbuf;
-        newbuf->inUse = false;
+        newbuf->inUse = true;
         // Register memory for communications
         if ((newbuf->mr = ibv_reg_mr(info->pd,
                                      newbuf,
@@ -490,55 +492,65 @@ RDMATransport::AllocBuffer(RDMATransportRDMAListener *info,
         }
         info->buffers = newbuf;
         Debug("Allocating new RDMA buffer of size %i", MAX_RDMA_SIZE);
-        buf = newbuf;
-    } else {
-        // look for a buffer
-        while (buf->inUse &&
-               ((size == 0) ? buf->size < 40 : buf->size < size)) {
-            if (buf->next == info->buffers) {
-                // we don't have any free buffers
-                RDMABuffer *newbuf = (RDMABuffer *)malloc(MAX_RDMA_SIZE);
-                newbuf->magic = MAGIC;
-                newbuf->start = (uint8_t *)(newbuf + 1);
-                newbuf->size = MAX_RDMA_SIZE - sizeof(RDMABuffer);
-                newbuf->next = info->buffers;
-                newbuf->prev = buf;
-                info->buffers->prev = newbuf;
-                buf->next = newbuf;
-                newbuf->inUse = false;
-                // Register memory for communications
-                if ((newbuf->mr = ibv_reg_mr(info->pd,
-                                             newbuf,
-                                             MAX_RDMA_SIZE,
-                                             IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE)) == 0) {
-                    Panic("Could not register buffer");
-                }
-                Debug("Allocating new RDMA buffer of size %i", MAX_RDMA_SIZE);
-                buf = newbuf;
-                buf = buf->next;
-                ASSERT(buf->magic == MAGIC);
-                break;
-            }
-            buf = buf->next;
-            ASSERT(buf->magic == MAGIC);
-        }
-    
-        // if this is a bounded allocation and there is enough room left to create a new buffer
-        if (size != 0 && buf->size - size > sizeof(RDMABuffer) + 40) {
-            // create new buffer
-            RDMABuffer *newbuf = (RDMABuffer *)(buf->start + size);
-            newbuf->magic = MAGIC;
-            newbuf->start = buf->start + size + sizeof(RDMABuffer);
-            newbuf->size = buf->size - size - sizeof(RDMABuffer);
-            newbuf->next = buf->next;
-            newbuf->prev = buf;
-            buf->next->prev = newbuf;
-            buf->next = newbuf;
-            buf->size = size;
-            newbuf->inUse = false;
-            newbuf->mr = buf->mr;
-        }
+        return newbuf;
     }
+
+    RDMABuffer *buf = info->buffers;
+    // look for a buffer
+    while ((buf->inUse ||
+            ((size == 0) ? buf->size < 40 : buf->size < size)) &&
+           buf->next != info->buffers) {
+        //Debug("Buffer inuse: %i buffer size: %i buffer next: %lu",
+        //      buf->inUse, buf->size, buf->next);
+        buf = buf->next;
+        ASSERT(buf->magic == MAGIC);
+    }
+
+    // we need to allocate more buffers
+    if (buf->inUse) {
+        ASSERT(buf->next == info->buffers);
+        
+        RDMABuffer *newbuf = (RDMABuffer *)malloc(MAX_RDMA_SIZE);
+        newbuf->magic = MAGIC;
+        newbuf->start = (uint8_t *)(newbuf + 1);
+        newbuf->size = MAX_RDMA_SIZE - sizeof(RDMABuffer);
+        newbuf->next = buf->next;
+        newbuf->prev = buf;
+        buf->next->prev = newbuf;
+        buf->next = newbuf;
+        newbuf->inUse = false;
+        // Register memory for communications
+        if ((newbuf->mr = ibv_reg_mr(info->pd,
+                                     newbuf,
+                                     MAX_RDMA_SIZE,
+                                     IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE)) == 0) {
+            Panic("Could not register buffer");
+        }
+        Debug("Allocating new RDMA buffer of size %i", MAX_RDMA_SIZE);
+        buf = newbuf;
+    }
+
+    ASSERT(!buf->inUse);
+    ASSERT(buf->magic == MAGIC);
+    
+    // if this is a bounded allocation and there is enough room left to create a new buffer
+    if (size != 0 && (buf->size > size + sizeof(RDMABuffer) + 40)) {
+        // create new buffer
+        RDMABuffer *newbuf = (RDMABuffer *)(buf->start + size);
+        newbuf->magic = MAGIC;
+        newbuf->start = buf->start + size + sizeof(RDMABuffer);
+        newbuf->size = buf->size - size - sizeof(RDMABuffer);
+        ASSERT(newbuf->size <= MAX_RDMA_SIZE - sizeof(RDMABuffer));
+        newbuf->next = buf->next;
+        newbuf->prev = buf;
+        buf->next->prev = newbuf;
+        buf->next = newbuf;
+        buf->size = size;
+        newbuf->inUse = false;
+        newbuf->mr = buf->mr;
+    } else if (size != 0) buf->size = size;
+    memset(buf->start,  0, buf->size);
+    ASSERT(buf->size <= MAX_RDMA_SIZE - sizeof(RDMABuffer));
     buf->inUse = true;
     return buf;    
 }
@@ -549,6 +561,7 @@ RDMATransport::FreeBuffer(RDMABuffer *buf)
     // find start of free region
     RDMABuffer *prev = buf->prev;
     RDMABuffer *next = buf->next;
+    size_t size = buf->size;
     buf->inUse = false;
     ASSERT(prev->magic == MAGIC);
     ASSERT(next->magic == MAGIC);
@@ -557,6 +570,7 @@ RDMATransport::FreeBuffer(RDMABuffer *buf)
            prev < buf &&
            prev->inUse == false &&
            prev->mr == buf->mr) {
+        size += prev->size + sizeof(RDMABuffer);
         prev = prev->prev;
         ASSERT(prev->magic == MAGIC);
     }
@@ -565,6 +579,7 @@ RDMATransport::FreeBuffer(RDMABuffer *buf)
            next > buf &&
            next->inUse == false &&
            next->mr == buf->mr) {
+        size += next->size + sizeof(RDMABuffer);
         next = next->next;
         ASSERT(prev->magic == MAGIC);
     }
@@ -575,7 +590,8 @@ RDMATransport::FreeBuffer(RDMABuffer *buf)
         newbuf->next = next;
         next->prev = newbuf;
         newbuf->start = (uint8_t*)(newbuf + 1);
-        newbuf->size = (size_t)((uint8_t *)next - newbuf->start);
+        newbuf->size = size;
+        ASSERT(buf->size <= MAX_RDMA_SIZE - sizeof(RDMABuffer));
         newbuf->inUse = false;
     }
 }
@@ -585,7 +601,6 @@ RDMATransport::FlushSendQueue(RDMATransportRDMAListener *info)
 {
     int totalSent = 0;
     while (!info->sendQ.empty()) {
-        
         RDMABuffer *buf = info->sendQ.front();
         // set up message
         struct ibv_send_wr wr, *bad_wr = NULL;
@@ -601,11 +616,12 @@ RDMATransport::FlushSendQueue(RDMATransportRDMAListener *info)
         sge.addr = (uintptr_t)buf->start;
         sge.length = buf->size;
         sge.lkey = buf->mr->lkey;
-
+        ASSERT(buf->size < 200);
+        
         if (ibv_post_send(info->id->qp, &wr, &bad_wr) != 0) {
             Panic("Could not send message: %s", strerror(errno));
         }
-
+        Debug("Sending message: %s", (char *)buf->start);
         info->sendQ.pop_front();
         totalSent++;
     }
@@ -893,7 +909,7 @@ RDMATransport::RDMAReadableCallback(evutil_socket_t fd, short what, void *arg)
     struct ibv_context *context;
     ASSERT(fcntl(info->cq->channel->fd, F_GETFL) & O_NONBLOCK);
     int numEvents = 0;
-    
+
     while (ibv_get_cq_event(info->cq->channel, &cq, (void**)&context) == 0) {
         numEvents++;
     }
@@ -906,20 +922,24 @@ RDMATransport::RDMAReadableCallback(evutil_socket_t fd, short what, void *arg)
     struct ibv_wc wcs[MAX_RECEIVE_NUM];
     int num;
     while ((num = ibv_poll_cq(cq, info->posted, wcs)) > 0) {
-        if (num == info->posted) {
-            // increase number of posted buffers
-            info->posted = info->posted * 2;
-            for (int i = 0; i < info->posted; i++) {
+        // if (num == info->posted) {
+        //     // increase number of posted buffers
+        //     info->posted = info->posted * 2;
+        // }
+
+        for (int i = 0; i < num; i++) {
+            if (wcs[i].opcode == IBV_WC_RECV) {
                 // Post receive to get the next packet
                 if (PostReceive(info) != 0) {
                     Warning("Sent message but failed to post receive for reply");
                 }
             }
         }
+        
 
         // process messages
         for (int i = 0; i < num; i++) {
-            struct ibv_wc &wc = wcs[i];
+            struct ibv_wc wc = wcs[i];
             if (wc.status == IBV_WC_SUCCESS) {
                 switch (wc.opcode) {
                 case IBV_WC_SEND:
@@ -927,6 +947,7 @@ RDMATransport::RDMAReadableCallback(evutil_socket_t fd, short what, void *arg)
                     Debug("Successfully sent %u bytes over RDMA",
                           wc.byte_len);
                     RDMABuffer *buf = (RDMABuffer *)wc.wr_id;
+                    Debug("Sent message: %s", (char *)buf->start);
                     FreeBuffer(buf);
                     break;                
                 }
@@ -960,8 +981,8 @@ RDMATransport::RDMAReadableCallback(evutil_socket_t fd, short what, void *arg)
                     info->receiver->ReceiveMessage(addr->second,
                                                    type,
                                                    data);
-                    Debug("Done processing %s message",
-                          type.c_str());
+                    Debug("Done processing %s message. Freeing buffer %u",
+                          type.c_str(), buf->size);
                     FreeBuffer(buf);
                     
                     break;
@@ -976,8 +997,5 @@ RDMATransport::RDMAReadableCallback(evutil_socket_t fd, short what, void *arg)
                 return;
             }
         }
-
-        
     }
-
 }
