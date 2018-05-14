@@ -182,18 +182,18 @@ RDMATransport::CleanupConnection(RDMATransportRDMAListener *info)
     
     if (info->cqevent) {
         event_free(info->cqevent);
-        RDMABuffer *buf = info->buffers;
-        do {
-            ibv_dereg_mr(buf->mr);
-            while (buf->next->mr == buf->mr) {
-                buf = buf->next;
-            }
-        } while (buf->next != info->buffers);
+        // RDMABuffer *buf = info->buffers;
+        // do {
+        //     ibv_dereg_mr(buf->mr);
+        //     while (buf->next->mr == buf->mr) {
+        //         buf = buf->next;
+        //     }
+        // } while (buf->next != info->buffers);
 
         rdma_destroy_qp(info->id);
         ibv_destroy_comp_channel(info->cq->channel);
-        ibv_destroy_cq(info->cq); 
-        ibv_dealloc_pd(info->pd);
+        //ibv_destroy_cq(info->cq); 
+        //ibv_dealloc_pd(info->pd);
     }
     
     rdma_destroy_id(info->id);
