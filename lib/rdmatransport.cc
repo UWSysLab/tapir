@@ -182,7 +182,8 @@ RDMATransport::CleanupConnection(RDMATransportRDMAListener *info)
     
     if (info->cqevent) {
         event_free(info->cqevent);
-        // RDMABuffer *buf = info->buffers;
+    
+    // RDMABuffer *buf = info->buffers;
         // do {
         //     ibv_dereg_mr(buf->mr);
         //     while (buf->next->mr == buf->mr) {
@@ -190,8 +191,8 @@ RDMATransport::CleanupConnection(RDMATransportRDMAListener *info)
         //     }
         // } while (buf->next != info->buffers);
 
-        rdma_destroy_qp(info->id);
-        ibv_destroy_comp_channel(info->cq->channel);
+        //rdma_destroy_qp(info->id);
+        //ibv_destroy_comp_channel(info->cq->channel);
         //ibv_destroy_cq(info->cq); 
         //ibv_dealloc_pd(info->pd);
     }
@@ -922,17 +923,7 @@ RDMATransport::RDMAReadableCallback(evutil_socket_t fd, short what, void *arg)
         // if (num == info->posted) {
         //     // increase number of posted buffers
         //     info->posted = info->posted * 2;
-        // }
-
-        for (int i = 0; i < num; i++) {
-            if (wcs[i].opcode == IBV_WC_RECV) {
-                // Post receive to get the next packet
-                if (PostReceive(info) != 0) {
-                    Warning("Sent message but failed to post receive for reply");
-                }
-            }
-        }
-        
+        // }        
 
         // process messages
         for (int i = 0; i < num; i++) {
@@ -983,6 +974,10 @@ RDMATransport::RDMAReadableCallback(evutil_socket_t fd, short what, void *arg)
                     }
                     
                     FreeBuffer(buf);
+                    // Post receive to get the next packet
+                    if (PostReceive(info) != 0) {
+                        Warning("Sent message but failed to post receive for reply");
+                    }
                     break;
                 }
                 default:
