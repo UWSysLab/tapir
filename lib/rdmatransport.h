@@ -49,7 +49,7 @@
 #include <rdma/rdma_cma.h>
 
 #define MAX_RDMA_SIZE 4096 // Our RDMA buffers
-#define DEFAULT_RECEIVE_NUM 4
+#define DEFAULT_RECEIVE_NUM 1
 #define MAX_RECEIVE_NUM 64    
 class RDMATransportAddress : public TransportAddress
 {

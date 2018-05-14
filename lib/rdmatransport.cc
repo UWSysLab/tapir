@@ -549,7 +549,6 @@ RDMATransport::AllocBuffer(RDMATransportRDMAListener *info,
         newbuf->inUse = false;
         newbuf->mr = buf->mr;
     } else if (size != 0) buf->size = size;
-    memset(buf->start,  0, buf->size);
     ASSERT(buf->size <= MAX_RDMA_SIZE - sizeof(RDMABuffer));
     buf->inUse = true;
     return buf;    
@@ -562,7 +561,6 @@ RDMATransport::FreeBuffer(RDMABuffer *buf)
     RDMABuffer *prev = buf->prev;
     RDMABuffer *next = buf->next;
     size_t size = buf->size;
-    buf->inUse = false;
     ASSERT(prev->magic == MAGIC);
     ASSERT(next->magic == MAGIC);
     
@@ -584,16 +582,15 @@ RDMATransport::FreeBuffer(RDMABuffer *buf)
         ASSERT(prev->magic == MAGIC);
     }
 
-    if (prev != buf->prev || next != buf->next) {
-        RDMABuffer *newbuf = prev->next;
-        ASSERT(newbuf->magic == MAGIC);
-        newbuf->next = next;
-        next->prev = newbuf;
-        newbuf->start = (uint8_t*)(newbuf + 1);
-        newbuf->size = size;
-        ASSERT(buf->size <= MAX_RDMA_SIZE - sizeof(RDMABuffer));
-        newbuf->inUse = false;
-    }
+    RDMABuffer *newbuf = prev->next;
+    newbuf->next = next;
+    next->prev = newbuf;
+    ASSERT(newbuf->magic == MAGIC);
+    newbuf->start = (uint8_t*)(newbuf + 1);
+    newbuf->size = size;
+    ASSERT(newbuf->size <= MAX_RDMA_SIZE - sizeof(RDMABuffer));
+    newbuf->inUse = false;
+    memset(newbuf->start,  0, newbuf->size);
 }
 
 int
@@ -959,32 +956,33 @@ RDMATransport::RDMAReadableCallback(evutil_socket_t fd, short what, void *arg)
                     RDMABuffer *buf = (RDMABuffer *)wc.wr_id;
                     uint8_t *ptr = buf->start;
                     uint32_t magic = *((uint32_t *)ptr);
-                    
-                    if (magic != MAGIC) {
-                        Warning("No Magic: %u bytes sent: %u", magic, wc.byte_len);
-                        break;
+
+                    while (magic == MAGIC) {
+                        ptr += sizeof(magic);
+                        size_t totalSize = *((size_t *)ptr);
+                        ASSERT(totalSize < MAX_RDMA_SIZE);
+                        ptr += sizeof(totalSize);
+                        size_t typeLen = *((size_t *)ptr);
+                        ptr += sizeof(typeLen);
+                        string type((char *)ptr, typeLen);
+                        ptr += typeLen;
+                        size_t msgLen = *((size_t *)ptr);
+                        ptr += sizeof(msgLen);
+                        string data((char *)ptr, msgLen);;
+                        ptr += msgLen;
+
+                        // Dispatch
+                        info->receiver->ReceiveMessage(addr->second,
+                                                       type,
+                                                       data);
+                        Debug("Done processing %s message. Freeing buffer %u",
+                              type.c_str(), buf->size);
+
+                        // check next
+                        magic = *((uint32_t *)ptr);
                     }
                     
-                    ptr += sizeof(magic);
-                    size_t totalSize = *((size_t *)ptr);
-                    ASSERT(totalSize < MAX_RDMA_SIZE);
-                    ptr += sizeof(totalSize);
-                    size_t typeLen = *((size_t *)ptr);
-                    ptr += sizeof(typeLen);
-                    string type((char *)ptr, typeLen);
-                    ptr += typeLen;
-                    size_t msgLen = *((size_t *)ptr);
-                    ptr += sizeof(msgLen);
-                    string data((char *)ptr, msgLen);;
-                    
-                    // Dispatch
-                    info->receiver->ReceiveMessage(addr->second,
-                                                   type,
-                                                   data);
-                    Debug("Done processing %s message. Freeing buffer %u",
-                          type.c_str(), buf->size);
                     FreeBuffer(buf);
-                    
                     break;
                 }
                 default:
