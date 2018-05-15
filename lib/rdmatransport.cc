@@ -179,10 +179,9 @@ RDMATransport::CleanupConnection(RDMATransportRDMAListener *info)
         // listening port
         event_free(info->cmevent);
     }
-    
     if (info->cqevent) {
         event_free(info->cqevent);
-    
+    }
     // RDMABuffer *buf = info->buffers;
         // do {
         //     ibv_dereg_mr(buf->mr);
@@ -195,9 +194,7 @@ RDMATransport::CleanupConnection(RDMATransportRDMAListener *info)
         //ibv_destroy_comp_channel(info->cq->channel);
         //ibv_destroy_cq(info->cq); 
         //ibv_dealloc_pd(info->pd);
-    }
-    
-    rdma_destroy_id(info->id);
+    //rdma_destroy_id(info->id);
     delete info;
 }
 
@@ -344,7 +341,7 @@ RDMATransport::ConnectRDMA(TransportReceiver *src,
         Panic("Could not create completion channel");
     }
     // Create a completion queue
-    if ((info->cq = ibv_create_cq(id->verbs, 10, NULL, channel, 0)) == NULL) {
+    if ((info->cq = ibv_create_cq(id->verbs, 40, NULL, channel, 0)) == NULL) {
         Panic("Could not create completion channel");
     }
     // Set up the completion queue to notify on the channel for any events
@@ -499,7 +496,7 @@ RDMATransport::AllocBuffer(RDMATransportRDMAListener *info,
     RDMABuffer *buf = info->buffers;
     // look for a buffer
     while ((buf->inUse ||
-            ((size == 0) ? buf->size < 40 : buf->size < size)) &&
+            ((size == 0) ? buf->size < 1024 : buf->size < size)) &&
            buf->next != info->buffers) {
         //Debug("Buffer inuse: %i buffer size: %i buffer next: %lu",
         //      buf->inUse, buf->size, buf->next);
@@ -535,7 +532,7 @@ RDMATransport::AllocBuffer(RDMATransportRDMAListener *info,
     ASSERT(buf->magic == MAGIC);
     
     // if this is a bounded allocation and there is enough room left to create a new buffer
-    if (size != 0 && (buf->size > size + sizeof(RDMABuffer) + 40)) {
+    if (size != 0 && (buf->size > size + sizeof(RDMABuffer) + 1024)) {
         // create new buffer
         RDMABuffer *newbuf = (RDMABuffer *)(buf->start + size);
         newbuf->magic = MAGIC;
@@ -920,11 +917,6 @@ RDMATransport::RDMAReadableCallback(evutil_socket_t fd, short what, void *arg)
     struct ibv_wc wcs[MAX_RECEIVE_NUM];
     int num;
     while ((num = ibv_poll_cq(cq, info->posted, wcs)) > 0) {
-        // if (num == info->posted) {
-        //     // increase number of posted buffers
-        //     info->posted = info->posted * 2;
-        // }        
-
         // process messages
         for (int i = 0; i < num; i++) {
             struct ibv_wc wc = wcs[i];
@@ -935,7 +927,6 @@ RDMATransport::RDMAReadableCallback(evutil_socket_t fd, short what, void *arg)
                     Debug("Successfully sent %u bytes over RDMA",
                           wc.byte_len);
                     RDMABuffer *buf = (RDMABuffer *)wc.wr_id;
-                    Debug("Sent message: %s", (char *)buf->start);
                     FreeBuffer(buf);
                     break;                
                 }
@@ -948,7 +939,7 @@ RDMATransport::RDMAReadableCallback(evutil_socket_t fd, short what, void *arg)
                     uint8_t *ptr = buf->start;
                     uint32_t magic = *((uint32_t *)ptr);
 
-                    while (magic == MAGIC) {
+                    if (magic == MAGIC) {
                         ptr += sizeof(magic);
                         size_t totalSize = *((size_t *)ptr);
                         ASSERT(totalSize < MAX_RDMA_SIZE);
@@ -968,16 +959,16 @@ RDMATransport::RDMAReadableCallback(evutil_socket_t fd, short what, void *arg)
                                                        data);
                         Debug("Done processing %s message. Freeing buffer %u",
                               type.c_str(), buf->size);
-
-                        // check next
-                        magic = *((uint32_t *)ptr);
-                    }
-                    
+                    } else {
+                        Warning("No magic!");
+                    }                    
                     FreeBuffer(buf);
                     // Post receive to get the next packet
                     if (PostReceive(info) != 0) {
                         Warning("Sent message but failed to post receive for reply");
                     }
+
+                    
                     break;
                 }
                 default:
@@ -985,7 +976,8 @@ RDMATransport::RDMAReadableCallback(evutil_socket_t fd, short what, void *arg)
                     break;
                 }
             } else {
-                Warning("Something failed!");
+                Warning("Something failed! msg size:%i status:%s %i",
+                        wc.byte_len, ibv_wc_status_str(wc.status), wc.opcode);
                 CleanupConnection(info);
                 return;
             }
