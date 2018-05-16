@@ -48,8 +48,9 @@
 #include <netinet/in.h>
 #include <rdma/rdma_cma.h>
 
-const size_t MAX_RDMA_SIZE = 4096; // Our RDMA buffers
-
+#define MAX_RDMA_SIZE 4096 // Our RDMA buffers
+#define DEFAULT_RECEIVE_NUM 4
+#define MAX_RECEIVE_NUM 64    
 class RDMATransportAddress : public TransportAddress
 {
 public:
@@ -91,6 +92,18 @@ private:
         event *ev;
         int id;
     };
+
+    struct RDMABuffer
+    {
+        int magic;
+        uint8_t *start;
+        size_t size;
+        RDMABuffer *next;
+        RDMABuffer *prev;
+        bool inUse = false;
+        struct ibv_mr *mr;
+    };
+        
     struct RDMATransportRDMAListener
     {
         RDMATransport *transport;
@@ -105,13 +118,12 @@ private:
         event *cmevent;
         event *cqevent;
         // message passing space
-        char sendData[MAX_RDMA_SIZE];
-        char *sendPtr;
-        ibv_mr *sendmr;
-        char recvData[MAX_RDMA_SIZE];
-        char *recvPtr;
-        ibv_mr *recvmr;
+        std::list<RDMABuffer *> sendQ;
+        RDMABuffer *buffers = NULL;
+        int posted = DEFAULT_RECEIVE_NUM;
+        
     };
+    
     event_base *libeventBase;
     int lastTimerId;
     std::map<int, RDMATransportTimerInfo *> timers;
@@ -123,20 +135,32 @@ private:
                              const RDMATransportAddress &dst,
                              const Message &m, bool multicast = false);
 
+    // Library functions for setting up the network
     RDMATransportAddress
     LookupAddress(const transport::ReplicaAddress &addr);
     RDMATransportAddress
     LookupAddress(const transport::Configuration &cfg,
                   int replicaIdx);
-    RDMATransportAddress*
-    BindToPort(struct rdma_cm_id *id, const string &host, const string &port);
-    static int PostReceive(RDMATransportRDMAListener *info);
-    const RDMATransportAddress *
+    const RDMATransportAddress*
     LookupMulticastAddress(const transport::Configuration*config) { return NULL; };
-    void ConnectRDMA(TransportReceiver *src, const RDMATransportAddress &dst);
-    void ConnectRDMA(TransportReceiver *src, const RDMATransportAddress &dst,
+    RDMATransportAddress *
+    BindToPort(struct rdma_cm_id *id, const string &host, const string &port);
+    void ConnectRDMA(TransportReceiver *src,
+                     const RDMATransportAddress &dst);
+    void ConnectRDMA(TransportReceiver *src,
+                     const RDMATransportAddress &dst,
                      struct rdma_cm_id *id);
     static void CleanupConnection(RDMATransportRDMAListener *info);
+    
+    // Libraries for managing rdma and buffers
+    static int PostReceive(RDMATransportRDMAListener *info);
+    static RDMABuffer * AllocBuffer(RDMATransportRDMAListener *info,
+                             size_t size = 0);
+    static void FreeBuffer(RDMABuffer *buf);
+    static int FlushSendQueue(RDMATransportRDMAListener *info);
+
+
+    // libevent callbacks
     void OnTimer(RDMATransportTimerInfo *info);
     static void TimerCallback(evutil_socket_t fd,
                               short what, void *arg);

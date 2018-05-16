@@ -1,7 +1,5 @@
 #!/bin/bash
 
-#export DEBUG=all
-
 shard=$1    # which shard is this
 config=$2   # path to config file
 cmd=$3      # command to run
