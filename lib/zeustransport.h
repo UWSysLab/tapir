@@ -93,21 +93,19 @@ private:
     {
         ZeusTransport *transport;
         TransportReceiver *receiver;
-        int acceptFd;
+        int qd;
         int replicaIdx;
-        event *acceptEvent;
-        std::list<struct bufferevent *> connectionEvents;
+        event *ev;
     };
     event_base *libeventBase;
     std::vector<event *> listenerEvents;
     std::vector<event *> signalEvents;
-    std::map<int, TransportReceiver*> receivers; // fd -> receiver
-    std::map<TransportReceiver*, int> fds; // receiver -> fd
+    std::map<int, TransportReceiver*> receivers; // qd -> receiver
+    std::map<TransportReceiver*, int> qds; // receiver -> qd
     int lastTimerId;
     std::map<int, ZeusTransportTimerInfo *> timers;
-    std::list<ZeusTransportZeusListener *> zeusListeners;
-    std::map<ZeusTransportAddress, struct bufferevent *> zeusOutgoing;
-    std::map<struct bufferevent *, ZeusTransportAddress> zeusAddresses;
+    std::map<ZeusTransportAddress, int> zeusOutgoing;
+    std::map<struct ZeusTransportZeusListener *, ZeusTransportAddress *> zeusIncoming;
     
     bool SendMessageInternal(TransportReceiver *src,
                              const ZeusTransportAddress &dst,
@@ -131,14 +129,8 @@ private:
                                short what, void *arg);
     static void ZeusAcceptCallback(evutil_socket_t fd, short what,
                                   void *arg);
-    static void ZeusReadableCallback(struct bufferevent *bev,
-                                    void *arg);
-    static void ZeusEventCallback(struct bufferevent *bev,
-                                 short what, void *arg);
-    static void ZeusIncomingEventCallback(struct bufferevent *bev,
-                                         short what, void *arg);
-    static void ZeusOutgoingEventCallback(struct bufferevent *bev,
-                                         short what, void *arg);
+    static void ZeusReadableCallback(evutil_socket_t fd, short what,
+                                     void *arg);
 };
 
 #endif  // _LIB_ZEUSTRANSPORT_H_

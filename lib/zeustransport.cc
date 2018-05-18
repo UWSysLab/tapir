@@ -38,13 +38,13 @@
 #include <google/protobuf/message.h>
 #include <event2/thread.h>
 
-#include <netinet/zeus.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <sys/socket.h>
 #include <netdb.h>
 #include <signal.h>
 
@@ -115,7 +115,7 @@ ZeusTransport::LookupAddress(const transport::Configuration &config,
 }
 
 static void
-BindToPort(int fd, const string &host, const string &port)
+BindToPort(int qd, const string &host, const string &port)
 {
     struct sockaddr_in sin;
 
@@ -129,7 +129,7 @@ BindToPort(int fd, const string &host, const string &port)
     struct addrinfo *ai;
     int res;
     if ((res = getaddrinfo(host.c_str(),
-			   port.c_str(),
+                           port.c_str(),
                            &hints, &ai))) {
         Panic("Failed to resolve host/port %s:%s: %s",
               host.c_str(), port.c_str(), gai_strerror(res));
@@ -145,7 +145,7 @@ BindToPort(int fd, const string &host, const string &port)
 
     Debug("Binding to %s %d Zeus", inet_ntoa(sin.sin_addr), htons(sin.sin_port));
 
-    if (bind(fd, (sockaddr *)&sin, sizeof(sin)) < 0) {
+    if (Zeus::bind(qd, (sockaddr *)&sin, sizeof(sin)) < 0) {
         PPanic("Failed to bind to socket");
     }
 }
@@ -189,49 +189,46 @@ void
 ZeusTransport::ConnectZeus(TransportReceiver *src, const ZeusTransportAddress &dst)
 {
     // Create socket
-    int fd;
-    if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+    int qd;
+    if ((qd = Zeus::queue(AF_INET, SOCK_STREAM, 0)) < 0) {
         PPanic("Failed to create socket for outgoing Zeus connection");
     }
-    
+
+    int fd = Zeus::qd2fd(qd);
     // Put it in non-blocking mode
     if (fcntl(fd, F_SETFL, O_NONBLOCK, 1)) {
         PWarning("Failed to set O_NONBLOCK on outgoing Zeus socket");
     }
 
-    // Set Zeus_NODELAY
+    // Set TCP_NODELAY
     int n = 1;
-    if (setsockopt(fd, IPPROTO_Zeus,
-                   Zeus_NODELAY, (char *)&n, sizeof(n)) < 0) {
-        PWarning("Failed to set Zeus_NODELAY on Zeus listening socket");
+    if (setsockopt(fd, IPPROTO_TCP,
+                   TCP_NODELAY, (char *)&n, sizeof(n)) < 0) {
+        PWarning("Failed to set TCP_NODELAY on Zeus connecting socket");
     }
 
     ZeusTransportZeusListener *info = new ZeusTransportZeusListener();
     info->transport = this;
-    info->acceptFd = 0;
+    info->qd = qd;
     info->receiver = src;
     info->replicaIdx = -1;
-    info->acceptEvent = NULL;
-    
-    zeusListeners.push_back(info);
-
-    struct bufferevent *bev =
-        bufferevent_socket_new(libeventBase, fd,
-                               BEV_OPT_CLOSE_ON_FREE);
-    bufferevent_setcb(bev, ZeusReadableCallback, NULL,
-                      ZeusOutgoingEventCallback, info);
-    
-    if (bufferevent_socket_connect(bev,
-                                   (struct sockaddr *)&(dst.addr),
-                                   sizeof(dst.addr)) < 0) {
-	bufferevent_free(bev);
+        
+    if (Zeus::connect(qd,
+                      (struct sockaddr *)&(dst.addr),
+                      sizeof(dst.addr)) < 0) {
         Warning("Failed to connect to server via Zeus");
         return;
     }
-    if (bufferevent_enable(bev, EV_READ|EV_WRITE) < 0) {
-        Panic("Failed to enable bufferevent");
-    }
 
+    // Create an libevent event for the completion channel
+    info->ev = event_new(libeventBase,
+                         fd,
+                         EV_READ | EV_WRITE | EV_PERSIST,
+                         &ZeusReadableCallback,
+                         (void *)info);
+    event_add(info->ev, NULL);
+
+    
     // Tell the receiver its address
     struct sockaddr_in sin;
     socklen_t sinsize = sizeof(sin);
@@ -241,8 +238,8 @@ ZeusTransport::ConnectZeus(TransportReceiver *src, const ZeusTransportAddress &d
     ZeusTransportAddress *addr = new ZeusTransportAddress(sin);
     src->SetAddress(addr);
 
-    zeusOutgoing[dst] = bev;
-    zeusAddresses.insert(pair<struct bufferevent*, ZeusTransportAddress>(bev,dst));
+    zeusOutgoing[dst] = qd;
+    zeusIncoming[info] = dst.clone();
 
     Debug("Opened Zeus connection to %s:%d",
 	  inet_ntoa(dst.addr.sin_addr), htons(dst.addr.sin_port));
@@ -265,11 +262,13 @@ ZeusTransport::Register(TransportReceiver *receiver,
     }
     
     // Create socket
-    int fd;
-    if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+    int qd;
+    if ((qd = Zeus::queue(AF_INET, SOCK_STREAM, 0)) < 0) {
         PPanic("Failed to create socket to accept Zeus connections");
     }
 
+    int fd = Zeus::qd2fd(qd);
+    
     // Put it in non-blocking mode
     if (fcntl(fd, F_SETFL, O_NONBLOCK, 1)) {
         PWarning("Failed to set O_NONBLOCK");
@@ -282,36 +281,35 @@ ZeusTransport::Register(TransportReceiver *receiver,
         PWarning("Failed to set SO_REUSEADDR on Zeus listening socket");
     }
 
-    // Set Zeus_NODELAY
+    // Set TCP_NODELAY
     n = 1;
-    if (setsockopt(fd, IPPROTO_Zeus,
-                   Zeus_NODELAY, (char *)&n, sizeof(n)) < 0) {
-        PWarning("Failed to set Zeus_NODELAY on Zeus listening socket");
+    if (setsockopt(fd, IPPROTO_TCP,
+                   TCP_NODELAY, (char *)&n, sizeof(n)) < 0) {
+        PWarning("Failed to set TCP_NODELAY on Zeus listening socket");
     }
-
+ 
     // Registering a replica. Bind socket to the designated
     // host/port
     const string &host = config.replica(replicaIdx).host;
     const string &port = config.replica(replicaIdx).port;
-    BindToPort(fd, host, port);
+    BindToPort(qd, host, port);
     
     // Listen for connections
-    if (listen(fd, 5) < 0) {
+    if (Zeus::listen(qd, 5) < 0) {
         PPanic("Failed to listen for Zeus connections");
     }
         
     // Create event to accept connections
     ZeusTransportZeusListener *info = new ZeusTransportZeusListener();
     info->transport = this;
-    info->acceptFd = fd;
+    info->qd = qd;
     info->receiver = receiver;
     info->replicaIdx = replicaIdx;
-    info->acceptEvent = event_new(libeventBase, fd,
-                                  EV_READ | EV_PERSIST,
-                                  ZeusAcceptCallback, (void *)info);
-    event_add(info->acceptEvent, NULL);
-    zeusListeners.push_back(info);
-
+    info->ev = event_new(libeventBase, fd,
+                         EV_READ | EV_PERSIST,
+                         &ZeusAcceptCallback, (void *)info);
+    event_add(info->ev, NULL);
+    
     // Tell the receiver its address
     socklen_t sinsize = sizeof(sin);
     if (getsockname(fd, (sockaddr *) &sin, &sinsize) < 0) {
@@ -319,10 +317,6 @@ ZeusTransport::Register(TransportReceiver *receiver,
     }
     ZeusTransportAddress *addr = new ZeusTransportAddress(sin);
     receiver->SetAddress(addr);
-
-    // Update mappings
-    receivers[fd] = receiver;
-    fds[receiver] = fd;
 
     Debug("Accepting connections on Zeus port %hu", ntohs(sin.sin_port));
 }
@@ -339,10 +333,10 @@ ZeusTransport::SendMessageInternal(TransportReceiver *src,
         ConnectZeus(src, dst);
         kv = zeusOutgoing.find(dst);
     }
+    ASSERT(kv != zeusOutgoing.end());
+    ASSERT(kv->second != NULL);
+    int qd = kv->second;
     
-    struct bufferevent *ev = kv->second;
-    ASSERT(ev != NULL);
-
     // Serialize message
     string data = m.SerializeAsString();
     string type = m.GetTypeName();
@@ -356,8 +350,10 @@ ZeusTransport::SendMessageInternal(TransportReceiver *src,
     Debug("Sending %ld byte %s message to server over Zeus",
           totalLen, type.c_str());
     
-    char buf[totalLen];
-    char *ptr = buf;
+    Zeus::sgarray sga;
+    sga.num_buffers = 1;
+    sga.bufs[0] = malloc(totalLen);
+    char *ptr = (char *)sga.bufs[0];    
 
     *((uint32_t *) ptr) = MAGIC;
     ptr += sizeof(uint32_t);
@@ -382,7 +378,8 @@ ZeusTransport::SendMessageInternal(TransportReceiver *src,
     memcpy(ptr, data.c_str(), dataLen);
     ptr += dataLen;
 
-    if (bufferevent_write(ev, buf, totalLen) < 0) {
+
+    if (Zeus::push(qd, &sga) < 0) {
         Warning("Failed to write to Zeus buffer");
         return false;
     }
@@ -527,157 +524,83 @@ ZeusTransport::ZeusAcceptCallback(evutil_socket_t fd, short what, void *arg)
     ZeusTransport *transport = info->transport;
     
     if (what & EV_READ) {
-        int newfd;
+        int newqd;
         struct sockaddr_in sin;
         socklen_t sinLength = sizeof(sin);
-        struct bufferevent *bev;
-
+        
         // Accept a connection
-        if ((newfd = accept(fd, (struct sockaddr *)&sin,
-                            &sinLength)) < 0) {
+        if ((newqd = Zeus::accept(info->qd,
+                                  (struct sockaddr *)&sin,
+                                  &sinLength)) < 0) {
             PWarning("Failed to accept incoming Zeus connection");
             return;
         }
 
+        ZeusTransportZeusListener *newinfo = new ZeusTransportZeusListener();
+        newinfo->transport = transport;
+        newinfo->receiver = info->receiver;
+        newinfo->qd = newqd;
+        
+        int newfd = Zeus::qd2fd(newqd);
         // Put it in non-blocking mode
         if (fcntl(newfd, F_SETFL, O_NONBLOCK, 1)) {
             PWarning("Failed to set O_NONBLOCK");
         }
 
-            // Set Zeus_NODELAY
+        
+        // Set TCP_NODELAY
         int n = 1;
-        if (setsockopt(newfd, IPPROTO_Zeus,
-                       Zeus_NODELAY, (char *)&n, sizeof(n)) < 0) {
-            PWarning("Failed to set Zeus_NODELAY on Zeus listening socket");
+        if (setsockopt(fd, IPPROTO_TCP,
+                       TCP_NODELAY, (char *)&n, sizeof(n)) < 0) {
+            PWarning("Failed to set TCP_NODELAY on Zeus connecting socket");
         }
 
-        // Create a buffered event
-        bev = bufferevent_socket_new(transport->libeventBase, newfd,
-                                     BEV_OPT_CLOSE_ON_FREE);
-        bufferevent_setcb(bev, ZeusReadableCallback, NULL,
-                          ZeusIncomingEventCallback, info);
-        if (bufferevent_enable(bev, EV_READ|EV_WRITE) < 0) {
-            Panic("Failed to enable bufferevent");
-        }
+        // Create an libevent event for the completion channel
+        newinfo->ev = event_new(transport->libeventBase,
+                                fd,
+                                EV_READ | EV_WRITE | EV_PERSIST,
+                                &ZeusReadableCallback,
+                                (void *)newinfo);
+        event_add(newinfo->ev, NULL);
 
-        info->connectionEvents.push_back(bev);
-	ZeusTransportAddress client = ZeusTransportAddress(sin);
-	transport->zeusOutgoing[client] = bev;
-	transport->zeusAddresses.insert(pair<struct bufferevent*, ZeusTransportAddress>(bev,client));
+        ZeusTransportAddress client = ZeusTransportAddress(sin);
+        transport->zeusOutgoing[client] = newqd;
+        transport->zeusIncoming[newinfo] = client.clone();
+        
         Debug("Opened incoming Zeus connection from %s:%d",
                inet_ntoa(sin.sin_addr), htons(sin.sin_port));
     } 
 }
 
 void
-ZeusTransport::ZeusReadableCallback(struct bufferevent *bev, void *arg)
+ZeusTransport::ZeusReadableCallback(evutil_socket_t fd, short what, void *arg)
 {
     ZeusTransportZeusListener *info = (ZeusTransportZeusListener *)arg;
     ZeusTransport *transport = info->transport;
-    struct evbuffer *evbuf = bufferevent_get_input(bev);
-
-    Debug("Readable on bufferevent %p", bev);
+    auto addr = transport->zeusIncoming.find(info);
+    struct Zeus::sgarray buf;
     
-
-    while (evbuffer_get_length(evbuf) > 0) {
+    while (Zeus::pop(info->qd, &buf) > 0) {
+        ASSERT(buf.num_buffers == 1);
         uint32_t *magic;
-        magic = (uint32_t *)evbuffer_pullup(evbuf, sizeof(*magic));
-        if (magic == NULL) {
-            return;
-        }
-        ASSERT(*magic == MAGIC);
-    
-        size_t *sz;
-        unsigned char *x = evbuffer_pullup(evbuf, sizeof(*magic) + sizeof(*sz));
-        
-        sz = (size_t *) (x + sizeof(*magic));
-        if (x == NULL) {
-            return;
-        }
-        size_t totalSize = *sz;
-        ASSERT(totalSize < 1073741826);
-        
-        if (evbuffer_get_length(evbuf) < totalSize) {
-            Debug("Don't have %ld bytes for a message yet, only %ld",
-                  totalSize, evbuffer_get_length(evbuf));
-            return;
-        }
-        Debug("Receiving %ld byte message", totalSize);
-        
-        char buf[totalSize];
-        size_t copied = evbuffer_remove(evbuf, buf, totalSize);
-        ASSERT(copied == totalSize);
-        
-        // Parse message
-        char *ptr = buf + sizeof(*sz) + sizeof(*magic);
-        
+        uint8_t *ptr = (uint8_t *)&buf.bufs[0];
+        ptr += sizeof(magic);
+        size_t totalSize = *((size_t *)ptr);
+        ASSERT(totalSize < MAX_RDMA_SIZE);
+        ptr += sizeof(totalSize);
         size_t typeLen = *((size_t *)ptr);
-        ptr += sizeof(size_t);
-        ASSERT((size_t)(ptr-buf) < totalSize);
-        
-        ASSERT((size_t)(ptr+typeLen-buf) < totalSize);
-        string msgType(ptr, typeLen);
+        ptr += sizeof(typeLen);
+        string type((char *)ptr, typeLen);
         ptr += typeLen;
-        
         size_t msgLen = *((size_t *)ptr);
-        ptr += sizeof(size_t);
-        ASSERT((size_t)(ptr-buf) < totalSize);
-        
-        ASSERT((size_t)(ptr+msgLen-buf) <= totalSize);
-        string msg(ptr, msgLen);
+        ptr += sizeof(msgLen);
+        string data((char *)ptr, msgLen);;
         ptr += msgLen;
-        
-        auto addr = transport->zeusAddresses.find(bev);
-        ASSERT(addr != transport->zeusAddresses.end());
-        
+
         // Dispatch
-        info->receiver->ReceiveMessage(addr->second, msgType, msg);
-        Debug("Done processing large %s message", msgType.c_str());
-    }
-}
-
-void
-ZeusTransport::ZeusIncomingEventCallback(struct bufferevent *bev,
-                                       short what, void *arg)
-{
-    if (what & BEV_EVENT_ERROR) {
-        Warning("Error on incoming Zeus connection: %s",
-                evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
-        bufferevent_free(bev);
-        return;
-    } else if (what & BEV_EVENT_ERROR) {
-        Warning("EOF on incoming Zeus connection");
-        bufferevent_free(bev);
-        return;
-    }
-}
-
-void
-ZeusTransport::ZeusOutgoingEventCallback(struct bufferevent *bev,
-                                       short what, void *arg)
-{
-    ZeusTransportZeusListener *info = (ZeusTransportZeusListener *)arg;
-    ZeusTransport *transport = info->transport;
-    auto it = transport->zeusAddresses.find(bev);    
-    ASSERT(it != transport->zeusAddresses.end());
-    ZeusTransportAddress addr = it->second;
-    
-    if (what & BEV_EVENT_CONNECTED) {
-        Debug("Established outgoing Zeus connection to server");
-    } else if (what & BEV_EVENT_ERROR) {
-        Warning("Error on outgoing Zeus connection to server: %s",
-                evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
-        bufferevent_free(bev);
-        auto it2 = transport->zeusOutgoing.find(addr);
-        transport->zeusOutgoing.erase(it2);
-        transport->zeusAddresses.erase(bev);
-        return;
-    } else if (what & BEV_EVENT_EOF) {
-        Warning("EOF on outgoing Zeus connection to server");
-        bufferevent_free(bev);
-        auto it2 = transport->zeusOutgoing.find(addr);
-        transport->zeusOutgoing.erase(it2);
-        transport->zeusAddresses.erase(bev);
-        return;
+        info->receiver->ReceiveMessage(*addr->second,
+                                       type,
+                                       data);
+        Debug("Done processing large %s message", type.c_str());
     }
 }

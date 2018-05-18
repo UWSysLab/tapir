@@ -4,8 +4,7 @@ SRCS += $(addprefix $(d), \
 	lookup3.cc message.cc memory.cc \
 	latency.cc configuration.cc transport.cc \
 	udptransport.cc tcptransport.cc simtransport.cc \
-        repltransport.cc rdmatransport.cc \
-	zeustransport.cc \
+        repltransport.cc rdmatransport.cc zeustransport.cc \
 	persistent_register.cc)
 
 PROTOS += $(addprefix $(d), \

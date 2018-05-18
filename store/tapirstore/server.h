@@ -42,9 +42,10 @@
 #elif TRANSPORT == TCP
 #include "lib/tcptransport.h"
 #elif TRANSPORT == RDMA
-#endif
 #include "lib/rdmatransport.h"
-
+#elif TRANSPORT == ZEUS
+#include "lib/zeustransport.h"
+#endif
 namespace tapirstore {
 
 using opid_t = replication::ir::opid_t;

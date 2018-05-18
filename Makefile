@@ -31,12 +31,14 @@ LIBSSL_CFLAGS := $(shell pkg-config --cflags openssl)
 LIBSSL_LDFLAGS := $(shell pkg-config --libs openssl)
 CFLAGS += $(LIBSSL_CFLAGS)
 LDFLAGS += $(LIBSSL_LDFLAGS)
-JEMALLOC_LDFLAGS := -L`jemalloc-config --libdir` -Wl,-rpath,`jemalloc-config --libdir` -ljemalloc `jemalloc-config --libs`
-#LDFLAGS += $(JEMALLOC_LDFLAGS)
 RDMA_CFLAGS := -lrdmacm -libverbs
 RDMA_LDFLAGS := -lrdmacm -libverbs
 CFLAGS += $(RDMA_CFLAGS)
 LDFLAGS += $(RDMA_LDFLAGS)
+ZEUS_CFLAGS := -I../../src/include -L../../src/ -lzeus_posix
+ZEUS_LDFLAGS := -I../../src/include -L../../src/ -lzeus_posix
+CFLAGS += $(ZEUS_CFLAGS)
+LDFLAGS += $(ZEUS_LDFLAGS)
 
 
 # Google test framework. This doesn't use pkgconfig
