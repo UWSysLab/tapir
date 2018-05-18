@@ -260,11 +260,13 @@ main(int argc, char **argv)
     }
 
 #if TRANSPORT == UDP
-    UDPTransport transport(0.0, 0.0, 0);;
+    UDPTransport transport(0.0, 0.0, 0);
 #elif TRANSPORT == TCP
-    TCPTransport transport(0.0, 0.0, 0);;
+    TCPTransport transport(0.0, 0.0, 0);
 #elif TRANSPORT == RDMA
-    RDMATransport transport(0.0, 0.0, 0);;
+    RDMATransport transport(0.0, 0.0, 0);
+#elif TRANSPORT == ZEUS
+    ZeusTransport transport(0.0, 0.0, 0);
 #endif
 
     tapirstore::Server server(linearizable);

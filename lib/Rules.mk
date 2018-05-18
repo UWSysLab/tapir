@@ -3,7 +3,9 @@ d := $(dir $(lastword $(MAKEFILE_LIST)))
 SRCS += $(addprefix $(d), \
 	lookup3.cc message.cc memory.cc \
 	latency.cc configuration.cc transport.cc \
-	udptransport.cc tcptransport.cc simtransport.cc repltransport.cc rdmatransport.cc \
+	udptransport.cc tcptransport.cc simtransport.cc \
+        repltransport.cc rdmatransport.cc \
+	zeustransport.cc \
 	persistent_register.cc)
 
 PROTOS += $(addprefix $(d), \
@@ -23,6 +25,8 @@ LIB-configuration := $(o)configuration.o $(LIB-message)
 
 LIB-transport := $(o)transport.o $(LIB-message) $(LIB-configuration)
 
+LIB-transport-all := $(o)udptransport.o $(o)tcptransport.o $(o)rdmatransport.o $(o)zeustransport.o $(LIB-transport)
+
 LIB-simtransport := $(o)simtransport.o $(LIB-transport)
 
 LIB-repltransport := $(o)repltransport.o $(LIB-transport)
@@ -32,6 +36,8 @@ LIB-udptransport := $(o)udptransport.o $(LIB-transport)
 LIB-tcptransport := $(o)tcptransport.o $(LIB-transport)
 
 LIB-rdmatransport := $(o)rdmatransport.o $(LIB-transport)
+
+LIB-zeustransport := $(o)zeustransport.o $(LIB-transport)
 
 LIB-persistent_register := $(o)persistent_register.o $(LIB-message)
 

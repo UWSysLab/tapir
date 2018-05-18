@@ -43,7 +43,8 @@
 #define UDP 0
 #define TCP 1
 #define RDMA 2
-#define TRANSPORT RDMA
+#define ZEUS 3
+#define TRANSPORT ZEUS
 
 class TransportAddress
 {

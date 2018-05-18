@@ -96,6 +96,8 @@ private:
     TCPTransport transport;
 #elif TRANSPORT == RDMA
     RDMATransport transport;
+#elif TRANSPORT == RDMA
+    ZeusTransport transport;
 #endif
     
     // Thread running the transport event loop.

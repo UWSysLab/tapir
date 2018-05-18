@@ -97,6 +97,8 @@ main(int argc, char **argv)
     TCPTransport transport(0.0, 0.0, 0);;
 #elif TRANSPORT == RDMA
     RDMATransport transport(0.0, 0.0, 0);;
+#elif TRANSPORT == ZEUS
+    ZeusTransport transport(0.0, 0.0, 0);;
 #endif
     TimeStampServer server;
     replication::vr::VRReplica replica(config, index, &transport, 1, &server);
