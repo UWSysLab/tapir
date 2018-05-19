@@ -42,6 +42,8 @@
 #include "lib/tcptransport.h"
 #elif TRANSPORT == RDMA
 #include "lib/rdmatransport.h"
+#elif TRANSPORT == ZEUS
+#include "lib/zeustransport.h"
 #endif
 
 #include "replication/ir/client.h"
@@ -96,7 +98,7 @@ private:
     TCPTransport transport;
 #elif TRANSPORT == RDMA
     RDMATransport transport;
-#elif TRANSPORT == RDMA
+#elif TRANSPORT == ZEUS
     ZeusTransport transport;
 #endif
     

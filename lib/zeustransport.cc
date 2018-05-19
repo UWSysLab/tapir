@@ -349,11 +349,13 @@ ZeusTransport::SendMessageInternal(TransportReceiver *src,
 
     Debug("Sending %ld byte %s message to server over Zeus",
           totalLen, type.c_str());
-    
+
+    char buf[totalLen];
     Zeus::sgarray sga;
-    sga.num_buffers = 1;
-    sga.bufs[0] = malloc(totalLen);
-    char *ptr = (char *)sga.bufs[0];    
+    sga.num_bufs = 1;
+    sga.bufs[0].buf = (Zeus::ioptr)buf;
+    sga.bufs[0].len = totalLen;
+    char *ptr = buf;
 
     *((uint32_t *) ptr) = MAGIC;
     ptr += sizeof(uint32_t);
@@ -379,10 +381,11 @@ ZeusTransport::SendMessageInternal(TransportReceiver *src,
     ptr += dataLen;
 
 
-    if (Zeus::push(qd, &sga) < 0) {
+    if (Zeus::push(qd, sga) < 0) {
         Warning("Failed to write to Zeus buffer");
         return false;
     }
+    free(sga.bufs[0].buf);
     
     return true;
 }
@@ -580,7 +583,7 @@ ZeusTransport::ZeusReadableCallback(evutil_socket_t fd, short what, void *arg)
     auto addr = transport->zeusIncoming.find(info);
     struct Zeus::sgarray buf;
     
-    while (Zeus::pop(info->qd, &buf) > 0) {
+    while (Zeus::pop(info->qd, buf) > 0) {
         ASSERT(buf.num_buffers == 1);
         uint32_t *magic;
         uint8_t *ptr = (uint8_t *)&buf.bufs[0];

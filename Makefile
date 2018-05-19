@@ -5,7 +5,6 @@
 CC = gcc
 CXX = g++
 LD = g++
-EXPAND = lib/tmpl/expand
 
 
 CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -O2 -DNASSERT
@@ -35,9 +34,10 @@ RDMA_CFLAGS := -lrdmacm -libverbs
 RDMA_LDFLAGS := -lrdmacm -libverbs
 CFLAGS += $(RDMA_CFLAGS)
 LDFLAGS += $(RDMA_LDFLAGS)
-ZEUS_CFLAGS := -I../../src/include -L../../src/ -lzeus_posix
-ZEUS_LDFLAGS := -I../../src/include -L../../src/ -lzeus_posix
+ZEUS_CFLAGS := -I../../src/include 
+ZEUS_LDFLAGS := -L../../src -lzeus_posix
 CFLAGS += $(ZEUS_CFLAGS)
+CXXFLAGS += $(ZEUS_CFLAGS)
 LDFLAGS += $(ZEUS_LDFLAGS)
 
 
