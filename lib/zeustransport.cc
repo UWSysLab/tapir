@@ -140,14 +140,14 @@ BindToPort(int qd, const string &host, const string &port)
         Panic("getaddrinfo returned a non IPv4 address");        
     }
     sin = *(sockaddr_in *)ai->ai_addr;
-        
     freeaddrinfo(ai);
-
     Debug("Binding to %s %d Zeus", inet_ntoa(sin.sin_addr), htons(sin.sin_port));
 
     if (Zeus::bind(qd, (sockaddr *)&sin, sizeof(sin)) < 0) {
         PPanic("Failed to bind to socket");
     }
+
+
 }
 
 ZeusTransport::ZeusTransport(double dropRate, double reorderRate,
