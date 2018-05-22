@@ -191,10 +191,26 @@ ZeusTransport::ConnectZeus(TransportReceiver *src, const ZeusTransportAddress &d
     // Create socket
     int qd;
     if ((qd = Zeus::queue(AF_INET, SOCK_STREAM, 0)) < 0) {
-        PPanic("Failed to create socket for outgoing Zeus connection");
+        PPanic("Failed to create queue for outgoing Zeus connection");
+    }
+
+    ZeusTransportZeusListener *info = new ZeusTransportZeusListener();
+    info->transport = this;
+    info->qd = qd;
+    info->receiver = src;
+    info->replicaIdx = -1;
+
+    int res;
+    if ((res = Zeus::connect(qd,
+                             (struct sockaddr *)&(dst.addr),
+                             sizeof(dst.addr))) < 0) {
+        Panic("Failed to connect %s:%d: %s",
+              inet_ntoa(dst.addr.sin_addr), htons(dst.addr.sin_port), strerror(res));
+        return;
     }
 
     int fd = Zeus::qd2fd(qd);
+    
     // Put it in non-blocking mode
     if (fcntl(fd, F_SETFL, O_NONBLOCK, 1)) {
         PWarning("Failed to set O_NONBLOCK on outgoing Zeus socket");
@@ -207,23 +223,10 @@ ZeusTransport::ConnectZeus(TransportReceiver *src, const ZeusTransportAddress &d
         PWarning("Failed to set TCP_NODELAY on Zeus connecting socket");
     }
 
-    ZeusTransportZeusListener *info = new ZeusTransportZeusListener();
-    info->transport = this;
-    info->qd = qd;
-    info->receiver = src;
-    info->replicaIdx = -1;
-        
-    if (Zeus::connect(qd,
-                      (struct sockaddr *)&(dst.addr),
-                      sizeof(dst.addr)) < 0) {
-        Warning("Failed to connect to server via Zeus");
-        return;
-    }
-
     // Create an libevent event for the completion channel
     info->ev = event_new(libeventBase,
                          fd,
-                         EV_READ | EV_WRITE | EV_PERSIST,
+                         EV_READ | EV_PERSIST,
                          &ZeusReadableCallback,
                          (void *)info);
     event_add(info->ev, NULL);
@@ -333,7 +336,10 @@ ZeusTransport::SendMessageInternal(TransportReceiver *src,
         ConnectZeus(src, dst);
         kv = zeusOutgoing.find(dst);
     }
-    ASSERT(kv != zeusOutgoing.end());
+    if (kv == zeusOutgoing.end()) {
+        return false;
+    }
+    
     ASSERT(kv->second != NULL);
     int qd = kv->second;
     
@@ -347,15 +353,12 @@ ZeusTransport::SendMessageInternal(TransportReceiver *src,
                        sizeof(totalLen) +
                        sizeof(uint32_t));
 
-    Debug("Sending %ld byte %s message to server over Zeus",
-          totalLen, type.c_str());
-
     char buf[totalLen];
     Zeus::sgarray sga;
     sga.num_bufs = 1;
-    sga.bufs[0].buf = (Zeus::ioptr)buf;
+    sga.bufs[0].buf = (Zeus::ioptr)&buf[0];
     sga.bufs[0].len = totalLen;
-    char *ptr = buf;
+    char *ptr = &buf[0];
 
     *((uint32_t *) ptr) = MAGIC;
     ptr += sizeof(uint32_t);
@@ -381,12 +384,13 @@ ZeusTransport::SendMessageInternal(TransportReceiver *src,
     ptr += dataLen;
 
 
-    if (Zeus::push(qd, sga) < 0) {
+    if (Zeus::push(qd, sga) < totalLen) {
         Warning("Failed to write to Zeus buffer");
         return false;
     }
-    free(sga.bufs[0].buf);
-    
+
+    Debug("Sent %ld byte %s message to server over Zeus",
+          totalLen, type.c_str());
     return true;
 }
 
@@ -550,7 +554,6 @@ ZeusTransport::ZeusAcceptCallback(evutil_socket_t fd, short what, void *arg)
             PWarning("Failed to set O_NONBLOCK");
         }
 
-        
         // Set TCP_NODELAY
         int n = 1;
         if (setsockopt(fd, IPPROTO_TCP,
@@ -560,8 +563,8 @@ ZeusTransport::ZeusAcceptCallback(evutil_socket_t fd, short what, void *arg)
 
         // Create an libevent event for the completion channel
         newinfo->ev = event_new(transport->libeventBase,
-                                fd,
-                                EV_READ | EV_WRITE | EV_PERSIST,
+                                newfd,
+                                EV_READ | EV_PERSIST,
                                 &ZeusReadableCallback,
                                 (void *)newinfo);
         event_add(newinfo->ev, NULL);
@@ -578,18 +581,19 @@ ZeusTransport::ZeusAcceptCallback(evutil_socket_t fd, short what, void *arg)
 void
 ZeusTransport::ZeusReadableCallback(evutil_socket_t fd, short what, void *arg)
 {
+    Debug("Readable Callback");
     ZeusTransportZeusListener *info = (ZeusTransportZeusListener *)arg;
     ZeusTransport *transport = info->transport;
     auto addr = transport->zeusIncoming.find(info);
     struct Zeus::sgarray buf;
     
     while (Zeus::pop(info->qd, buf) > 0) {
-        ASSERT(buf.num_buffers == 1);
-        uint32_t *magic;
-        uint8_t *ptr = (uint8_t *)&buf.bufs[0];
+        ASSERT(buf.num_bufs == 1);
+        uint8_t *ptr = (uint8_t *)buf.bufs[0].buf;
+        uint32_t magic = *(uint32_t *)ptr;
         ptr += sizeof(magic);
+        ASSERT(magic == MAGIC);
         size_t totalSize = *((size_t *)ptr);
-        ASSERT(totalSize < MAX_RDMA_SIZE);
         ptr += sizeof(totalSize);
         size_t typeLen = *((size_t *)ptr);
         ptr += sizeof(typeLen);

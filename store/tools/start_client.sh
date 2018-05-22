@@ -1,7 +1,5 @@
 #!/bin/bash
 
-export DEBUG=all
-
 if [ "$#" -ne 4 ]; then
   echo "Usage: $0 command begin_id ncopies" >&2
   exit 1
@@ -17,7 +15,7 @@ let end=$begin+$copies
 for ((i=$begin; i<$end; i++))
 do
   command="$cmd > $logdir/client.$i.log 2>&1 &"
-  echo $command
-  sleep 100
-  #eval $command
+  #echo $command
+  #sleep 100
+  eval $command
 done

@@ -35,23 +35,23 @@ IRReplica::IRReplica(transport::Configuration config, int myIdx,
     // If our view info was previously initialized, then we are being started
     // in recovery mode. If our view info has never been initialized, then this
     // is the first time we are being run.
-    if (persistent_view_info.Initialized()) {
-        Debug("View information found in %s. Starting recovery.",
-              persistent_view_info.Filename().c_str());
-        status = STATUS_RECOVERING;
-        RecoverViewInfo();
-        Debug("Recovered view = %" PRIu64 " latest_normal_view = %" PRIu64 ".",
-              view, latest_normal_view);
-        ++view;
-        if (myIdx == config.GetLeaderIndex(view)) {
-            // A recoverying replica should not be the leader.
-            ++view;
-        }
-        PersistViewInfo();
-        BroadcastDoViewChangeMessages();
-    } else {
-        //  PersistViewInfo();
-    }
+    // if (persistent_view_info.Initialized()) {
+    //     Debug("View information found in %s. Starting recovery.",
+    //           persistent_view_info.Filename().c_str());
+    //     status = STATUS_RECOVERING;
+    //     RecoverViewInfo();
+    //     Debug("Recovered view = %" PRIu64 " latest_normal_view = %" PRIu64 ".",
+    //           view, latest_normal_view);
+    //     ++view;
+    //     if (myIdx == config.GetLeaderIndex(view)) {
+    //         // A recoverying replica should not be the leader.
+    //         ++view;
+    //     }
+    //     PersistViewInfo();
+    //     BroadcastDoViewChangeMessages();
+    // } else {
+    //     //  PersistViewInfo();
+    // }
 
     // TODO: Figure out a good view change timeout.
     const uint64_t view_change_timeout_ms = 10 * 1000;

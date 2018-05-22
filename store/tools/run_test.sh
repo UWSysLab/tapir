@@ -16,11 +16,11 @@ trap '{
 }' INT
 
 # Paths to source code and logfiles.
-srcdir="/home/irene/proj/datacenter-OS/apps/tapir"
-logdir="/home/irene/proj/datacenter-OS/apps/tapir/logs"
+srcdir="/home/irene/proj/msr/datacenter-OS/apps/tapir"
+logdir="/home/irene/proj/msr/datacenter-OS/apps/tapir/logs"
 
 # Machines on which replicas are running.
-replicas=("iyzhang-test" "iyzhang-test" "iyzhang-test")
+replicas=("localhost" "localhost" "localhost")
 
 # Machines on which clients are running.
 clients=("localhost")
