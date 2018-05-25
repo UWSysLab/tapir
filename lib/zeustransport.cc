@@ -336,11 +336,11 @@ ZeusTransport::SendMessageInternal(TransportReceiver *src,
         ConnectZeus(src, dst);
         kv = zeusOutgoing.find(dst);
     }
+
     if (kv == zeusOutgoing.end()) {
         return false;
     }
     
-    ASSERT(kv->second != NULL);
     int qd = kv->second;
     
     // Serialize message
@@ -581,6 +581,7 @@ ZeusTransport::ZeusAcceptCallback(evutil_socket_t fd, short what, void *arg)
 void
 ZeusTransport::ZeusReadableCallback(evutil_socket_t fd, short what, void *arg)
 {
+
     Debug("Readable Callback");
     ZeusTransportZeusListener *info = (ZeusTransportZeusListener *)arg;
     ZeusTransport *transport = info->transport;
@@ -589,6 +590,7 @@ ZeusTransport::ZeusReadableCallback(evutil_socket_t fd, short what, void *arg)
     
     while (Zeus::pop(info->qd, buf) > 0) {
         ASSERT(buf.num_bufs == 1);
+
         uint8_t *ptr = (uint8_t *)buf.bufs[0].buf;
         uint32_t magic = *(uint32_t *)ptr;
         ptr += sizeof(magic);
