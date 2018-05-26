@@ -383,8 +383,8 @@ ZeusTransport::SendMessageInternal(TransportReceiver *src,
     memcpy(ptr, data.c_str(), dataLen);
     ptr += dataLen;
 
-
-    if (Zeus::push(qd, sga) < totalLen) {
+    ssize_t res = Zeus::push(qd, sga);
+    if (res < 0 || (size_t)res < totalLen) {
         Warning("Failed to write to Zeus buffer");
         return false;
     }

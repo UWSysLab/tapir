@@ -7,8 +7,8 @@ CXX = g++
 LD = g++
 
 
-#CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -O2 -DNASSERT
-CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized 
+CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -O2 -DNASSERT
+#CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized 
 CXXFLAGS := -g -std=c++0x
 LDFLAGS := -levent_pthreads 
 ## Debian package: check
@@ -35,7 +35,7 @@ RDMA_LDFLAGS := -lrdmacm -libverbs
 CFLAGS += $(RDMA_CFLAGS)
 LDFLAGS += $(RDMA_LDFLAGS)
 ZEUS_CFLAGS := -I../../src/include 
-ZEUS_LDFLAGS := -L../../src -lzeus_posix -Wl,-rpath=/home/irene/proj/datacenter-OS/src/
+ZEUS_LDFLAGS := -L../../src -lzeus_posix -Wl,-rpath=/home/irene/proj/msr/datacenter-OS/src/
 CFLAGS += $(ZEUS_CFLAGS)
 CXXFLAGS += $(ZEUS_CFLAGS)
 LDFLAGS += $(ZEUS_LDFLAGS)
