@@ -57,7 +57,7 @@ class TransportReceiver
 {
 public:
     typedef ::google::protobuf::Message Message;
-    
+
 
     virtual ~TransportReceiver();
     virtual void SetAddress(const TransportAddress *addr);
@@ -66,7 +66,7 @@ public:
     virtual void ReceiveMessage(const TransportAddress &remote,
                                 const string &type, const string &data) = 0;
 
-    
+
 protected:
     const TransportAddress *myAddress;
 };
@@ -101,7 +101,7 @@ public:
     virtual uint64_t Reset();
     virtual void Stop();
     virtual bool Active() const;
-    
+
 private:
     Transport *transport;
     uint64_t ms;
