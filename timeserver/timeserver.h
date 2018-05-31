@@ -17,6 +17,8 @@
 #include "lib/tcptransport.h"
 #elif TRANSPORT == RDMA
 #include "lib/rdmatransport.h"
+#elif TRANSPORT == ZEUS
+#include "lib/zeustransport.h"
 #endif
 #include "replication/vr/replica.h"
 
