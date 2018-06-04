@@ -34,8 +34,8 @@ RDMA_CFLAGS := -lrdmacm -libverbs
 RDMA_LDFLAGS := -lrdmacm -libverbs
 CFLAGS += $(RDMA_CFLAGS)
 LDFLAGS += $(RDMA_LDFLAGS)
-ZEUS_CFLAGS := -I../../src/include 
-ZEUS_LDFLAGS := -L../../src -lzeus_posix -Wl,-rpath=/home/irene/proj/msr/datacenter-OS/src/
+ZEUS_CFLAGS := -I../../include 
+ZEUS_LDFLAGS := -L../../ -lzeus_posix -Wl,-rpath=/home/irene/proj/datacenter-OS/src/
 CFLAGS += $(ZEUS_CFLAGS)
 CXXFLAGS += $(ZEUS_CFLAGS)
 LDFLAGS += $(ZEUS_LDFLAGS)
