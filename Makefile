@@ -6,6 +6,7 @@ CC = gcc
 CXX = g++
 LD = g++
 
+SRC_DIR = ${HOME}/proj/datacenter-os
 
 CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -O2 -DNASSERT
 #CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized 
@@ -35,7 +36,7 @@ RDMA_LDFLAGS := -lrdmacm -libverbs
 CFLAGS += $(RDMA_CFLAGS)
 LDFLAGS += $(RDMA_LDFLAGS)
 ZEUS_CFLAGS := -I../../include 
-ZEUS_LDFLAGS := -L../../ -lzeus_posix -Wl,-rpath=/home/irene/proj/datacenter-OS/src/
+ZEUS_LDFLAGS := -L../../ -lzeus_posix -Wl,-rpath=$(SRC_DIR)
 CFLAGS += $(ZEUS_CFLAGS)
 CXXFLAGS += $(ZEUS_CFLAGS)
 LDFLAGS += $(ZEUS_LDFLAGS)
