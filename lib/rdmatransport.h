@@ -31,6 +31,7 @@
 
 #ifndef _LIB_RDMATRANSPORT_H_
 #define _LIB_RDMATRANSPORT_H_
+#ifndef __APPLE__
 
 #include "lib/configuration.h"
 #include "lib/transport.h"
@@ -172,5 +173,5 @@ private:
     static void RDMAReadableCallback(evutil_socket_t fd, short what,
                                      void *arg);
 };
-
+#endif
 #endif

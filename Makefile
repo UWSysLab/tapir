@@ -6,6 +6,7 @@ CC = gcc
 CXX = g++
 LD = g++
 
+ZEUS_SRC_DIR = ${HOME}/msr/datacenter-os/src
 
 CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -O2 -DNASSERT
 #CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized 
@@ -30,12 +31,16 @@ LIBSSL_CFLAGS := $(shell pkg-config --cflags openssl)
 LIBSSL_LDFLAGS := $(shell pkg-config --libs openssl)
 CFLAGS += $(LIBSSL_CFLAGS)
 LDFLAGS += $(LIBSSL_LDFLAGS)
-RDMA_CFLAGS := -lrdmacm -libverbs
-RDMA_LDFLAGS := -lrdmacm -libverbs
-CFLAGS += $(RDMA_CFLAGS)
-LDFLAGS += $(RDMA_LDFLAGS)
-ZEUS_CFLAGS := -I../../include 
-ZEUS_LDFLAGS := -L../../ -lzeus_posix -Wl,-rpath=/home/irene/msr/datacenter-OS/
+
+TARGETOS := $(shell uname -s)
+ifneq ($(TARGETOS), Darwin)
+  RDMA_CFLAGS := -lrdmacm -libverbs
+  RDMA_LDFLAGS := -lrdmacm -libverbs
+  CFLAGS += $(RDMA_CFLAGS)
+  LDFLAGS += $(RDMA_LDFLAGS)
+endif 
+ZEUS_CFLAGS := -I$(ZEUS_SRC_DIR)
+ZEUS_LDFLAGS := -L$(ZEUS_SRC_DIR) -lzeus_posix -Wl,-rpath,$(ZEUS_SRC_DIR)
 CFLAGS += $(ZEUS_CFLAGS)
 CXXFLAGS += $(ZEUS_CFLAGS)
 LDFLAGS += $(ZEUS_LDFLAGS)

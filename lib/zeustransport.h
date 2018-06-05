@@ -36,9 +36,7 @@
 #include "lib/configuration.h"
 #include "lib/transport.h"
 #include "lib/transportcommon.h"
-
 #include "include/io-queue.h"
-
 #include <event2/event.h>
 
 #include <map>
@@ -54,7 +52,7 @@ public:
     ZeusTransportAddress * clone() const;
 private:
     ZeusTransportAddress(const sockaddr_in &addr);
-    
+
     sockaddr_in addr;
     friend class ZeusTransport;
     friend bool operator==(const ZeusTransportAddress &a,
@@ -79,7 +77,7 @@ public:
     int Timer(uint64_t ms, timer_callback_t cb);
     bool CancelTimer(int id);
     void CancelAllTimers();
-    
+
 private:
     std::mutex mtx;
     struct ZeusTransportTimerInfo
@@ -106,7 +104,7 @@ private:
     std::map<int, ZeusTransportTimerInfo *> timers;
     std::map<ZeusTransportAddress, int> zeusOutgoing;
     std::map<struct ZeusTransportZeusListener *, ZeusTransportAddress *> zeusIncoming;
-    
+
     bool SendMessageInternal(TransportReceiver *src,
                              const ZeusTransportAddress &dst,
                              const Message &m, bool multicast = false);
