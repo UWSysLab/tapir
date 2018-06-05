@@ -37,7 +37,7 @@
 #include "lib/transport.h"
 #include "lib/transportcommon.h"
 
-#include "../../include/io-queue.h"
+#include "include/io-queue.h"
 
 #include <event2/event.h>
 
