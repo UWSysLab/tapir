@@ -6,7 +6,9 @@ CC = gcc
 CXX = g++
 LD = g++
 
-ZEUS_SRC_DIR = ${HOME}/msr/datacenter-os/src
+ifndef ZEUS_SRC_DIR
+	ZEUS_SRC_DIR = ${HOME}/msr/datacenter-os/src
+endif
 
 CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -O2 -DNASSERT
 #CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized 
