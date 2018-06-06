@@ -47,7 +47,9 @@ LDFLAGS += $(ZEUS_LDFLAGS)
 
 
 # Google test framework. This doesn't use pkgconfig
-GTEST_DIR := /usr/src/gtest
+ifeq ($(TARGETOS), Darwin)
+  GTEST_DIR := /opt/local/bin/gtest
+endif
 
 # Additional flags
 PARANOID = 1
@@ -85,8 +87,8 @@ else
 trace = @printf "+ %-6s " $(1) ; echo $(2) ; $(3)
 Q = @
 endif
-GTEST := .obj/gtest/gtest.a
-GTEST_MAIN := .obj/gtest/gtest_main.a
+#GTEST := .obj/gtest/gtest.a
+#GTEST_MAIN := .obj/gtest/gtest_main.a
 
 ##################################################################
 # Sub-directories
@@ -230,17 +232,17 @@ DEPS := $(OBJS:.o=.d) $(OBJS:.o=-pic.d)
 #
 # Testing
 #
-GTEST_INTERNAL_SRCS := $(wildcard $(GTEST_DIR)/src/*.cc)
-GTEST_OBJS := $(patsubst %.cc,.obj/gtest/%.o,$(notdir $(GTEST_INTERNAL_SRCS)))
+#GTEST_INTERNAL_SRCS := $(wildcard $(GTEST_DIR)/src/*.cc)
+#GTEST_OBJS := $(patsubst %.cc,.obj/gtest/%.o,$(notdir $(GTEST_INTERNAL_SRCS)))
 
-$(GTEST_OBJS): .obj/gtest/%.o: $(GTEST_DIR)/src/%.cc
-	$(call compilecxx,CC,-I$(GTEST_DIR) -Wno-missing-field-initializers)
+# $(GTEST_OBJS): .obj/gtest/%.o: $(GTEST_DIR)/src/%.cc
+# 	$(call compilecxx,CC,-I$(GTEST_DIR) -Wno-missing-field-initializers)
 
-$(GTEST) : .obj/gtest/gtest-all.o
-	$(call trace,AR,$@,$(AR) $(ARFLAGS) $@ $^)
+# $(GTEST) : .obj/gtest/gtest-all.o
+# 	$(call trace,AR,$@,$(AR) $(ARFLAGS) $@ $^)
 
-$(GTEST_MAIN) : .obj/gtest/gtest-all.o .obj/gtest/gtest_main.o
-	$(call trace,AR,$@,$(AR) $(ARFLAGS) $@ $^)
+# $(GTEST_MAIN) : .obj/gtest/gtest-all.o .obj/gtest/gtest_main.o
+# 	$(call trace,AR,$@,$(AR) $(ARFLAGS) $@ $^)
 
 #
 # Cleaning
