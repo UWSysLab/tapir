@@ -848,7 +848,7 @@ RDMATransport::RDMAIncomingCallback(evutil_socket_t fd, short what, void *arg)
         info = transport->rdmaOutgoing[addr];
         ASSERT(info != NULL);
 
-        ASSERT(info->id = event->id);
+        ASSERT(info->id == event->id);
 
         switch(event->event) {
         case RDMA_CM_EVENT_CONNECT_REQUEST:
