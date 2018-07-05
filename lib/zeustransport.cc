@@ -586,12 +586,12 @@ ZeusTransport::ZeusReadableCallback(evutil_socket_t fd, short what, void *arg)
     ZeusTransportZeusListener *info = (ZeusTransportZeusListener *)arg;
     ZeusTransport *transport = info->transport;
     auto addr = transport->zeusIncoming.find(info);
-    struct Zeus::sgarray buf;
+    struct Zeus::sgarray sga;
     
-    while (Zeus::pop(info->qd, buf) > 0) {
-        ASSERT(buf.num_bufs == 1);
+    while (Zeus::pop(info->qd, sga) > 0) {
+        ASSERT(sga.num_bufs == 1);
 
-        uint8_t *ptr = (uint8_t *)buf.bufs[0].buf;
+        uint8_t *ptr = (uint8_t *)sga.bufs[0].buf;
         uint32_t magic = *(uint32_t *)ptr;
         ptr += sizeof(magic);
         ASSERT(magic == MAGIC);
@@ -611,5 +611,6 @@ ZeusTransport::ZeusReadableCallback(evutil_socket_t fd, short what, void *arg)
                                        type,
                                        data);
         Debug("Done processing large %s message", type.c_str());
+        free(sga.bufs[0].buf);
     }
 }
