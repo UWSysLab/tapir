@@ -92,7 +92,8 @@ ZeusTransport::LookupAddress(const transport::ReplicaAddress &addr)
         hints.ai_protocol = 0;
         hints.ai_flags    = 0;
         struct addrinfo *ai;
-        if ((res = getaddrinfo(addr.host.c_str(), addr.port.c_str(),
+        if ((res = getaddrinfo(addr.host.c_str(),
+                               addr.port.c_str(),
                                &hints, &ai))) {
             Panic("Failed to resolve %s:%s: %s",
                   addr.host.c_str(), addr.port.c_str(), gai_strerror(res));
@@ -205,24 +206,14 @@ ZeusTransport::ConnectZeus(TransportReceiver *src, const ZeusTransportAddress &d
                              (struct sockaddr *)&(dst.addr),
                              sizeof(dst.addr))) < 0) {
         Panic("Failed to connect %s:%d: %s",
-              inet_ntoa(dst.addr.sin_addr), htons(dst.addr.sin_port), strerror(res));
+              inet_ntoa(dst.addr.sin_addr),
+              htons(dst.addr.sin_port),
+              strerror(res));
         return;
     }
 
     int fd = Zeus::qd2fd(qd);
     
-    // Put it in non-blocking mode
-    if (fcntl(fd, F_SETFL, O_NONBLOCK, 1)) {
-        PWarning("Failed to set O_NONBLOCK on outgoing Zeus socket");
-    }
-
-    // Set TCP_NODELAY
-    int n = 1;
-    if (setsockopt(fd, IPPROTO_TCP,
-                   TCP_NODELAY, (char *)&n, sizeof(n)) < 0) {
-        PWarning("Failed to set TCP_NODELAY on Zeus connecting socket");
-    }
-
     // Create an libevent event for the completion channel
     info->ev = event_new(libeventBase,
                          fd,
@@ -272,23 +263,11 @@ ZeusTransport::Register(TransportReceiver *receiver,
 
     int fd = Zeus::qd2fd(qd);
     
-    // Put it in non-blocking mode
-    if (fcntl(fd, F_SETFL, O_NONBLOCK, 1)) {
-        PWarning("Failed to set O_NONBLOCK");
-    }
-
     // Set SO_REUSEADDR
     int n;
     if (setsockopt(fd, SOL_SOCKET,
                    SO_REUSEADDR, (char *)&n, sizeof(n)) < 0) {
         PWarning("Failed to set SO_REUSEADDR on Zeus listening socket");
-    }
-
-    // Set TCP_NODELAY
-    n = 1;
-    if (setsockopt(fd, IPPROTO_TCP,
-                   TCP_NODELAY, (char *)&n, sizeof(n)) < 0) {
-        PWarning("Failed to set TCP_NODELAY on Zeus listening socket");
     }
  
     // Registering a replica. Bind socket to the designated
@@ -383,10 +362,14 @@ ZeusTransport::SendMessageInternal(TransportReceiver *src,
     memcpy(ptr, data.c_str(), dataLen);
     ptr += dataLen;
 
-    ssize_t res = Zeus::push(qd, sga);
-    if (res < 0 || (size_t)res < totalLen) {
-        Warning("Failed to write to Zeus buffer");
-        return false;
+    Zeus::qtoken t = Zeus::push(qd, sga);
+    if (t != 0) {
+        Debug("Waiting to send");
+        ssize_t res = Zeus::wait(t, sga);
+        if (res < 0 || (size_t)res < totalLen) {
+            Warning("Failed to write to Zeus buffer");
+            return false;
+        }
     }
 
     Debug("Sent %ld byte %s message to server over Zeus",
@@ -549,16 +532,17 @@ ZeusTransport::ZeusAcceptCallback(evutil_socket_t fd, short what, void *arg)
         newinfo->qd = newqd;
         
         int newfd = Zeus::qd2fd(newqd);
+
         // Put it in non-blocking mode
         if (fcntl(newfd, F_SETFL, O_NONBLOCK, 1)) {
             PWarning("Failed to set O_NONBLOCK");
         }
 
-        // Set TCP_NODELAY
+            // Set TCP_NODELAY
         int n = 1;
-        if (setsockopt(fd, IPPROTO_TCP,
+        if (setsockopt(newfd, IPPROTO_TCP,
                        TCP_NODELAY, (char *)&n, sizeof(n)) < 0) {
-            PWarning("Failed to set TCP_NODELAY on Zeus connecting socket");
+            PWarning("Failed to set TCP_NODELAY on TCP listening socket");
         }
 
         // Create an libevent event for the completion channel
@@ -587,30 +571,35 @@ ZeusTransport::ZeusReadableCallback(evutil_socket_t fd, short what, void *arg)
     ZeusTransport *transport = info->transport;
     auto addr = transport->zeusIncoming.find(info);
     struct Zeus::sgarray sga;
-    
-    while (Zeus::pop(info->qd, sga) > 0) {
-        ASSERT(sga.num_bufs == 1);
+    Zeus::qtoken t = Zeus::pop(info->qd, sga);
 
-        uint8_t *ptr = (uint8_t *)sga.bufs[0].buf;
-        uint32_t magic = *(uint32_t *)ptr;
-        ptr += sizeof(magic);
-        ASSERT(magic == MAGIC);
-        size_t totalSize = *((size_t *)ptr);
-        ptr += sizeof(totalSize);
-        size_t typeLen = *((size_t *)ptr);
-        ptr += sizeof(typeLen);
-        string type((char *)ptr, typeLen);
-        ptr += typeLen;
-        size_t msgLen = *((size_t *)ptr);
-        ptr += sizeof(msgLen);
-        string data((char *)ptr, msgLen);;
-        ptr += msgLen;
-
-        // Dispatch
-        info->receiver->ReceiveMessage(*addr->second,
-                                       type,
-                                       data);
-        Debug("Done processing large %s message", type.c_str());
-        free(sga.bufs[0].buf);
+    // if a token came back, then wait for the whole thing
+    if (t == -1) {
+        Panic("Error on queue");
+    } else if (t != 0) {
+        ssize_t res = Zeus::wait(t, sga);
     }
+
+    ASSERT(sga.num_bufs == 1);
+    uint8_t *ptr = (uint8_t *)sga.bufs[0].buf;
+    uint32_t magic = *(uint32_t *)ptr;
+    ptr += sizeof(magic);
+    ASSERT(magic == MAGIC);
+    size_t totalSize = *((size_t *)ptr);
+    ptr += sizeof(totalSize);
+    size_t typeLen = *((size_t *)ptr);
+    ptr += sizeof(typeLen);
+    string type((char *)ptr, typeLen);
+    ptr += typeLen;
+    size_t msgLen = *((size_t *)ptr);
+    ptr += sizeof(msgLen);
+    string data((char *)ptr, msgLen);;
+    ptr += msgLen;
+    
+    // Dispatch
+    info->receiver->ReceiveMessage(*addr->second,
+                                   type,
+                                   data);
+    free(sga.bufs[0].buf);
+    Debug("Done processing large %s message", type.c_str());        
 }

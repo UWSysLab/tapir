@@ -44,7 +44,7 @@
 #define TCP 1
 #define RDMA 2
 #define ZEUS 3
-#define TRANSPORT ZEUS
+#define TRANSPORT 3
 
 class TransportAddress
 {
