@@ -582,6 +582,7 @@ ZeusTransport::ZeusReadableCallback(evutil_socket_t fd, short what, void *arg)
 
     ASSERT(sga.num_bufs == 1);
     uint8_t *ptr = (uint8_t *)sga.bufs[0].buf;
+    ASSERT(sga.bufs[0].len > 0);
     uint32_t magic = *(uint32_t *)ptr;
     ptr += sizeof(magic);
     ASSERT(magic == MAGIC);
