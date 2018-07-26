@@ -79,31 +79,23 @@ public:
     void CancelAllTimers();
 
 private:
-    std::mutex mtx;
+    int timerQD;
+    int acceptQD;
+    int replicaIdx;
+    TransportReceiver *receiver;
+     
     struct ZeusTransportTimerInfo
     {
-        ZeusTransport *transport;
         timer_callback_t cb;
-        event *ev;
         int id;
     };
-    struct ZeusTransportZeusListener
-    {
-        ZeusTransport *transport;
-        TransportReceiver *receiver;
-        int qd;
-        int replicaIdx;
-        event *ev;
-    };
-    event_base *libeventBase;
-    std::vector<event *> listenerEvents;
-    std::vector<event *> signalEvents;
+
     std::map<int, TransportReceiver*> receivers; // qd -> receiver
     std::map<TransportReceiver*, int> qds; // receiver -> qd
     int lastTimerId;
     std::map<int, ZeusTransportTimerInfo *> timers;
-    std::map<ZeusTransportAddress, int> zeusOutgoing;
-    std::map<struct ZeusTransportZeusListener *, ZeusTransportAddress *> zeusIncoming;
+    std::map<ZeusTransportAddress &, int> zeusOutgoing;
+    std::map<int, ZeusTransportAddress &> zeusIncoming;
 
     bool SendMessageInternal(TransportReceiver *src,
                              const ZeusTransportAddress &dst,
@@ -119,15 +111,13 @@ private:
 
     void ConnectZeus(TransportReceiver *src, const ZeusTransportAddress &dst);
     void OnTimer(ZeusTransportTimerInfo *info);
-    static void TimerCallback(evutil_socket_t fd,
-                              short what, void *arg);
-    static void LogCallback(int severity, const char *msg);
-    static void FatalCallback(int err);
-    static void SignalCallback(evutil_socket_t fd,
+    void TimerCallback(evutil_socket_t fd,
+                       short what, void *arg);
+    void ZeusSignalCallback(evutil_socket_t fd,
                                short what, void *arg);
-    static void ZeusAcceptCallback(evutil_socket_t fd, short what,
+    void ZeusAcceptCallback(evutil_socket_t fd, short what,
                                   void *arg);
-    static void ZeusReadableCallback(evutil_socket_t fd, short what,
+    void ZeusReadableCallback(evutil_socket_t fd, short what,
                                      void *arg);
 };
 
