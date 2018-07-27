@@ -40,11 +40,13 @@
 #include <event2/event.h>
 
 #include <map>
-#include <unordered_map>
 #include <list>
 #include <random>
 #include <mutex>
 #include <netinet/in.h>
+#include <signal.h>
+
+#define MAX_CONNECTIONS 1000
 
 class ZeusTransportAddress : public TransportAddress
 {
@@ -94,8 +96,8 @@ private:
     std::map<TransportReceiver*, int> qds; // receiver -> qd
     int lastTimerId;
     std::map<int, ZeusTransportTimerInfo *> timers;
-    std::map<ZeusTransportAddress &, int> zeusOutgoing;
-    std::map<int, ZeusTransportAddress &> zeusIncoming;
+    std::map<ZeusTransportAddress, int> zeusOutgoing;
+    std::map<int, ZeusTransportAddress> zeusIncoming;
 
     bool SendMessageInternal(TransportReceiver *src,
                              const ZeusTransportAddress &dst,
@@ -111,14 +113,11 @@ private:
 
     void ConnectZeus(TransportReceiver *src, const ZeusTransportAddress &dst);
     void OnTimer(ZeusTransportTimerInfo *info);
-    void TimerCallback(evutil_socket_t fd,
-                       short what, void *arg);
-    void ZeusSignalCallback(evutil_socket_t fd,
-                               short what, void *arg);
-    void ZeusAcceptCallback(evutil_socket_t fd, short what,
-                                  void *arg);
-    void ZeusReadableCallback(evutil_socket_t fd, short what,
-                                     void *arg);
+    void TimerCallback(ZeusTransportTimerInfo *info);
+    void ZeusAcceptCallback();
+    void ZeusPopCallback(int qd, TransportReceiver *receiver, Zeus::sgarray &sga);
 };
+
+static void ZeusSignalCallback(int signal);
 
 #endif  // _LIB_ZEUSTRANSPORT_H_
