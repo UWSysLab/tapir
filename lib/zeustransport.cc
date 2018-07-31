@@ -222,8 +222,8 @@ ZeusTransport::ConnectZeus(TransportReceiver *src, const ZeusTransportAddress &d
     ZeusTransportAddress *addr = new ZeusTransportAddress(sin);
     src->SetAddress(addr);
 
-    zeusOutgoing.insert(make_pair(*addr, qd));
-    zeusIncoming.insert(make_pair(qd, *addr));
+    zeusOutgoing.insert(make_pair(dst, qd));
+    zeusIncoming.insert(make_pair(qd, dst));
 
     Debug("Opened Zeus connection to %s:%d",
 	  inet_ntoa(dst.addr.sin_addr), htons(dst.addr.sin_port));
@@ -291,6 +291,7 @@ ZeusTransport::SendMessageInternal(TransportReceiver *src,
     }
 
     if (it == zeusOutgoing.end()) {
+        Debug("could not find connection");
         return false;
     }
     
@@ -425,23 +426,25 @@ ZeusTransport::Stop()
 int
 ZeusTransport::Timer(uint64_t ms, timer_callback_t cb)
 {
-    ZeusTransportTimerInfo *info = new ZeusTransportTimerInfo();
-    ASSERT(ms == 0);
-    ++lastTimerId;
+    if (ms == 0) {
+        ZeusTransportTimerInfo *info = new ZeusTransportTimerInfo();
+        ++lastTimerId;
+        
+        info->id = lastTimerId;
+        info->cb = cb;
     
-    info->id = lastTimerId;
-    info->cb = cb;
-
-    timers[info->id] = info;
-
-    sgarray sga;
-    sga.num_bufs = 1;
-    sga.bufs[0].buf = info;
-    sga.bufs[0].len = sizeof(ZeusTransportTimerInfo);
-    qtoken qt = push(timerQD, sga);
-    ASSERT(qt == 0);
+        timers[info->id] = info;
+        
+        sgarray sga;
+        sga.num_bufs = 1;
+        sga.bufs[0].buf = info;
+        sga.bufs[0].len = sizeof(ZeusTransportTimerInfo);
+        qtoken qt = push(timerQD, sga);
+        ASSERT(qt == 0);
     
-    return info->id;
+        return info->id;
+    }
+    return 0
 }
 
 bool
