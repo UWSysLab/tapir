@@ -191,7 +191,7 @@ ZeusTransport::ConnectZeus(TransportReceiver *src, const ZeusTransportAddress &d
 {
     // Create socket
     int qd;
-    if ((qd = Zeus::queue(AF_INET, SOCK_STREAM, 0)) < 0) {
+    if ((qd = Zeus::socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         PPanic("Failed to create queue for outgoing Zeus connection");
     }
 
@@ -212,7 +212,7 @@ ZeusTransport::ConnectZeus(TransportReceiver *src, const ZeusTransportAddress &d
         return;
     }
 
-    int fd = Zeus::qd2fd(qd);
+    int fd = Zeus::fd(qd);
     
     // Create an libevent event for the completion channel
     info->ev = event_new(libeventBase,
@@ -257,7 +257,7 @@ ZeusTransport::Register(TransportReceiver *receiver,
     
     // Create socket
     int qd;
-    if ((qd = Zeus::queue(AF_INET, SOCK_STREAM, 0)) < 0) {
+    if ((qd = Zeus::socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         PPanic("Failed to create socket to accept Zeus connections");
     }
 
