@@ -14,6 +14,7 @@ let end=$begin+$copies
 
 for ((i=$begin; i<$end; i++))
 do
-  command="$cmd > $logdir/client.$i.log 2>&1 &"
-  eval $command
+    command="$cmd > $logdir/client.$i.log 2>&1 &"
+    echo $command
+#  eval $command
 done

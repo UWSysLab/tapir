@@ -158,7 +158,8 @@ ZeusTransport::ZeusTransport(double dropRate, double reorderRate,
 			   int dscp, bool handleSignals)
 {
     lastTimerId = 0;
-    
+    timerQD = Zeus::queue();
+    ASSERT(timerQD != 0);
     // Set up signal handler
     if (handleSignals) {
         struct sigaction sa;
@@ -354,46 +355,58 @@ void
 ZeusTransport::Run()
 {
     qtoken tokens[MAX_CONNECTIONS];
-    memset(tokens, 0, sizeof(qtoken) * MAX_CONNECTIONS);
-    int i = 0, offset;
+
+    memset(tokens, 0, sizeof(tokens));
+    int i, offset;
     sgarray sga;
     qtoken qt = 0;
     ssize_t res;
     int qd;
            
     while (!stopLoop) {
-        // check accept
-        while (tokens[0] == 0) {
-            qt = pop(acceptQD, sga);
-            if (qt == 0) ZeusAcceptCallback();
-            else tokens[0] = qt;
-        }
-
+        i = 0;
         // check timer
-        while (tokens[1] == 0) {
+        while (tokens[i] == 0) {
             qt = pop(timerQD, sga);
+            ASSERT(qt != -1);
+            Debug("Found qt: %ld", qt);
             if (qt == 0) OnTimer((ZeusTransportTimerInfo *)sga.bufs[0].buf);
-            else tokens[1] = qt;
+            else tokens[i] = qt;
+        }
+        i++;
+
+        // for servers, check for accept
+        if (replicaIdx != -1) {
+            // check accept
+            while (tokens[i] == 0) {
+                qt = pop(acceptQD, sga);
+                ASSERT(qt != -1);
+                if (qt == 0) ZeusAcceptCallback();
+                else tokens[i] = qt;
+            }
+            i++;
         }
 
         for (auto &it : receivers) {
             qd = it.first;
             while (tokens[i] == 0) {
                 qt = pop(qd, sga);
+                ASSERT(qt != -1);
                 if (qt == 0) ZeusPopCallback(qd, receivers[qd], sga);
                 else tokens[i] = qt;
             }
             i++;
         }
-
+        
         
         // wait for any of the pops to return
         // i is now set to number of tokens
         // offset will return the token that is ready
         // qd will return qd of the queue that is ready
         res = wait_any(tokens, i, offset, qd, sga);
-        assert(res > 0);
+        ASSERT(res > 0);
         // zero out the token for the next round
+        Debug("Found something: offset=%i, qd=%lx", offset, qd);
         tokens[offset] = 0;
         if (qd == acceptQD) ZeusAcceptCallback();
         else if (qd == timerQD)
@@ -422,10 +435,11 @@ ZeusTransport::Timer(uint64_t ms, timer_callback_t cb)
     timers[info->id] = info;
 
     sgarray sga;
+    sga.num_bufs = 1;
     sga.bufs[0].buf = info;
     sga.bufs[0].len = sizeof(ZeusTransportTimerInfo);
-    ssize_t res = push(timerQD, sga);
-    ASSERT(res == sga.bufs[0].len);
+    qtoken qt = push(timerQD, sga);
+    ASSERT(qt == 0);
     
     return info->id;
 }
@@ -487,7 +501,8 @@ ZeusTransport::ZeusAcceptCallback()
     ZeusTransportAddress *client = new ZeusTransportAddress(sin);
     zeusOutgoing.insert(make_pair(*client, newqd));
     zeusIncoming.insert(make_pair(newqd, *client));
-        
+    receivers[newqd] = receiver;
+    
     Debug("Opened incoming Zeus connection from %s:%d",
           inet_ntoa(sin.sin_addr), htons(sin.sin_port));
 }
