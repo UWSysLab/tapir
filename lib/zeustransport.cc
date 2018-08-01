@@ -351,22 +351,21 @@ void
 ZeusTransport::Run()
 {
     qtoken tokens[MAX_CONNECTIONS];
-
+    sgarray sgas[MAX_CONNECTIONS];
     memset(tokens, 0, sizeof(tokens));
     int i, offset;
-    sgarray sga;
     qtoken qt = 0;
     ssize_t res;
     int qd;
            
     while (!stopLoop) {
         i = 0;
-        // check timer
+	// check timer
         while (tokens[i] == 0) {
-            qt = pop(timerQD, sga);
+            qt = pop(timerQD, sgas[i]);
             ASSERT(qt != -1);
             Debug("Found qt: %ld", qt);
-            if (qt == 0) OnTimer((ZeusTransportTimerInfo *)sga.bufs[0].buf);
+            if (qt == 0) OnTimer((ZeusTransportTimerInfo *)sgas[i].bufs[0].buf);
             else tokens[i] = qt;
         }
         i++;
@@ -375,7 +374,7 @@ ZeusTransport::Run()
         if (replicaIdx != -1) {
             // check accept
             while (tokens[i] == 0) {
-                qt = pop(acceptQD, sga);
+                qt = pop(acceptQD, sgas[i]);
                 ASSERT(qt != -1);
                 if (qt == 0) ZeusAcceptCallback();
                 else tokens[i] = qt;
@@ -386,29 +385,38 @@ ZeusTransport::Run()
         for (auto &it : receivers) {
             qd = it.first;
             while (tokens[i] == 0) {
-                qt = pop(qd, sga);
-                ASSERT(qt != -1);
-                if (qt == 0) ZeusPopCallback(qd, receivers[qd], sga);
+                qt = pop(qd, sgas[i]);
+                if (qt == -1) return;
+                if (qt == 0) {
+		    assert(sgas[i].num_bufs > 0);
+		    ZeusPopCallback(qd, receivers[qd], sgas[i]);
+		}
                 else tokens[i] = qt;
             }
             i++;
         }
         
-        
         // wait for any of the pops to return
         // i is now set to number of tokens
         // offset will return the token that is ready
         // qd will return qd of the queue that is ready
-        res = wait_any(tokens, i, offset, qd, sga);
-        ASSERT(res > 0);
+	sgarray sga;
+	res = Zeus::wait_any(tokens, i, offset, qd, sga);
+        if (res < 0) {
+	    Warning("Exiting loop: %s", strerror(res));
+	    break;
+	}
         // zero out the token for the next round
         Debug("Found something: offset=%i, qd=%lx", offset, qd);
         tokens[offset] = 0;
         if (qd == acceptQD) ZeusAcceptCallback();
-        else if (qd == timerQD)
+        else if (qd == timerQD) {
+	    assert(sga.num_bufs != 0);
             OnTimer((ZeusTransportTimerInfo *)sga.bufs[0].buf);
-        else 
-            ZeusPopCallback(qd, receivers[qd], sga);        
+	} else {
+	    assert(sga.num_bufs != 0);
+            ZeusPopCallback(qd, receivers[qd], sga);
+	}
     }        
 }
 
@@ -518,6 +526,7 @@ void
     uint8_t *ptr = (uint8_t *)sga.bufs[0].buf;
     ASSERT(sga.bufs[0].len > 0);
     uint32_t magic = *(uint32_t *)ptr;
+    Debug("[%x] MAGIC=%x", qd, magic);
     ptr += sizeof(magic);
     ASSERT(magic == MAGIC);
     size_t totalSize = *((size_t *)ptr);

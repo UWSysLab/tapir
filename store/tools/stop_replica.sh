@@ -14,7 +14,7 @@ for ((i=0; i<$n; i++))
 do
   let line=$i+2 
   server=$(cat $config | sed -n ${line}p | awk -F'[ :]' '{print $2}')
-  command="ssh $server \"pkill -INT server\""
+  command="ssh $server \"pkill -9 server\""
   #echo $command
   eval $command
 done

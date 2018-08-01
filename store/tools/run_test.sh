@@ -16,8 +16,8 @@ trap '{
 }' INT
 
 # Paths to source code and logfiles.
-srcdir="/bigraid/users/iyzhang/datacenter-OS/apps/tapir"
-logdir="/bigraid/users/iyzhang/logs"
+srcdir="/biggerraid/users/iyzhang/datacenter-OS/apps/tapir"
+logdir="/biggerraid/users/iyzhang/datacenter-OS/logs"
 
 # Machines on which replicas are running.
 replicas=("bongo" "capybara" "dikdik")
@@ -55,7 +55,7 @@ echo "Zipf alpha: $zalpha"
 echo "Skew: $skew"
 echo "Client: $client"
 echo "Store: $store"
-echo "Mode: $mode"
+echo "Mode $mode"
 
 
 # Generate keys to be used in the experiment.
@@ -114,6 +114,6 @@ done
 # Process logs
 echo "Processing logs"
 cat $logdir/client.*.log | sort -g -k 3 > $logdir/client.log
-rm -f $logdir/client.*.log
+#rm -f $logdir/client.*.log
 
 python $srcdir/store/tools/process_logs.py $logdir/client.log $rtime

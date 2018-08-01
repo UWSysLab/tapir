@@ -471,7 +471,7 @@ RDMATransport::RDMABuffer *
 RDMATransport::AllocBuffer(RDMATransportRDMAListener *info,
                            size_t size)
 {
-    ASSERT(size < 200);
+    ASSERT(size < 1000);
     // allocate first buffer
     if (info->buffers == NULL) {
         RDMABuffer *newbuf = (RDMABuffer *)malloc(MAX_RDMA_SIZE);
@@ -611,7 +611,7 @@ RDMATransport::FlushSendQueue(RDMATransportRDMAListener *info)
         sge.addr = (uintptr_t)buf->start;
         sge.length = buf->size;
         sge.lkey = buf->mr->lkey;
-        ASSERT(buf->size < 200);
+        ASSERT(buf->size < 1000);
         
         if (ibv_post_send(info->id->qp, &wr, &bad_wr) != 0) {
             Panic("Could not send message: %s", strerror(errno));
