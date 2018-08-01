@@ -7,11 +7,11 @@ CXX = g++
 LD = g++
 
 ifndef ZEUS_SRC_DIR
-	ZEUS_SRC_DIR = ${HOME}/msr/datacenter-os/src
+	ZEUS_SRC_DIR = ${HOME}/proj/datacenter-OS/src
 endif
 
-CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -O2 -DNASSERT
-#CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized 
+#CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -O2 -DNASSERT
+CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized 
 CXXFLAGS := -g -std=c++0x
 LDFLAGS := -levent_pthreads 
 ## Debian package: check
@@ -42,7 +42,7 @@ ifneq ($(TARGETOS), Darwin)
   LDFLAGS += $(RDMA_LDFLAGS)
 endif 
 ZEUS_CFLAGS := -I$(ZEUS_SRC_DIR)
-ZEUS_LDFLAGS := -L$(ZEUS_SRC_DIR) -lzeus_rdma -lhoard -Wl,-rpath,$(ZEUS_SRC_DIR)
+ZEUS_LDFLAGS := -L$(ZEUS_SRC_DIR) -lzeus_posix -lhoard -Wl,-rpath,$(ZEUS_SRC_DIR)
 CFLAGS += $(ZEUS_CFLAGS)
 CXXFLAGS += $(ZEUS_CFLAGS)
 LDFLAGS += $(ZEUS_LDFLAGS)

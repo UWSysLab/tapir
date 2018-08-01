@@ -16,7 +16,7 @@ trap '{
 }' INT
 
 # Paths to source code and logfiles.
-srcdir="/bigraid/users/iyzhang/datacenter-os/apps/tapir"
+srcdir="/bigraid/users/iyzhang/datacenter-OS/apps/tapir"
 logdir="/bigraid/users/iyzhang/logs"
 
 # Machines on which replicas are running.
