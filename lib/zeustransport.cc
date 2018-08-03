@@ -270,9 +270,10 @@ ZeusTransport::Register(TransportReceiver *receiver,
     // Tell the receiver its address
     socklen_t sinsize = sizeof(sin);
     
-    if (getsockname(Zeus::qd2fd(qd), (sockaddr *) &sin, &sinsize) < 0) {
+    if (Zeus::getsockname(qd, (sockaddr *) &sin, &sinsize) < 0) {
         PPanic("Failed to get socket name");
     }
+    
     ZeusTransportAddress *addr = new ZeusTransportAddress(sin);
     receiver->SetAddress(addr);
 
