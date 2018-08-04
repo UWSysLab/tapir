@@ -35,6 +35,7 @@ main(int argc, char **argv)
     int closestReplica = -1; // Closest replica id.
     int skew = 0; // difference between real clock and TrueTime
     int error = 0; // error bars
+    string transporttype;
 
     Client *client;
     enum {
@@ -48,7 +49,7 @@ main(int argc, char **argv)
     strongstore::Mode strongmode;
 
     int opt;
-    while ((opt = getopt(argc, argv, "c:d:N:k:f:m:e:s:z:r:")) != -1) {
+    while ((opt = getopt(argc, argv, "c:d:N:k:f:m:e:s:z:r:t:")) != -1) {
         switch (opt) {
         case 'c': // Configuration path
         { 
@@ -170,6 +171,9 @@ main(int argc, char **argv)
             break;
         }
 
+	case 't':
+	    transporttype = string(optarg);
+	    break;
         default:
             fprintf(stderr, "Unknown argument %s\n", argv[optind]);
             break;
@@ -178,7 +182,8 @@ main(int argc, char **argv)
 
     if (mode == MODE_TAPIR) {
         client = new tapirstore::Client(configPath, nShards,
-                    closestReplica, TrueTime(skew, error));
+					closestReplica, transporttype,
+					TrueTime(skew, error));
     } else if (mode == MODE_WEAK) {
         client = new weakstore::Client(configPath, nShards,
                     closestReplica);

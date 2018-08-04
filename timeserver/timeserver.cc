@@ -45,6 +45,7 @@ main(int argc, char **argv)
 {
     int index = -1;
     const char *configPath = NULL;
+    const char *transporttype = NULL;
     char *strtolPtr;
     // Parse arguments
     int opt;
@@ -61,6 +62,9 @@ main(int argc, char **argv)
                 Usage(argv[0]);
             }
             break;
+	case 't':
+	    transporttype = optarg;
+	    break;
         default:
             fprintf(stderr, "Unknown argument %s\n", argv[optind]);
             break;
@@ -91,18 +95,21 @@ main(int argc, char **argv)
         Usage(argv[0]);
     }
 
-#if TRANSPORT == UDP
-    UDPTransport transport(0.0, 0.0, 0);;
-#elif TRANSPORT == TCP
-    TCPTransport transport(0.0, 0.0, 0);;
-#elif TRANSPORT == RDMA
-    RDMATransport transport(0.0, 0.0, 0);;
-#elif TRANSPORT == ZEUS
-    ZeusTransport transport(0.0, 0.0, 0);;
-#endif
+    Transport *t;
+    if (strcasecmp(transporttype, "udp")) {
+	t = new UDPTransport(0.0, 0.0, 0);
+    } else if (strcasecmp(transporttype, "tcp")) {
+	t = new TCPTransport(0.0, 0.0, 0);
+    } else if (strcasecmp(transporttype, "rdma")) {
+	t = new RDMATransport(0.0, 0.0, 0);
+    } else {
+	// default to zeus for now
+	t = new ZeusTransport(0.0, 0.0, 0);
+    }
     TimeStampServer server;
-    replication::vr::VRReplica replica(config, index, &transport, 1, &server);
+    replication::vr::VRReplica replica(config, index, t, 1, &server);
 
-    transport.Run();
+    t->Run();
+    delete t;
     return 0;
 }

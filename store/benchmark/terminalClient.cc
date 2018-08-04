@@ -20,7 +20,7 @@ main(int argc, char **argv)
     const char *configPath = NULL;
     int nShards = 1;
     int closestReplica = -1; // Closest replica id.
-
+    string transporttype;
     Client *client;
     enum {
         MODE_UNKNOWN,
@@ -33,7 +33,7 @@ main(int argc, char **argv)
     strongstore::Mode strongmode;
 
     int opt;
-    while ((opt = getopt(argc, argv, "c:N:m:r:")) != -1) {
+    while ((opt = getopt(argc, argv, "c:N:m:r:t")) != -1) {
         switch (opt) {
         case 'c': // Configuration path
         { 
@@ -91,6 +91,8 @@ main(int argc, char **argv)
             break;
         }
 
+	case 't':
+	    transporttype = string(optarg);
         default:
             fprintf(stderr, "Unknown argument %s\n", argv[optind]);
             break;
@@ -99,7 +101,8 @@ main(int argc, char **argv)
 
     if (mode == MODE_TAPIR) {
         client = new tapirstore::Client(configPath, nShards,
-                    closestReplica, TrueTime(0, 0));
+					closestReplica, transporttype,
+					TrueTime(0, 0));
     } else if (mode == MODE_WEAK) {
         client = new weakstore::Client(configPath, nShards,
                     closestReplica);

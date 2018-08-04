@@ -28,6 +28,7 @@ clients=("anteater")
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
 store="tapirstore"      # Which store (strongstore, weakstore, tapirstore)
 mode="txn-l"            # Mode for storage system.
+transport = "rdma"
 
 nshard=1     # number of shards
 nclient=1    # number of clients to run (per machine)
@@ -66,13 +67,13 @@ python key_generator.py $nkeys > keys
 # Start all replicas and timestamp servers
 echo "Starting TimeStampServer replicas.."
 $srcdir/store/tools/start_replica.sh tss $srcdir/store/tools/shard.tss.config \
-  "$srcdir/timeserver/timeserver" $logdir
+  "$srcdir/timeserver/timeserver -t $transport" $logdir
 
 for ((i=0; i<$nshard; i++))
 do
   echo "Starting shard$i replicas.."
   $srcdir/store/tools/start_replica.sh shard$i $srcdir/store/tools/shard$i.config \
-    "$srcdir/store/$store/server -m $mode -f $srcdir/store/tools/keys -k $nkeys -e $err -s $skew" $logdir
+    "$srcdir/store/$store/server -m $mode -f $srcdir/store/tools/keys -k $nkeys -e $err -s $skew -t $transport" $logdir
 done
 
 
@@ -87,7 +88,7 @@ for host in ${clients[@]}
 do
   ssh $host "$srcdir/store/tools/start_client.sh \"$srcdir/store/benchmark/$client \
   -c $srcdir/store/tools/shard -r 0 -N $nshard -f $srcdir/store/tools/keys \
-  -d $rtime -l $tlen -w $wper -k $nkeys -m $mode -e $err -s $skew -z $zalpha\" \
+  -d $rtime -l $tlen -w $wper -k $nkeys -m $mode -e $err -t $transport -s $skew -z $zalpha\" \
   $count $nclient $logdir"
 
   let count=$count+$nclient

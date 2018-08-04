@@ -36,16 +36,10 @@
 #include "lib/message.h"
 #include "lib/configuration.h"
 #include "lib/transport.h"
-#if TRANSPORT == UDP
 #include "lib/udptransport.h"
-#elif TRANSPORT == TCP
 #include "lib/tcptransport.h"
-#elif TRANSPORT == RDMA
 #include "lib/rdmatransport.h"
-#elif TRANSPORT == ZEUS
 #include "lib/zeustransport.h"
-#endif
-
 #include "replication/ir/client.h"
 #include "store/common/timestamp.h"
 #include "store/common/truetime.h"
@@ -62,7 +56,9 @@ class Client : public ::Client
 {
 public:
     Client(const std::string configPath, int nShards,
-	   int closestReplica, TrueTime timeserver = TrueTime(0,0));
+	   int closestReplica,
+	   const string &transporttype,
+	   TrueTime timeserver = TrueTime(0,0));
     virtual ~Client();
 
     // Overriding functions from ::Client.
@@ -92,15 +88,7 @@ private:
     std::set<int> participants;
 
     // Transport used by IR client proxies.
-#if TRANSPORT == UDP
-    UDPTransport transport;
-#elif TRANSPORT == TCP
-    TCPTransport transport;
-#elif TRANSPORT == RDMA
-    RDMATransport transport;
-#elif TRANSPORT == ZEUS
-    ZeusTransport transport;
-#endif
+    Transport *transport;
     
     // Thread running the transport event loop.
     std::thread *clientTransport;

@@ -37,15 +37,11 @@
 #include "store/common/truetime.h"
 #include "store/tapirstore/store.h"
 #include "store/tapirstore/tapir-proto.pb.h"
-#if TRANSPORT == UDP
 #include "lib/udptransport.h"
-#elif TRANSPORT == TCP
 #include "lib/tcptransport.h"
-#elif TRANSPORT == RDMA
 #include "lib/rdmatransport.h"
-#elif TRANSPORT == ZEUS
 #include "lib/zeustransport.h"
-#endif
+
 namespace tapirstore {
 
 using opid_t = replication::ir::opid_t;

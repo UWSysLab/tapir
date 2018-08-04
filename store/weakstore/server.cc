@@ -117,18 +117,18 @@ main(int argc, char **argv)
     int index = -1;
     const char *configPath = NULL;
     const char *keyPath = NULL;
-
+    const char *transporttype = NULL;
     // Parse arguments
     int opt;
-    while ((opt = getopt(argc, argv, "c:i:f:")) != -1) {
+    while ((opt = getopt(argc, argv, "c:i:f:t:")) != -1) {
         switch (opt) {
-            case 'c':
-                configPath = optarg;
-                break;
-
-            case 'i':
-            {
-                char *strtolPtr;
+	case 'c':
+	    configPath = optarg;
+	    break;
+	    
+	case 'i':
+	{
+	    char *strtolPtr;
                 index = strtoul(optarg, &strtolPtr, 10);
                 if ((*optarg == '\0') || (*strtolPtr != '\0') || (index < 0))
                 {
@@ -137,12 +137,16 @@ main(int argc, char **argv)
                     Usage(argv[0]);
                 }
                 break;
-            }
-            case 'f':   // Load keys from file
-                keyPath = optarg;
-                break;
-
-            default:
+	}
+	case 'f':   // Load keys from file
+	    keyPath = optarg;
+	    break;
+	    
+	case 't': // transport type
+	    transporttype = optarg;
+	    break;
+	    
+	default:
                 fprintf(stderr, "Unknown argument %s\n", argv[optind]);
                 break;
         }
@@ -173,11 +177,22 @@ main(int argc, char **argv)
         Usage(argv[0]);
     }
 
-    UDPTransport transport(0.0, 0.0, 0);
-    weakstore::Server *server;
-
-    server = new weakstore::Server(config, index, &transport, new weakstore::Store());
-
+    Transport *t;
+    if (strcasecmp(transporttype, "udp")) {
+	t = new UDPTransport(0.0, 0.0, 0);
+    } else if (strcasecmp(transporttype, "tcp")) {
+	t = new TCPTransport(0.0, 0.0, 0);
+    } else if (strcasecmp(transporttype, "rdma")) {
+	t = new RDMATransport(0.0, 0.0, 0);
+    } else {
+	// default to zeus for now
+	t = new ZeusTransport(0.0, 0.0, 0);
+    }
+	
+    weakstore::Server *server = new weakstore::Server(config,
+						      index,
+						      t,
+						      new weakstore::Store());
     if (keyPath) {
         string key;
 	std::ifstream in;
@@ -193,7 +208,9 @@ main(int argc, char **argv)
         in.close();
     }
 
-    transport.Run();
-
+    t->Run();
+    delete server;
+    delete t;
+    
     return 0;
 }

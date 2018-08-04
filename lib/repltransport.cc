@@ -238,11 +238,15 @@ bool ReplTransport::RunOne() {
     }
 }
 
+static bool done = false;
 void ReplTransport::Run() {
-    bool done = false;
     while (!done) {
         done = RunOne();
     }
+}
+
+void ReplTransport::Stop() {
+    done = true;
 }
 
 bool ReplTransport::SendMessageInternal(TransportReceiver *src,

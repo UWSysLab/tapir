@@ -214,10 +214,11 @@ main(int argc, char **argv)
     const char *keyPath = NULL;
     int64_t skew = 0, error = 0;
     strongstore::Mode mode;
+    const char *transporttype = NULL;
 
     // Parse arguments
     int opt;
-    while ((opt = getopt(argc, argv, "c:i:m:e:s:f:n:N:k:")) != -1) {
+    while ((opt = getopt(argc, argv, "c:i:m:e:s:f:n:N:k:t:")) != -1) {
         switch (opt) {
         case 'c':
             configPath = optarg;
@@ -311,6 +312,10 @@ main(int argc, char **argv)
             break;
         }
 
+	case 't': // transport type
+	    transporttype = optarg;
+	    break;
+	    
         default:
             fprintf(stderr, "Unknown argument %s\n", argv[optind]);
         }
@@ -342,11 +347,26 @@ main(int argc, char **argv)
                 "only %d replicas defined\n", index, config.n);
     }
 
-    UDPTransport transport(0.0, 0.0, 0);
+
+    
+    Transport *t;
+    if (strcasecmp(transporttype, "udp")) {
+	t = new UDPTransport(0.0, 0.0, 0);
+    } else if (strcasecmp(transporttype, "tcp")) {
+	t = new TCPTransport(0.0, 0.0, 0);
+    } else if (strcasecmp(transporttype, "rdma")) {
+	t = new RDMATransport(0.0, 0.0, 0);
+    } else {
+	// default to zeus for now
+	t = new ZeusTransport(0.0, 0.0, 0);
+    }
 
     strongstore::Server server(mode, skew, error);
-    replication::vr::VRReplica replica(config, index, &transport, 1, &server);
-    
+    replication::vr::VRReplica replica(config,
+				       index,
+				       t,
+				       1,
+				       &server);    
     if (keyPath) {
         string key;
         std::ifstream in;
@@ -372,7 +392,7 @@ main(int argc, char **argv)
         in.close();
     }
 
-    transport.Run();
+    t->Run();
 
     return 0;
 }

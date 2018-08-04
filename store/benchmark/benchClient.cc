@@ -29,6 +29,7 @@ main(int argc, char **argv)
 {
     const char *configPath = NULL;
     const char *keysPath = NULL;
+    string transporttype;
     int duration = 10;
     int nShards = 1;
     int tLen = 10;
@@ -49,7 +50,7 @@ main(int argc, char **argv)
     strongstore::Mode strongmode;
 
     int opt;
-    while ((opt = getopt(argc, argv, "c:d:N:l:w:k:f:m:e:s:z:r:")) != -1) {
+    while ((opt = getopt(argc, argv, "c:d:N:l:w:k:f:m:e:s:z:r:t:")) != -1) {
         switch (opt) {
         case 'c': // Configuration path
         { 
@@ -192,6 +193,10 @@ main(int argc, char **argv)
             }
             break;
         }
+	
+	case 't': // transport type
+	    transporttype = string(optarg);
+	    break;
 
         default:
             fprintf(stderr, "Unknown argument %s\n", argv[optind]);
@@ -201,7 +206,9 @@ main(int argc, char **argv)
 
     if (mode == MODE_TAPIR) {
         client = new tapirstore::Client(configPath, nShards,
-                    closestReplica, TrueTime(skew, error));
+					closestReplica,
+					transporttype,
+					TrueTime(skew, error));
     } else if (mode == MODE_WEAK) {
         client = new weakstore::Client(configPath, nShards,
                     closestReplica);
