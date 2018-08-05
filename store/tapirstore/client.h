@@ -57,7 +57,7 @@ class Client : public ::Client
 public:
     Client(const std::string configPath, int nShards,
 	   int closestReplica,
-	   const string &transporttype,
+	   const TransportMode transporttype,
 	   TrueTime timeserver = TrueTime(0,0));
     virtual ~Client();
 

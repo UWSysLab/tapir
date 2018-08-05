@@ -20,7 +20,7 @@ main(int argc, char **argv)
     const char *configPath = NULL;
     int nShards = 1;
     int closestReplica = -1; // Closest replica id.
-    string transporttype;
+    TransportMode transporttype;
     Client *client;
     enum {
         MODE_UNKNOWN,
@@ -92,7 +92,17 @@ main(int argc, char **argv)
         }
 
 	case 't':
-	    transporttype = string(optarg);
+	    if (strcasecmp(optarg, "udp") == 0) {
+                transporttype = UDP;
+	    } else if (strcasecmp(optarg, "tcp") == 0) {
+                transporttype = TCP;
+	    } else if (strcasecmp(optarg, "rdma") == 0) {
+		transporttype = RDMA;
+	    } else {
+		transporttype = ZEUS;
+	    }
+	    break;
+
         default:
             fprintf(stderr, "Unknown argument %s\n", argv[optind]);
             break;

@@ -28,7 +28,7 @@ clients=("anteater")
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
 store="tapirstore"      # Which store (strongstore, weakstore, tapirstore)
 mode="txn-l"            # Mode for storage system.
-transport = "rdma"
+transport="zeus"
 
 nshard=1     # number of shards
 nclient=1    # number of clients to run (per machine)
@@ -57,6 +57,7 @@ echo "Skew: $skew"
 echo "Client: $client"
 echo "Store: $store"
 echo "Mode $mode"
+echo "Transport $transport"
 
 
 # Generate keys to be used in the experiment.
@@ -73,7 +74,7 @@ for ((i=0; i<$nshard; i++))
 do
   echo "Starting shard$i replicas.."
   $srcdir/store/tools/start_replica.sh shard$i $srcdir/store/tools/shard$i.config \
-    "$srcdir/store/$store/server -m $mode -f $srcdir/store/tools/keys -k $nkeys -e $err -s $skew -t $transport" $logdir
+    "$srcdir/store/$store/server -m $mode -f $srcdir/store/tools/keys -k $nkeys -e $err -t $transport" $logdir
 done
 
 

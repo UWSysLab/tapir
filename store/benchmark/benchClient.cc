@@ -29,7 +29,7 @@ main(int argc, char **argv)
 {
     const char *configPath = NULL;
     const char *keysPath = NULL;
-    string transporttype;
+    TransportMode transporttype;
     int duration = 10;
     int nShards = 1;
     int tLen = 10;
@@ -194,8 +194,16 @@ main(int argc, char **argv)
             break;
         }
 	
-	case 't': // transport type
-	    transporttype = string(optarg);
+	case 't': // transport type {
+	    if (strcasecmp(optarg, "udp") == 0) {
+                transporttype = UDP;
+	    } else if (strcasecmp(optarg, "tcp") == 0) {
+                transporttype = TCP;
+	    } else if (strcasecmp(optarg, "rdma") == 0) {
+		transporttype = RDMA;
+	    } else {
+		transporttype = ZEUS;
+	    }
 	    break;
 
         default:

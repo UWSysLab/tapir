@@ -350,11 +350,11 @@ main(int argc, char **argv)
 
     
     Transport *t;
-    if (strcasecmp(transporttype, "udp")) {
+    if (strcasecmp(transporttype, "udp") == 0) {
 	t = new UDPTransport(0.0, 0.0, 0);
-    } else if (strcasecmp(transporttype, "tcp")) {
+    } else if (strcasecmp(transporttype, "tcp") == 0) {
 	t = new TCPTransport(0.0, 0.0, 0);
-    } else if (strcasecmp(transporttype, "rdma")) {
+    } else if (strcasecmp(transporttype, "rdma") == 0) {
 	t = new RDMATransport(0.0, 0.0, 0);
     } else {
 	// default to zeus for now

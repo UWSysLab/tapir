@@ -35,7 +35,7 @@ main(int argc, char **argv)
     int closestReplica = -1; // Closest replica id.
     int skew = 0; // difference between real clock and TrueTime
     int error = 0; // error bars
-    string transporttype;
+    TransportMode transporttype;
 
     Client *client;
     enum {
@@ -172,7 +172,15 @@ main(int argc, char **argv)
         }
 
 	case 't':
-	    transporttype = string(optarg);
+	    if (strcasecmp(optarg, "udp") == 0) {
+                transporttype = UDP;
+	    } else if (strcasecmp(optarg, "tcp") == 0) {
+                transporttype = TCP;
+	    } else if (strcasecmp(optarg, "rdma") == 0) {
+		transporttype = RDMA;
+	    } else {
+		transporttype = ZEUS;
+	    }
 	    break;
         default:
             fprintf(stderr, "Unknown argument %s\n", argv[optind]);

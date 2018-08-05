@@ -40,6 +40,13 @@
 #define REPLICA_NETWORK_DELAY 0
 #define READ_AT_LEADER 1
 
+typedef enum mode {
+    UDP,
+    TCP,
+    RDMA,
+    ZEUS
+} TransportMode;
+
 class TransportAddress
 {
 public:

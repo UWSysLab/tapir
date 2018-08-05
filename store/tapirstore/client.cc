@@ -37,7 +37,7 @@ using namespace std;
 
     Client::Client(const string configPath, int nShards,
                    int closestReplica,
-		   const string &transporttype,
+		   const TransportMode transporttype,
 		   TrueTime timeServer)
         : nshards(nShards), timeServer(timeServer)
 {   // Initialize all state here;
@@ -50,11 +50,11 @@ using namespace std;
     }
     t_id = (client_id/10000)*10000;
 
-    if (transporttype.compare("udp")) {
+    if (transporttype == UDP) {
 	transport = new UDPTransport(0.0, 0.0, 0);
-    } else if (transporttype.compare("tcp")) {
+    } else if (transporttype == TCP) {
 	transport = new TCPTransport(0.0, 0.0, 0);
-    } else if (transporttype.compare("rdma")) {
+    } else if (transporttype == RDMA) {
 	transport = new RDMATransport(0.0, 0.0, 0);
     } else {
 	// default to zeus for now

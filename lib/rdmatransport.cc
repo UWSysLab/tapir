@@ -105,6 +105,7 @@ RDMATransport::RDMATransport(double dropRate, double reorderRate,
                                SignalCallback, this),
                   NULL);
     }
+    Debug("Using RDMA transport");
 }
 
 RDMATransport::~RDMATransport()
@@ -306,6 +307,13 @@ RDMATransport::ConnectRDMA(TransportReceiver *src,
         Panic("Failed to set O_NONBLOCK");
     }
 
+        // Set TCP_NODELAY
+    int n = 1;
+    if (setsockopt(fd, IPPROTO_TCP,
+                   TCP_NODELAY, (char *)&n, sizeof(n)) < 0) {
+        PWarning("Failed to set TCP_NODELAY on TCP listening socket");
+    }
+
     // Create a libevent event for the event channel
     info->cmevent = event_new(libeventBase,
                               info->id->channel->fd,
@@ -372,6 +380,13 @@ RDMATransport::ConnectRDMA(TransportReceiver *src,
     int flags = fcntl(fd, F_GETFL);
     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK)) {
         Panic("Failed to set O_NONBLOCK");
+    }
+
+    // Set TCP_NODELAY
+    int n = 1;
+    if (setsockopt(fd, IPPROTO_TCP,
+                   TCP_NODELAY, (char *)&n, sizeof(n)) < 0) {
+        PWarning("Failed to set TCP_NODELAY on TCP listening socket");
     }
 
     // finish set up for new connection
