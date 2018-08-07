@@ -216,7 +216,7 @@ ZeusTransport::ConnectZeus(TransportReceiver *src, const ZeusTransportAddress &d
     // Tell the receiver its address
     struct sockaddr_in sin;
     socklen_t sinsize = sizeof(sin);
-    if (getsockname(Zeus::qd2fd(qd), (sockaddr *) &sin, &sinsize) < 0) {
+    if (Zeus::getsockname(qd, (sockaddr *) &sin, &sinsize) < 0) {
         PPanic("Failed to get socket name");
     }
     ZeusTransportAddress *addr = new ZeusTransportAddress(sin);
@@ -310,7 +310,7 @@ ZeusTransport::SendMessageInternal(TransportReceiver *src,
                        sizeof(totalLen) +
                        sizeof(uint32_t));
 
-    char buf[totalLen];
+    char *buf = (char *)malloc(totalLen);
     Zeus::sgarray sga;
     sga.num_bufs = 1;
     sga.bufs[0].buf = (Zeus::ioptr)&buf[0];
@@ -345,6 +345,7 @@ ZeusTransport::SendMessageInternal(TransportReceiver *src,
 
     Debug("Sent %ld byte %s message to server over Zeus",
           totalLen, type.c_str());
+    free(buf);
     return true;
 }
 
@@ -362,17 +363,16 @@ ZeusTransport::Run()
     while (!stopLoop) {
         i = 0;
 	// check timer
-        while (tokens[i] == 0) {
-            qt = pop(timerQD, sgas[i]);
-            ASSERT(qt != -1);
-            Debug("Found qt: %ld", qt);
-            if (qt == 0) OnTimer((ZeusTransportTimerInfo *)sgas[i].bufs[0].buf);
-            else tokens[i] = qt;
-        }
-        i++;
-
-        // for servers, check for accept
-        if (replicaIdx != -1) {
+	if (replicaIdx == -1) {
+	    while (tokens[i] == 0) {
+		qt = pop(timerQD, sgas[i]);
+		ASSERT(qt != -1);
+		Debug("Found qt: %ld", qt);
+		if (qt == 0) OnTimer((ZeusTransportTimerInfo *)sgas[i].bufs[0].buf);
+		else tokens[i] = qt;
+	    }
+	    i++;
+	} else {
             // check accept
             while (tokens[i] == 0) {
                 qt = pop(acceptQD, sgas[i]);
