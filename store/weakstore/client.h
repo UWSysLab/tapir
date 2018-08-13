@@ -35,6 +35,9 @@
 #include "lib/assert.h"
 #include "lib/message.h"
 #include "lib/udptransport.h"
+#include "lib/rdmatransport.h"
+#include "lib/tcptransport.h"
+#include "lib/zeustransport.h"
 #include "replication/common/client.h"
 #include "store/common/frontend/client.h"
 #include "store/common/frontend/bufferclient.h"
@@ -51,7 +54,7 @@ namespace weakstore {
 class Client : public ::Client
 {
 public:
-    Client(std::string configPath, int nshards, int closestReplica);
+    Client(std::string configPath, int nshards, TransportMode transporttype, int closestReplica);
     ~Client();
 
     // Overriding methods from ::Client
@@ -73,7 +76,7 @@ private:
     uint64_t nshards;
 
     // Transport used by shard clients.
-    UDPTransport transport;
+    Transport *transport;
     
     // Thread running the transport event loop.
     std::thread *clientTransport;

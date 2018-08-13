@@ -35,8 +35,8 @@ namespace weakstore {
 using namespace std;
 using namespace proto;
 
-Client::Client(string configPath, int nShards, int closestReplica)
-    : transport(0.0, 0.0, 0)
+    Client::Client(string configPath, int nShards,
+		   TransportMode transporttype, int closestReplica)
 {
     // Initialize all state here;
     client_id = 0;
@@ -46,7 +46,18 @@ Client::Client(string configPath, int nShards, int closestReplica)
         uniform_int_distribution<uint64_t> dis;
         client_id = dis(gen);
     }
-    
+
+    if (transporttype == UDP) {
+	transport = new UDPTransport(0.0, 0.0, 0);
+    } else if (transporttype == TCP) {
+	transport = new TCPTransport(0.0, 0.0, 0);
+    } else if (transporttype == RDMA) {
+	transport = new RDMATransport(0.0, 0.0, 0);
+    } else {
+	// default to zeus for now
+	transport = new ZeusTransport(0.0, 0.0, 0);
+    }
+
     nshards = nShards;
     bclient.reserve(nShards);
 
@@ -55,7 +66,7 @@ Client::Client(string configPath, int nShards, int closestReplica)
     /* Start a client for each shard. */
     for (int i = 0; i < nShards; i++) {
         string shardConfigPath = configPath + to_string(i) + ".config";
-        bclient[i] = new ShardClient(shardConfigPath, &transport,
+        bclient[i] = new ShardClient(shardConfigPath, transport,
             client_id, i, closestReplica);
     }
 
@@ -66,19 +77,20 @@ Client::Client(string configPath, int nShards, int closestReplica)
 }
 
 Client::~Client()
-{
-    transport.Stop();
+{ 
+    transport->Stop();
     for (auto b : bclient) {
         delete b;
     }
     clientTransport->join();
+    delete transport;
 }
 
 /* Runs the transport event loop. */
 void
 Client::run_client()
 {
-    transport.Run();
+    transport->Run();
 }
 
 /* Returns the value corresponding to the supplied key. */

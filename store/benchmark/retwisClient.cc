@@ -194,10 +194,12 @@ main(int argc, char **argv)
 					TrueTime(skew, error));
     } else if (mode == MODE_WEAK) {
         client = new weakstore::Client(configPath, nShards,
-                    closestReplica);
+				       transporttype,
+				       closestReplica);
     } else if (mode == MODE_STRONG) {
         client = new strongstore::Client(strongmode, configPath,
-                    nShards, closestReplica, TrueTime(skew, error));
+					 nShards, transporttype,
+					 closestReplica, TrueTime(skew, error));
     } else {
         fprintf(stderr, "option -m is required\n");
         exit(0);
