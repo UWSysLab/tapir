@@ -554,6 +554,6 @@ void
     receiver->ReceiveMessage(addr->second,
                              type,
                              data);
-    free(sga.bufs[0].buf);
+    free((uint8_t *)sga.bufs[0].buf - sizeof(uint64_t));
     Debug("Done processing large %s message", type.c_str());        
 }
