@@ -52,9 +52,18 @@ const size_t MAX_Zeus_SIZE = 100; // XXX
 const uint32_t MAGIC = 0x06121983;
 static bool stopLoop = false;
 
+static void
+ZeusSignalCallback(int signal)
+{
+    ASSERT(signal == SIGTERM || signal == SIGINT);
+    stopLoop = true;
+}
+
 using std::make_pair;
 using Zeus::sgarray;
 using Zeus::qtoken;
+
+DEFINE_LATENCY(process_pop);
 
 ZeusTransportAddress::ZeusTransportAddress(const sockaddr_in &addr)
     : addr(addr)
@@ -163,6 +172,7 @@ ZeusTransport::ZeusTransport(double dropRate, double reorderRate,
     // Set up signal handler
     if (handleSignals) {
         struct sigaction sa;
+        memset(&sa, 0, sizeof(sa));
         // Setup the sighub handler
         sa.sa_handler = &ZeusSignalCallback;
         // Restart the system call, if at all possible
@@ -482,13 +492,6 @@ ZeusTransport::OnTimer(ZeusTransportTimerInfo *info)
     delete info;
 }
 
-static void
-ZeusSignalCallback(int signal)
-{
-    ASSERT(signal == SIGTERM || signal == SIGINT);
-    stopLoop = true;
-}
-
 void
 ZeusTransport::ZeusAcceptCallback()
 {
@@ -520,6 +523,7 @@ void
                                    
 {
     Debug("Pop Callback");
+    Latency_Start(&process_pop);
     auto addr = zeusIncoming.find(qd);
     
     ASSERT(sga.num_bufs == 1);
@@ -545,5 +549,6 @@ void
                              type,
                              data);
     free(sga.bufs[0].buf);
+    Latency_End(&process_pop);
     Debug("Done processing large %s message", type.c_str());        
 }

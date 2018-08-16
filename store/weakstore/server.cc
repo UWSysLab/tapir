@@ -29,6 +29,10 @@
  **********************************************************************/
 
 #include "store/weakstore/server.h"
+#include "lib/latency.h"
+
+DEFINE_LATENCY(parse_msg)
+DEFINE_LATENCY(process_msg)
 
 namespace weakstore {
 
@@ -58,8 +62,12 @@ Server::HandleMessage(const TransportAddress &remote,
     PutMessage put;
     
     if (type == get.GetTypeName()) {
+        Latency_Start(&parse_msg);
         get.ParseFromString(data);
+        Latency_End(&parse_msg);
+        Latency_Start(&process_msg);
         HandleGet(remote, get);
+        Latency_End(&process_msg);
     } else if (type == put.GetTypeName()) {
         put.ParseFromString(data);
         HandlePut(remote, put);
@@ -194,6 +202,6 @@ main(int argc, char **argv)
     }
 
     transport.Run();
-
+    Latency_DumpAll();
     return 0;
 }

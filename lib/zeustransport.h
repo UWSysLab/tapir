@@ -37,6 +37,7 @@
 #include "lib/transport.h"
 #include "lib/transportcommon.h"
 #include "include/io-queue.h"
+#include "lib/latency.h"
 #include <event2/event.h>
 
 #include <map>
@@ -117,7 +118,5 @@ private:
     void ZeusAcceptCallback();
     void ZeusPopCallback(int qd, TransportReceiver *receiver, Zeus::sgarray &sga);
 };
-
-static void ZeusSignalCallback(int signal);
 
 #endif  // _LIB_ZEUSTRANSPORT_H_
