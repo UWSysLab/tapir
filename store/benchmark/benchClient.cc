@@ -29,6 +29,7 @@ main(int argc, char **argv)
 {
     const char *configPath = NULL;
     const char *keysPath = NULL;
+    TransportMode transporttype;
     int duration = 10;
     int nShards = 1;
     int tLen = 10;
@@ -49,7 +50,7 @@ main(int argc, char **argv)
     strongstore::Mode strongmode;
 
     int opt;
-    while ((opt = getopt(argc, argv, "c:d:N:l:w:k:f:m:e:s:z:r:")) != -1) {
+    while ((opt = getopt(argc, argv, "c:d:N:l:w:k:f:m:e:s:z:r:t:")) != -1) {
         switch (opt) {
         case 'c': // Configuration path
         { 
@@ -192,6 +193,18 @@ main(int argc, char **argv)
             }
             break;
         }
+	
+	case 't': // transport type {
+	    if (strcasecmp(optarg, "udp") == 0) {
+                transporttype = UDP;
+	    } else if (strcasecmp(optarg, "tcp") == 0) {
+                transporttype = TCP;
+	    } else if (strcasecmp(optarg, "rdma") == 0) {
+		transporttype = RDMA;
+	    } else {
+		transporttype = ZEUS;
+	    }
+	    break;
 
         default:
             fprintf(stderr, "Unknown argument %s\n", argv[optind]);
@@ -201,13 +214,17 @@ main(int argc, char **argv)
 
     if (mode == MODE_TAPIR) {
         client = new tapirstore::Client(configPath, nShards,
-                    closestReplica, TrueTime(skew, error));
+					closestReplica,
+					transporttype,
+					TrueTime(skew, error));
     } else if (mode == MODE_WEAK) {
-        client = new weakstore::Client(configPath, nShards,
+        client = new weakstore::Client(configPath, nShards, transporttype,
                     closestReplica);
     } else if (mode == MODE_STRONG) {
-        client = new strongstore::Client(strongmode, configPath,
-                    nShards, closestReplica, TrueTime(skew, error));
+        client = new strongstore::Client(strongmode, configPath, 
+					 nShards, transporttype,
+					 closestReplica,
+					 TrueTime(skew, error));
     } else {
         fprintf(stderr, "option -m is required\n");
         exit(0);

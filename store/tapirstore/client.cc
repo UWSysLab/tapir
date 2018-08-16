@@ -36,10 +36,11 @@ namespace tapirstore {
 using namespace std;
 
     Client::Client(const string configPath, int nShards,
-                   int closestReplica, TrueTime timeServer)
-        : nshards(nShards), transport(0.0, 0.0, 0, true), timeServer(timeServer)
-{
-    // Initialize all state here;
+                   int closestReplica,
+		   const TransportMode transporttype,
+		   TrueTime timeServer)
+        : nshards(nShards), timeServer(timeServer)
+{   // Initialize all state here;
     client_id = 0;
     while (client_id == 0) {
         random_device rd;
@@ -49,6 +50,17 @@ using namespace std;
     }
     t_id = (client_id/10000)*10000;
 
+    if (transporttype == UDP) {
+	transport = new UDPTransport(0.0, 0.0, 0);
+    } else if (transporttype == TCP) {
+	transport = new TCPTransport(0.0, 0.0, 0);
+    } else if (transporttype == RDMA) {
+	transport = new RDMATransport(0.0, 0.0, 0);
+    } else {
+	// default to zeus for now
+	transport = new ZeusTransport(0.0, 0.0, 0);
+    }
+
     bclient.reserve(nshards);
 
     Debug("Initializing Tapir client with id [%lu] %lu", client_id, nshards);
@@ -57,7 +69,7 @@ using namespace std;
     for (uint64_t i = 0; i < nshards; i++) {
         string shardConfigPath = configPath + to_string(i) + ".config";
         ShardClient *shardclient = new ShardClient(shardConfigPath,
-                &transport, client_id, i, closestReplica);
+                transport, client_id, i, closestReplica);
         bclient[i] = new BufferClient(shardclient);
     }
 
@@ -71,7 +83,7 @@ using namespace std;
 
 Client::~Client()
 {
-    transport.Stop();
+    transport->Stop();
     for (auto b : bclient) {
         delete b;
     }
@@ -82,7 +94,7 @@ Client::~Client()
 void
 Client::run_client()
 {
-    transport.Run();
+    transport->Run();
 }
 
 /* Begins a transaction. All subsequent operations before a commit() or

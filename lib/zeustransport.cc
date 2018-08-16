@@ -226,7 +226,7 @@ ZeusTransport::ConnectZeus(TransportReceiver *src, const ZeusTransportAddress &d
     // Tell the receiver its address
     struct sockaddr_in sin;
     socklen_t sinsize = sizeof(sin);
-    if (getsockname(Zeus::qd2fd(qd), (sockaddr *) &sin, &sinsize) < 0) {
+    if (Zeus::getsockname(qd, (sockaddr *) &sin, &sinsize) < 0) {
         PPanic("Failed to get socket name");
     }
     ZeusTransportAddress *addr = new ZeusTransportAddress(sin);
@@ -280,9 +280,10 @@ ZeusTransport::Register(TransportReceiver *receiver,
     // Tell the receiver its address
     socklen_t sinsize = sizeof(sin);
     
-    if (getsockname(Zeus::qd2fd(qd), (sockaddr *) &sin, &sinsize) < 0) {
+    if (Zeus::getsockname(qd, (sockaddr *) &sin, &sinsize) < 0) {
         PPanic("Failed to get socket name");
     }
+    
     ZeusTransportAddress *addr = new ZeusTransportAddress(sin);
     receiver->SetAddress(addr);
 
@@ -319,7 +320,7 @@ ZeusTransport::SendMessageInternal(TransportReceiver *src,
                        sizeof(totalLen) +
                        sizeof(uint32_t));
 
-    char buf[totalLen];
+    char *buf = (char *)malloc(totalLen);
     Zeus::sgarray sga;
     sga.num_bufs = 1;
     sga.bufs[0].buf = (Zeus::ioptr)&buf[0];
@@ -350,10 +351,13 @@ ZeusTransport::SendMessageInternal(TransportReceiver *src,
     ptr += dataLen;
 
     Zeus::qtoken t = Zeus::push(qd, sga);
-    ASSERT (t == 0);
+    //ASSERT (t == 0);
 
     Debug("Sent %ld byte %s message to server over Zeus",
           totalLen, type.c_str());
+    //printf("freeing 0x%llx\n", buf);
+    free(buf);
+    //assert(false);
     return true;
 }
 
@@ -362,26 +366,26 @@ ZeusTransport::Run()
 {
     qtoken tokens[MAX_CONNECTIONS];
     sgarray sgas[MAX_CONNECTIONS];
-    memset(tokens, 0, sizeof(tokens));
-    int i, offset;
-    qtoken qt = 0;
-    ssize_t res;
-    int qd;
-           
-    while (!stopLoop) {
-        i = 0;
-	// check timer
-        while (tokens[i] == 0) {
-            qt = pop(timerQD, sgas[i]);
-            ASSERT(qt != -1);
-            Debug("Found qt: %ld", qt);
-            if (qt == 0) OnTimer((ZeusTransportTimerInfo *)sgas[i].bufs[0].buf);
-            else tokens[i] = qt;
-        }
-        i++;
+    memset(tokens, 0, sizeof(tokens));           
 
-        // for servers, check for accept
-        if (replicaIdx != -1) {
+    while (!stopLoop) {
+        int i = 0;
+	qtoken qt = 0;
+
+	// check timer
+	if (replicaIdx == -1) {
+	    while (tokens[i] == 0) {
+		qt = pop(timerQD, sgas[i]);
+		ASSERT(qt != -1);
+		if (qt == 0) {
+		    OnTimer((ZeusTransportTimerInfo *)sgas[i].bufs[0].buf);
+		} else {
+		    tokens[i] = qt;
+		    Debug("Found new qt: %lx", qt);
+		}
+	    }
+	    i++;
+	} else {
             // check accept
             while (tokens[i] == 0) {
                 qt = pop(acceptQD, sgas[i]);
@@ -393,15 +397,17 @@ ZeusTransport::Run()
         }
 
         for (auto &it : receivers) {
-            qd = it.first;
+            int qd = it.first;
             while (tokens[i] == 0) {
                 qt = pop(qd, sgas[i]);
                 if (qt == -1) return;
                 if (qt == 0) {
 		    assert(sgas[i].num_bufs > 0);
 		    ZeusPopCallback(qd, receivers[qd], sgas[i]);
+		} else {
+		    tokens[i] = qt;
+		    Debug("Found new qt: %ld", qt);
 		}
-                else tokens[i] = qt;
             }
             i++;
         }
@@ -411,11 +417,13 @@ ZeusTransport::Run()
         // offset will return the token that is ready
         // qd will return qd of the queue that is ready
 	sgarray sga;
-	res = Zeus::wait_any(tokens, i, offset, qd, sga);
+	int offset = -1, qd = 0;
+	ssize_t res = Zeus::wait_any(tokens, i, offset, qd, sga);
         if (res < 0) {
 	    Warning("Exiting loop: %s", strerror(res));
 	    break;
 	}
+	assert(offset >= 0);
         // zero out the token for the next round
         Debug("Found something: offset=%i, qd=%lx", offset, qd);
         tokens[offset] = 0;
@@ -454,7 +462,9 @@ ZeusTransport::Timer(uint64_t ms, timer_callback_t cb)
         sga.bufs[0].len = sizeof(ZeusTransportTimerInfo);
         qtoken qt = push(timerQD, sga);
         ASSERT(qt == 0);
-    
+	if (qt != 0) {
+	    Zeus::wait(qt, sga);
+	}
         return info->id;
     }
     return 0;
@@ -548,7 +558,8 @@ void
     receiver->ReceiveMessage(addr->second,
                              type,
                              data);
-    free(sga.bufs[0].buf);
+    free((uint8_t *)sga.bufs[0].buf - sizeof(uint64_t));
     Latency_End(&process_pop);
+
     Debug("Done processing large %s message", type.c_str());        
 }

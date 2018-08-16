@@ -163,6 +163,7 @@ main(int argc, char **argv)
     unsigned int myShard = 0, maxShard = 1, nKeys = 1;
     const char *configPath = NULL;
     const char *keyPath = NULL;
+    const char *transporttype = NULL;
     bool linearizable = true;
 
     // Parse arguments
@@ -234,6 +235,11 @@ main(int argc, char **argv)
             keyPath = optarg;
             break;
         }
+
+	case 't': // transport type
+	    transporttype = optarg;
+	    break;
+	    
         default:
             fprintf(stderr, "Unknown argument %s\n", argv[optind]);
         }
@@ -259,19 +265,24 @@ main(int argc, char **argv)
                 "only %d replicas defined\n", index, config.n);
     }
 
-#if TRANSPORT == UDP
-    UDPTransport transport(0.0, 0.0, 0);
-#elif TRANSPORT == TCP
-    TCPTransport transport(0.0, 0.0, 0);
-#elif TRANSPORT == RDMA
-    RDMATransport transport(0.0, 0.0, 0);
-#elif TRANSPORT == ZEUS
-    ZeusTransport transport(0.0, 0.0, 0);
-#endif
+    
+    Transport *t;
+    if (strcasecmp(transporttype, "udp") == 0) {
+	t = new UDPTransport(0.0, 0.0, 0);
+    } else if (strcasecmp(transporttype, "tcp") == 0) {
+	t = new TCPTransport(0.0, 0.0, 0);
+    } else if (strcasecmp(transporttype, "rdma") == 0) {
+	t = new RDMATransport(0.0, 0.0, 0);
+    } else {
+	// default to zeus for now
+	t = new ZeusTransport(0.0, 0.0, 0);
+    }
 
     tapirstore::Server server(linearizable);
-
-    replication::ir::IRReplica replica(config, index, &transport, &server);
+    replication::ir::IRReplica replica(config,
+				       index,
+				       t,
+				       &server);
 
     if (keyPath) {
         string key;
@@ -299,6 +310,7 @@ main(int argc, char **argv)
     }
 
     fprintf(stderr, "Completed setup. Running server ...");
-    transport.Run();
+    t->Run();
+    delete t;
     return 0;
 }

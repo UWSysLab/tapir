@@ -36,10 +36,23 @@ using namespace std;
 namespace strongstore {
 
 Client::Client(Mode mode, string configPath, int nShards,
+	       TransportMode transporttype,
                 int closestReplica, TrueTime timeServer)
-    : transport(0.0, 0.0, 0), mode(mode), timeServer(timeServer)
+    : mode(mode), timeServer(timeServer)
 {
     // Initialize all state here;
+    if (transporttype == UDP) {
+	transport = new UDPTransport(0.0, 0.0, 0);
+    } else if (transporttype == TCP) {
+	transport = new TCPTransport(0.0, 0.0, 0);
+    } else if (transporttype == RDMA) {
+	transport = new RDMATransport(0.0, 0.0, 0);
+    } else {
+	// default to zeus for now
+	transport = new ZeusTransport(0.0, 0.0, 0);
+    }
+
+
     client_id = 0;
     while (client_id == 0) {
         random_device rd;
@@ -63,14 +76,14 @@ Client::Client(Mode mode, string configPath, int nShards,
                     tssConfigPath.c_str());
         }
         transport::Configuration tssConfig(tssConfigStream);
-        tss = new replication::vr::VRClient(tssConfig, &transport);
+        tss = new replication::vr::VRClient(tssConfig, transport);
     }
 
     /* Start a client for each shard. */
     for (int i = 0; i < nShards; i++) {
         string shardConfigPath = configPath + to_string(i) + ".config";
         ShardClient *shardclient = new ShardClient(mode, shardConfigPath,
-            &transport, client_id, i, closestReplica);
+           transport, client_id, i, closestReplica);
         bclient[i] = new BufferClient(shardclient);
     }
 
@@ -82,7 +95,7 @@ Client::Client(Mode mode, string configPath, int nShards,
 
 Client::~Client()
 {
-    transport.Stop();
+    transport->Stop();
     delete tss;
     for (auto b : bclient) {
         delete b;
@@ -94,7 +107,7 @@ Client::~Client()
 void
 Client::run_client()
 {
-    transport.Run();
+    transport->Run();
 }
 
 /* Begins a transaction. All subsequent operations before a commit() or
@@ -175,7 +188,7 @@ Client::Prepare(uint64_t &ts)
         unique_lock<mutex> lk(cv_m);
 
         Debug("Sending request to TimeStampServer");
-	transport.Timer(0, [=]() { 
+	transport->Timer(0, [=]() { 
 		tss->Invoke("", bind(&Client::tssCallback, this,
 				     placeholders::_1,
 				     placeholders::_2));

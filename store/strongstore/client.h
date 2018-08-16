@@ -35,6 +35,9 @@
 #include "lib/message.h"
 #include "lib/configuration.h"
 #include "lib/udptransport.h"
+#include "lib/rdmatransport.h"
+#include "lib/tcptransport.h"
+#include "lib/zeustransport.h"
 #include "replication/vr/client.h"
 #include "store/common/frontend/bufferclient.h"
 #include "store/common/frontend/client.h"
@@ -51,6 +54,7 @@ class Client : public ::Client
 {
 public:
     Client(Mode mode, string configPath, int nshards,
+	   TransportMode transporttype,
             int closestReplica, TrueTime timeServer);
     ~Client();
 
@@ -85,7 +89,7 @@ private:
     std::set<int> participants;
 
     // Transport used by paxos client proxies.
-    UDPTransport transport;
+    Transport *transport;
     
     // Thread running the transport event loop.
     std::thread *clientTransport;

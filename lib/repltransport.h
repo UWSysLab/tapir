@@ -221,6 +221,8 @@ public:
 
     // Launch the REPL.
     void Run();
+    // does nothing
+    void Stop();
 
 protected:
     bool SendMessageInternal(TransportReceiver *src,

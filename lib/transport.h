@@ -40,11 +40,12 @@
 #define REPLICA_NETWORK_DELAY 0
 #define READ_AT_LEADER 1
 
-#define UDP 0
-#define TCP 1
-#define RDMA 2
-#define ZEUS 3
-#define TRANSPORT 3
+typedef enum mode {
+    UDP,
+    TCP,
+    RDMA,
+    ZEUS
+} TransportMode;
 
 class TransportAddress
 {
@@ -89,6 +90,8 @@ public:
     virtual int Timer(uint64_t ms, timer_callback_t cb) = 0;
     virtual bool CancelTimer(int id) = 0;
     virtual void CancelAllTimers() = 0;
+    virtual void Run() = 0;
+    virtual void Stop() = 0;
 };
 
 class Timeout

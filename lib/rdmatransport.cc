@@ -105,6 +105,7 @@ RDMATransport::RDMATransport(double dropRate, double reorderRate,
                                SignalCallback, this),
                   NULL);
     }
+    Debug("Using RDMA transport");
 }
 
 RDMATransport::~RDMATransport()
@@ -306,6 +307,13 @@ RDMATransport::ConnectRDMA(TransportReceiver *src,
         Panic("Failed to set O_NONBLOCK");
     }
 
+    //     // Set TCP_NODELAY
+    // int n = 1;
+    // if (setsockopt(fd, IPPROTO_TCP,
+    //                TCP_NODELAY, (char *)&n, sizeof(n)) < 0) {
+    //     PWarning("Failed to set TCP_NODELAY on TCP listening socket");
+    // }
+
     // Create a libevent event for the event channel
     info->cmevent = event_new(libeventBase,
                               info->id->channel->fd,
@@ -373,6 +381,13 @@ RDMATransport::ConnectRDMA(TransportReceiver *src,
     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK)) {
         Panic("Failed to set O_NONBLOCK");
     }
+
+    // // Set TCP_NODELAY
+    // int n = 1;
+    // if (setsockopt(fd, IPPROTO_TCP,
+    //                TCP_NODELAY, (char *)&n, sizeof(n)) < 0) {
+    //     PWarning("Failed to set TCP_NODELAY on TCP listening socket");
+    // }
 
     // finish set up for new connection
     for (int i = 0; i < info->posted; i++) {
@@ -901,11 +916,11 @@ RDMATransport::RDMAReadableCallback(evutil_socket_t fd, short what, void *arg)
     RDMATransportRDMAListener *info = (RDMATransportRDMAListener *)arg;
     RDMATransport *transport = info->transport;
     struct ibv_cq *cq;
-    struct ibv_context *context;
+    void *context;
     ASSERT(fcntl(info->cq->channel->fd, F_GETFL) & O_NONBLOCK);
     int numEvents = 0;
 
-    while (ibv_get_cq_event(info->cq->channel, &cq, (void**)&context) == 0) {
+    while (ibv_get_cq_event(info->cq->channel, &cq, &context) == 0) {
         numEvents++;
     }
 
