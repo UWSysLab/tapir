@@ -216,14 +216,9 @@ main(int argc, char **argv)
         in.close();
     }
 
-<<<<<<< HEAD
-    transport.Run();
-    Latency_DumpAll();
-=======
     t->Run();
+    Latency_DumpAll();
     delete server;
     delete t;
-    
->>>>>>> 22af1135b41445e66db039e93f8c4b5811c014d7
     return 0;
 }
