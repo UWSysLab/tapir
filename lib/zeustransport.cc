@@ -56,7 +56,9 @@ static void
 ZeusSignalCallback(int signal)
 {
     ASSERT(signal == SIGTERM || signal == SIGINT);
-    stopLoop = true;
+    Warning("Set stop loop from signal");
+    Latency_DumpAll();
+    exit(0);
 }
 
 using std::make_pair;
@@ -64,6 +66,7 @@ using Zeus::sgarray;
 using Zeus::qtoken;
 
 DEFINE_LATENCY(process_pop);
+DEFINE_LATENCY(process_push);
 
 ZeusTransportAddress::ZeusTransportAddress(const sockaddr_in &addr)
     : addr(addr)
@@ -197,6 +200,7 @@ ZeusTransport::~ZeusTransport()
 {
     // XXX Shut down libevent?
 
+    //stopLoop = true;
     // for (auto kv : timers) {
     //     delete kv.second;
     // }
@@ -350,7 +354,9 @@ ZeusTransport::SendMessageInternal(TransportReceiver *src,
     memcpy(ptr, data.c_str(), dataLen);
     ptr += dataLen;
 
+    Latency_Start(&process_push);
     Zeus::qtoken t = Zeus::push(qd, sga);
+    Latency_End(&process_push);
     //ASSERT (t == 0);
 
     Debug("Sent %ld byte %s message to server over Zeus",
@@ -367,7 +373,7 @@ ZeusTransport::Run()
     qtoken tokens[MAX_CONNECTIONS];
     sgarray sgas[MAX_CONNECTIONS];
     memset(tokens, 0, sizeof(tokens));           
-
+    stopLoop = false;
     while (!stopLoop) {
         int i = 0;
 	qtoken qt = 0;
@@ -376,9 +382,11 @@ ZeusTransport::Run()
 	if (replicaIdx == -1) {
 	    while (tokens[i] == 0) {
 		qt = pop(timerQD, sgas[i]);
-		ASSERT(qt != -1);
 		if (qt == 0) {
 		    OnTimer((ZeusTransportTimerInfo *)sgas[i].bufs[0].buf);
+		} else if (qt == ZEUS_IO_ERR_NO) {
+		    Warning("Got IO Error");
+		    goto exit;
 		} else {
 		    tokens[i] = qt;
 		    Debug("Found new qt: %lx", qt);
@@ -389,8 +397,11 @@ ZeusTransport::Run()
             // check accept
             while (tokens[i] == 0) {
                 qt = pop(acceptQD, sgas[i]);
-                ASSERT(qt != -1);
                 if (qt == 0) ZeusAcceptCallback();
+		else if (qt == ZEUS_IO_ERR_NO) {
+		    Warning("Got pop IO Error");
+		    goto exit;;
+		}
                 else tokens[i] = qt;
             }
             i++;
@@ -400,8 +411,10 @@ ZeusTransport::Run()
             int qd = it.first;
             while (tokens[i] == 0) {
                 qt = pop(qd, sgas[i]);
-                if (qt == -1) return;
-                if (qt == 0) {
+                if (qt == ZEUS_IO_ERR_NO) {
+		    Warning("Got pop I/O Error");
+		    goto exit;;
+		} else if (qt == 0) {
 		    assert(sgas[i].num_bufs > 0);
 		    ZeusPopCallback(qd, receivers[qd], sgas[i]);
 		} else {
@@ -421,9 +434,9 @@ ZeusTransport::Run()
 	ssize_t res = Zeus::wait_any(tokens, i, offset, qd, sga);
         if (res < 0) {
 	    Warning("Exiting loop: %s", strerror(res));
-	    break;
+	    goto exit;
 	}
-	assert(offset >= 0);
+	ASSERT(offset >= 0);
         // zero out the token for the next round
         Debug("Found something: offset=%i, qd=%lx", offset, qd);
         tokens[offset] = 0;
@@ -435,12 +448,20 @@ ZeusTransport::Run()
 	    assert(sga.num_bufs != 0);
             ZeusPopCallback(qd, receivers[qd], sga);
 	}
-    }        
+    }
+exit:
+    Warning("Exited loop");
+    Latency_DumpAll();
 }
 
 void
 ZeusTransport::Stop()
 {
+    for (auto &it : receivers) {
+	int qd = it.first;
+	Zeus::close(qd);
+    }
+    Warning("Stop loop  was called");
     stopLoop = true;
 }
 

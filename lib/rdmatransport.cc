@@ -33,6 +33,7 @@
 #include "lib/assert.h"
 #include "lib/configuration.h"
 #include "lib/message.h"
+#include "lib/latency.h"
 #include "lib/rdmatransport.h"
 
 #include <google/protobuf/message.h>
@@ -50,6 +51,10 @@
 const uint32_t MAGIC = 0x06121983;
 
 using std::pair;
+
+DEFINE_LATENCY(process_recv);
+DEFINE_LATENCY(process_send);
+DEFINE_LATENCY(run_app);
 
 RDMATransportAddress::RDMATransportAddress(const sockaddr_in &addr)
     : addr(addr)
@@ -645,6 +650,7 @@ RDMATransport::SendMessageInternal(TransportReceiver *src,
                                   const Message &m,
                                   bool multicast)
 {
+    Latency_Start(&process_send);
     auto kv = rdmaOutgoing.find(dst);
     struct RDMATransportRDMAListener *info;
     
@@ -694,6 +700,7 @@ RDMATransport::SendMessageInternal(TransportReceiver *src,
     if (FlushSendQueue(info) < 1) {
         Warning("Could not send message");
     }
+    Latency_End(&process_send);
     return true;
 }
 
@@ -709,6 +716,7 @@ RDMATransport::Stop()
 {
     Debug("Event loop stopped");
     event_base_loopbreak(libeventBase);
+    Latency_DumpAll();
 }
 
 int
@@ -947,6 +955,7 @@ RDMATransport::RDMAReadableCallback(evutil_socket_t fd, short what, void *arg)
                 }
                 case IBV_WC_RECV:
                 {
+		    Latency_Start(&process_recv);
                     auto addr = transport->rdmaAddresses.find(info);
                     ASSERT(addr != transport->rdmaAddresses.end());
                     Debug("Received %u bytes over RDMA", wc.byte_len);
@@ -969,11 +978,14 @@ RDMATransport::RDMAReadableCallback(evutil_socket_t fd, short what, void *arg)
                         ptr += msgLen;
 
                         // Dispatch
+			Latency_Start(&run_app);
                         info->receiver->ReceiveMessage(addr->second,
                                                        type,
                                                        data);
+			Latency_End(&run_app);
                         Debug("Done processing %s message. Freeing buffer %u",
                               type.c_str(), buf->size);
+			Latency_End(&process_recv);
                     } else {
                         Warning("No magic!");
                     }                    
