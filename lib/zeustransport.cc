@@ -67,6 +67,9 @@ using Zeus::qtoken;
 
 DEFINE_LATENCY(process_pop);
 DEFINE_LATENCY(process_push);
+DEFINE_LATENCY(push_msg);
+DEFINE_LATENCY(protobuf_serialize);
+DEFINE_LATENCY(run_app);
 
 ZeusTransportAddress::ZeusTransportAddress(const sockaddr_in &addr)
     : addr(addr)
@@ -300,6 +303,7 @@ ZeusTransport::SendMessageInternal(TransportReceiver *src,
                                   const Message &m,
                                   bool multicast)
 {
+    Latency_Start(&process_push);
     auto it = zeusOutgoing.find(dst);
     // See if we have a connection open
     if (it == zeusOutgoing.end()) {
@@ -315,7 +319,9 @@ ZeusTransport::SendMessageInternal(TransportReceiver *src,
     int qd = it->second;
     
     // Serialize message
+    Latency_Start(&protobuf_serialize);
     string data = m.SerializeAsString();
+    Latency_End(&protobuf_serialize);
     string type = m.GetTypeName();
     size_t typeLen = type.length();
     size_t dataLen = data.length();
@@ -354,16 +360,14 @@ ZeusTransport::SendMessageInternal(TransportReceiver *src,
     memcpy(ptr, data.c_str(), dataLen);
     ptr += dataLen;
 
-    Latency_Start(&process_push);
+    Latency_Start(&push_msg);
     Zeus::qtoken t = Zeus::push(qd, sga);
-    Latency_End(&process_push);
-    //ASSERT (t == 0);
+    Latency_End(&push_msg);
 
     Debug("Sent %ld byte %s message to server over Zeus",
           totalLen, type.c_str());
-    //printf("freeing 0x%llx\n", buf);
     free(buf);
-    //assert(false);
+    Latency_End(&process_push);
     return true;
 }
 
@@ -576,9 +580,11 @@ void
     ptr += msgLen;
     
     // Dispatch
+    Latency_Start(&run_app);
     receiver->ReceiveMessage(addr->second,
                              type,
                              data);
+    Latency_End(&run_app);
     free((uint8_t *)sga.bufs[0].buf - sizeof(uint64_t));
     Latency_End(&process_pop);
 

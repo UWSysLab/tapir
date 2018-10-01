@@ -55,6 +55,7 @@ using std::pair;
 DEFINE_LATENCY(process_recv);
 DEFINE_LATENCY(process_send);
 DEFINE_LATENCY(run_app);
+DEFINE_LATENCY(reg_mr);
 
 RDMATransportAddress::RDMATransportAddress(const sockaddr_in &addr)
     : addr(addr)
@@ -501,11 +502,14 @@ RDMATransport::AllocBuffer(RDMATransportRDMAListener *info,
         newbuf->next = newbuf;
         newbuf->prev = newbuf;
         newbuf->inUse = true;
-        // Register memory for communications
-        if ((newbuf->mr = ibv_reg_mr(info->pd,
+	Latency_Start(&reg_mr);
+	newbuf->mr = ibv_reg_mr(info->pd,
                                      newbuf,
                                      MAX_RDMA_SIZE,
-                                     IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE)) == 0) {
+				IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE);
+	Latency_End(&reg_mr);
+        // Register memory for communications
+        if (newbuf->mr == 0) {
             Panic("Could not register buffer");
         }
         info->buffers = newbuf;

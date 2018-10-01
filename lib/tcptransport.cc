@@ -34,7 +34,7 @@
 #include "lib/configuration.h"
 #include "lib/message.h"
 #include "lib/tcptransport.h"
-
+#include "lib/latency.h"
 #include <google/protobuf/message.h>
 #include <event2/thread.h>
 
@@ -53,6 +53,11 @@ const uint32_t MAGIC = 0x06121983;
 
 using std::pair;
 
+DEFINE_LATENCY(write_msg);
+DEFINE_LATENCY(read_msg);
+DEFINE_LATENCY(run_app);
+DEFINE_LATENCY(process_recv);
+DEFINE_LATENCY(process_send);
 TCPTransportAddress::TCPTransportAddress(const sockaddr_in &addr)
     : addr(addr)
 {
@@ -333,6 +338,7 @@ TCPTransport::SendMessageInternal(TransportReceiver *src,
                                   const Message &m,
                                   bool multicast)
 {
+    Latency_Start(&process_send);
     auto kv = tcpOutgoing.find(dst);
     // See if we have a connection open
     if (kv == tcpOutgoing.end()) {
@@ -382,11 +388,13 @@ TCPTransport::SendMessageInternal(TransportReceiver *src,
     memcpy(ptr, data.c_str(), dataLen);
     ptr += dataLen;
 
+    Latency_Start(&write_msg);
     if (bufferevent_write(ev, buf, totalLen) < 0) {
         Warning("Failed to write to TCP buffer");
         return false;
     }
-    
+    Latency_End(&write_msg);
+    Latency_End(&process_send);
     return true;
 }
 
@@ -572,23 +580,31 @@ TCPTransport::TCPAcceptCallback(evutil_socket_t fd, short what, void *arg)
 void
 TCPTransport::TCPReadableCallback(struct bufferevent *bev, void *arg)
 {
+    Latency_Start(&process_recv);
+    
     TCPTransportTCPListener *info = (TCPTransportTCPListener *)arg;
     TCPTransport *transport = info->transport;
+    Latency_Start(&read_msg);
     struct evbuffer *evbuf = bufferevent_get_input(bev);
-
+    Latency_Pause(&read_msg);
     Debug("Readable on bufferevent %p", bev);
     
-
+    Latency_Resume(&read_msg);
     while (evbuffer_get_length(evbuf) > 0) {
-        uint32_t *magic;
+	uint32_t *magic;
+
         magic = (uint32_t *)evbuffer_pullup(evbuf, sizeof(*magic));
+	Latency_Pause(&read_msg);
         if (magic == NULL) {
             return;
         }
+	
         ASSERT(*magic == MAGIC);
     
         size_t *sz;
+	Latency_Resume(&read_msg);
         unsigned char *x = evbuffer_pullup(evbuf, sizeof(*magic) + sizeof(*sz));
+	Latency_Pause(&read_msg);
         
         sz = (size_t *) (x + sizeof(*magic));
         if (x == NULL) {
@@ -596,18 +612,21 @@ TCPTransport::TCPReadableCallback(struct bufferevent *bev, void *arg)
         }
         size_t totalSize = *sz;
         ASSERT(totalSize < 1073741826);
-        
+
+	Latency_Resume(&read_msg);
         if (evbuffer_get_length(evbuf) < totalSize) {
             Debug("Don't have %ld bytes for a message yet, only %ld",
                   totalSize, evbuffer_get_length(evbuf));
             return;
         }
+	Latency_Pause(&read_msg);
         Debug("Receiving %ld byte message", totalSize);
         
         char buf[totalSize];
+	Latency_Resume(&read_msg);
         size_t copied = evbuffer_remove(evbuf, buf, totalSize);
         ASSERT(copied == totalSize);
-        
+        Latency_End(&read_msg);
         // Parse message
         char *ptr = buf + sizeof(*sz) + sizeof(*magic);
         
@@ -631,8 +650,11 @@ TCPTransport::TCPReadableCallback(struct bufferevent *bev, void *arg)
         ASSERT(addr != transport->tcpAddresses.end());
         
         // Dispatch
+	Latency_Start(&run_app);
         info->receiver->ReceiveMessage(addr->second, msgType, msg);
+	Latency_End(&run_app);
         Debug("Done processing large %s message", msgType.c_str());
+	Latency_End(&process_recv);
     }
 }
 

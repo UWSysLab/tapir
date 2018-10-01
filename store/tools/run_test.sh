@@ -26,9 +26,9 @@ replicas=("bongo" "capybara" "dikdik")
 clients=("anteater")
 
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
-store="tapirstore"      # Which store (strongstore, weakstore, tapirstore)
-mode="txn-l"            # Mode for storage system.
-transport="zeus"
+store="weakstore"      # Which store (strongstore, weakstore, tapirstore)
+mode="qw"            # Mode for storage system.
+transport="udp"
 
 nshard=1     # number of shards
 nclient=1    # number of clients to run (per machine)

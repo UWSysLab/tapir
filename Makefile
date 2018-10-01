@@ -10,8 +10,8 @@ ifndef ZEUS_SRC_DIR
 	ZEUS_SRC_DIR = /biggerraid/users/iyzhang/datacenter-OS/
 endif
 
-#CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -O2 -DNASSERT
-CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized 
+CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -O3 -DNDEBUG
+#CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized 
 CXXFLAGS := -g -std=c++0x
 LDFLAGS := -levent_pthreads 
 ## Debian package: check
@@ -35,14 +35,15 @@ CFLAGS += $(LIBSSL_CFLAGS)
 LDFLAGS += $(LIBSSL_LDFLAGS)
 
 TARGETOS := $(shell uname -s)
-ifneq ($(TARGETOS), Darwin)
-  RDMA_CFLAGS := -lrdmacm -libverbs
-  RDMA_LDFLAGS := -lrdmacm -libverbs
-  CFLAGS += $(RDMA_CFLAGS)
-  LDFLAGS += $(RDMA_LDFLAGS)
-endif 
+RDMA_CFLAGS := -lrdmacm -libverbs
+RDMA_LDFLAGS := -lrdmacm -libverbs
+CFLAGS += $(RDMA_CFLAGS)
+LDFLAGS += $(RDMA_LDFLAGS)
 ZEUS_CFLAGS := -I$(ZEUS_SRC_DIR)
-ZEUS_LDFLAGS := -L$(ZEUS_SRC_DIR) -lzeus_rdma -lrdmahoard -Wl,-rpath,$(ZEUS_SRC_DIR)
+#ZEUS_LDFLAGS := -L$(ZEUS_SRC_DIR) -lzeus_posix -Wl,-rpath,$(ZEUS_SRC_DIR)
+ZEUS_LDFLAGS := -L$(ZEUS_SRC_DIR) -lhoard -lzeus_rdma -Wl,-rpath,$(ZEUS_SRC_DIR)
+#ZEUS_LDFLAGS := -L$(ZEUS_SRC_DIR) -lhoard -lzeus_posix -Wl,-rpath,$(ZEUS_SRC_DIR)
+
 CFLAGS += $(ZEUS_CFLAGS)
 CXXFLAGS += $(ZEUS_CFLAGS)
 LDFLAGS += $(ZEUS_LDFLAGS)

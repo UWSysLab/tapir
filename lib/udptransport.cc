@@ -33,6 +33,7 @@
 #include "lib/configuration.h"
 #include "lib/message.h"
 #include "lib/udptransport.h"
+#include "lib/latency.h"
 
 #include <google/protobuf/message.h>
 #include <event2/event.h>
@@ -54,6 +55,12 @@ const size_t MAX_UDP_MESSAGE_SIZE = 9000; // XXX
 const int SOCKET_BUF_SIZE = 10485760;
 
 using std::pair;
+
+DEFINE_LATENCY(write_msg);
+DEFINE_LATENCY(read_msg);
+DEFINE_LATENCY(run_app);
+DEFINE_LATENCY(process_recv);
+DEFINE_LATENCY(process_send);
 
 UDPTransportAddress::UDPTransportAddress(const sockaddr_in &addr)
     : addr(addr)
@@ -419,8 +426,9 @@ UDPTransport::SendMessageInternal(TransportReceiver *src,
                                   const Message &m,
                                   bool multicast)
 {
+    Latency_Start(&process_send);
     sockaddr_in sin = dynamic_cast<const UDPTransportAddress &>(dst).addr;
-
+    
     // Serialize message
     std::unique_ptr<char[]> unique_buf;
     size_t msgLen = SerializeMessage(m, &unique_buf);
@@ -432,11 +440,13 @@ UDPTransport::SendMessageInternal(TransportReceiver *src,
     // available for writing, which since it's a UDP socket it ought
     // to be.
     if (msgLen <= MAX_UDP_MESSAGE_SIZE) {
+	Latency_Start(&write_msg);
         if (sendto(fd, buf, msgLen, 0,
                    (sockaddr *)&sin, sizeof(sin)) < 0) {
             PWarning("Failed to send message");
             return false;
         }
+	Latency_End(&write_msg);
     } else {
         int numFrags = ((msgLen-1) / MAX_UDP_MESSAGE_SIZE) + 1;
         Notice("Sending large %s message in %d fragments",
@@ -467,7 +477,7 @@ UDPTransport::SendMessageInternal(TransportReceiver *src,
             }
         }
     }
-
+    Latency_End(&process_send);
     return true;
 }
 
@@ -517,7 +527,9 @@ UDPTransport::OnReadable(int fd)
         char buf[BUFSIZE];
         sockaddr_in sender;
         socklen_t senderSize = sizeof(sender);
-        
+
+	Latency_Start(&process_recv);
+	Latency_Start(&read_msg);
         sz = recvfrom(fd, buf, BUFSIZE, 0,
                       (struct sockaddr *) &sender, &senderSize);
         if (sz == -1) {
@@ -527,7 +539,7 @@ UDPTransport::OnReadable(int fd)
                 PWarning("Failed to receive message from socket");
             }
         }
-        
+	Latency_End(&read_msg);
         UDPTransportAddress senderAddr(sender);
         string msgType, msg;
 
@@ -631,9 +643,11 @@ UDPTransport::OnReadable(int fd)
             }
         } else {
             TransportReceiver *receiver = receivers[fd];
+	    Latency_Start(&run_app);
             receiver->ReceiveMessage(senderAddr, msgType, msg);
+	    Latency_End(&run_app);
         }
-
+	Latency_End(&process_recv);
         if (reorderBuffer.valid) {
             reorderBuffer.valid = false;
             msg = reorderBuffer.message;
