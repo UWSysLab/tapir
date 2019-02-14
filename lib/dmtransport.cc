@@ -1,8 +1,8 @@
 // -*- mode: c++; c-file-style: "k&r"; c-basic-offset: 4 -*-
 /***********************************************************************
  *
- * zeustransport.cc:
- *   message-passing network interface that uses ZEUS message delivery
+ * dmtransport.cc:
+ *   message-passing network interface that uses DM message delivery
  *   and libasync
  *
  * Copyright 2013 Dan R. K. Ports  <drkp@cs.washington.edu>
@@ -33,7 +33,8 @@
 #include "lib/assert.h"
 #include "lib/configuration.h"
 #include "lib/message.h"
-#include "lib/zeustransport.h"
+#include "lib/dmtransport.h"
+#include "dmtr/wait.h"
 
 #include <google/protobuf/message.h>
 #include <event2/thread.h>
@@ -48,12 +49,12 @@
 #include <netdb.h>
 #include <functional>
 
-const size_t MAX_Zeus_SIZE = 100; // XXX
+const size_t MAX_Dm_SIZE = 100; // XXX
 const uint32_t MAGIC = 0x06121983;
 static bool stopLoop = false;
 
 static void
-ZeusSignalCallback(int signal)
+DmSignalCallback(int signal)
 {
     ASSERT(signal == SIGTERM || signal == SIGINT);
     Warning("Set stop loop from signal");
@@ -62,8 +63,6 @@ ZeusSignalCallback(int signal)
 }
 
 using std::make_pair;
-using Zeus::sgarray;
-using Zeus::qtoken;
 
 DEFINE_LATENCY(process_pop);
 DEFINE_LATENCY(process_push);
@@ -71,36 +70,36 @@ DEFINE_LATENCY(push_msg);
 DEFINE_LATENCY(protobuf_serialize);
 DEFINE_LATENCY(run_app);
 
-ZeusTransportAddress::ZeusTransportAddress(const sockaddr_in &addr)
+DmTransportAddress::DmTransportAddress(const sockaddr_in &addr)
     : addr(addr)
 {
     memset((void *)addr.sin_zero, 0, sizeof(addr.sin_zero));
 }
 
-ZeusTransportAddress *
-ZeusTransportAddress::clone() const
+DmTransportAddress *
+DmTransportAddress::clone() const
 {
-    ZeusTransportAddress *c = new ZeusTransportAddress(*this);
+    DmTransportAddress *c = new DmTransportAddress(*this);
     return c;    
 }
 
-bool operator==(const ZeusTransportAddress &a, const ZeusTransportAddress &b)
+bool operator==(const DmTransportAddress &a, const DmTransportAddress &b)
 {
     return (memcmp(&a.addr, &b.addr, sizeof(a.addr)) == 0);
 }
 
-bool operator!=(const ZeusTransportAddress &a, const ZeusTransportAddress &b)
+bool operator!=(const DmTransportAddress &a, const DmTransportAddress &b)
 {
     return !(a == b);
 }
 
-bool operator<(const ZeusTransportAddress &a, const ZeusTransportAddress &b)
+bool operator<(const DmTransportAddress &a, const DmTransportAddress &b)
 {
     return (memcmp(&a.addr, &b.addr, sizeof(a.addr)) < 0);
 }
 
-ZeusTransportAddress
-ZeusTransport::LookupAddress(const transport::ReplicaAddress &addr)
+DmTransportAddress
+DmTransport::LookupAddress(const transport::ReplicaAddress &addr)
 {
         int res;
         struct addrinfo hints;
@@ -119,14 +118,14 @@ ZeusTransport::LookupAddress(const transport::ReplicaAddress &addr)
         if (ai->ai_addr->sa_family != AF_INET) {
             Panic("getaddrinfo returned a non IPv4 address");
         }
-        ZeusTransportAddress out =
-            ZeusTransportAddress(*((sockaddr_in *)ai->ai_addr));
+        DmTransportAddress out =
+            DmTransportAddress(*((sockaddr_in *)ai->ai_addr));
         freeaddrinfo(ai);
         return out;
 }
 
-ZeusTransportAddress
-ZeusTransport::LookupAddress(const transport::Configuration &config,
+DmTransportAddress
+DmTransport::LookupAddress(const transport::Configuration &config,
                             int idx)
 {
     const transport::ReplicaAddress &addr = config.replica(idx);
@@ -160,27 +159,26 @@ BindToPort(int qd, const string &host, const string &port)
     }
     sin = *(sockaddr_in *)ai->ai_addr;
     freeaddrinfo(ai);
-    Debug("Binding to %s %d Zeus", inet_ntoa(sin.sin_addr), htons(sin.sin_port));
+    Debug("Binding to %s %d Dm", inet_ntoa(sin.sin_addr), htons(sin.sin_port));
 
-    if (Zeus::bind(qd, (sockaddr *)&sin, sizeof(sin)) < 0) {
+    if (dmtr_bind(qd, (sockaddr *)&sin, sizeof(sin)) != 0) {
         PPanic("Failed to bind to socket");
     }
-
-
 }
 
-ZeusTransport::ZeusTransport(double dropRate, double reorderRate,
+DmTransport::DmTransport(double dropRate, double reorderRate,
 			   int dscp, bool handleSignals)
 {
     lastTimerId = 0;
-    timerQD = Zeus::queue();
+    dmtr_queue(&timerQD);
     ASSERT(timerQD != 0);
+
     // Set up signal handler
     if (handleSignals) {
         struct sigaction sa;
         memset(&sa, 0, sizeof(sa));
         // Setup the sighub handler
-        sa.sa_handler = &ZeusSignalCallback;
+        sa.sa_handler = &DmSignalCallback;
         // Restart the system call, if at all possible
         sa.sa_flags = SA_RESTART;
 
@@ -196,10 +194,10 @@ ZeusTransport::ZeusTransport(double dropRate, double reorderRate,
             Panic("Error: cannot handle SIGINT"); // Should not happen
         }
     }
-    Debug("Using Zeus transport");
+    Debug("Using Dm transport");
 }
 
-ZeusTransport::~ZeusTransport()
+DmTransport::~DmTransport()
 {
     // XXX Shut down libevent?
 
@@ -210,19 +208,19 @@ ZeusTransport::~ZeusTransport()
 }
 
 void
-ZeusTransport::ConnectZeus(TransportReceiver *src, const ZeusTransportAddress &dst)
+DmTransport::ConnectDm(TransportReceiver *src, const DmTransportAddress &dst)
 {
     // Create socket
     int qd;
-    if ((qd = Zeus::socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        PPanic("Failed to create queue for outgoing Zeus connection");
+    if (dmtr_socket(&qd, AF_INET, SOCK_STREAM, 0) != 0) {
+        PPanic("Failed to create queue for outgoing Dm connection");
     }
 
     this->receiver = src;
     int res;
-    if ((res = Zeus::connect(qd,
-                             (struct sockaddr *)&(dst.addr),
-                             sizeof(dst.addr))) < 0) {
+    if (dmtr_connect(qd,
+                     (struct sockaddr *)&(dst.addr),
+                     sizeof(dst.addr)) != 0) {
         Panic("Failed to connect %s:%d: %s",
               inet_ntoa(dst.addr.sin_addr),
               htons(dst.addr.sin_port),
@@ -233,22 +231,22 @@ ZeusTransport::ConnectZeus(TransportReceiver *src, const ZeusTransportAddress &d
     // Tell the receiver its address
     struct sockaddr_in sin;
     socklen_t sinsize = sizeof(sin);
-    if (Zeus::getsockname(qd, (sockaddr *) &sin, &sinsize) < 0) {
+    if (getsockname(qd, (sockaddr *) &sin, &sinsize) < 0) {
         PPanic("Failed to get socket name");
     }
-    ZeusTransportAddress *addr = new ZeusTransportAddress(sin);
+    DmTransportAddress *addr = new DmTransportAddress(sin);
     src->SetAddress(addr);
 
-    zeusOutgoing.insert(make_pair(dst, qd));
-    zeusIncoming.insert(make_pair(qd, dst));
+    dmOutgoing.insert(make_pair(dst, qd));
+    dmIncoming.insert(make_pair(qd, dst));
     receivers[qd] = src;
     
-    Debug("Opened Zeus connection to %s:%d",
+    Debug("Opened Dm connection to %s:%d",
 	  inet_ntoa(dst.addr.sin_addr), htons(dst.addr.sin_port));
 }
 
 void
-ZeusTransport::Register(TransportReceiver *receiver,
+DmTransport::Register(TransportReceiver *receiver,
                        const transport::Configuration &config,
                        int replicaIdx)
 {
@@ -258,15 +256,15 @@ ZeusTransport::Register(TransportReceiver *receiver,
     //const transport::Configuration *canonicalConfig =
     RegisterConfiguration(receiver, config, replicaIdx);
     this->replicaIdx = replicaIdx;
-    // Clients don't need to accept Zeus connections
+    // Clients don't need to accept Dm connections
     if (replicaIdx == -1) {
         return;
     }
     
     // Create socket
     int qd;
-    if ((qd = Zeus::socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        PPanic("Failed to create socket to accept Zeus connections");
+    if (dmtr_socket(&qd, AF_INET, SOCK_STREAM, 0) != 0) {
+        PPanic("Failed to create socket to accept Dm connections");
     }
     // Registering a replica. Bind socket to the designated
     // host/port
@@ -275,8 +273,8 @@ ZeusTransport::Register(TransportReceiver *receiver,
     BindToPort(qd, host, port);
     
     // Listen for connections
-    if (Zeus::listen(qd, 5) < 0) {
-        PPanic("Failed to listen for Zeus connections");
+    if (dmtr_listen(qd, 5) != 0) {
+        PPanic("Failed to listen for Dm connections");
     }
         
     // Set up queue to receive connections
@@ -287,31 +285,31 @@ ZeusTransport::Register(TransportReceiver *receiver,
     // Tell the receiver its address
     socklen_t sinsize = sizeof(sin);
     
-    if (Zeus::getsockname(qd, (sockaddr *) &sin, &sinsize) < 0) {
+    if (getsockname(qd, (sockaddr *) &sin, &sinsize) < 0) {
         PPanic("Failed to get socket name");
     }
     
-    ZeusTransportAddress *addr = new ZeusTransportAddress(sin);
+    DmTransportAddress *addr = new DmTransportAddress(sin);
     receiver->SetAddress(addr);
 
-    Debug("Accepting connections on Zeus port %hu", ntohs(sin.sin_port));
+    Debug("Accepting connections on Dm port %hu", ntohs(sin.sin_port));
 }
 
 bool
-ZeusTransport::SendMessageInternal(TransportReceiver *src,
-                                  const ZeusTransportAddress &dst,
+DmTransport::SendMessageInternal(TransportReceiver *src,
+                                  const DmTransportAddress &dst,
                                   const Message &m,
                                   bool multicast)
 {
     Latency_Start(&process_push);
-    auto it = zeusOutgoing.find(dst);
+    auto it = dmOutgoing.find(dst);
     // See if we have a connection open
-    if (it == zeusOutgoing.end()) {
-        ConnectZeus(src, dst);
-        it = zeusOutgoing.find(dst);
+    if (it == dmOutgoing.end()) {
+        ConnectDm(src, dst);
+        it = dmOutgoing.find(dst);
     }
 
-    if (it == zeusOutgoing.end()) {
+    if (it == dmOutgoing.end()) {
         Debug("could not find connection");
         return false;
     }
@@ -331,10 +329,10 @@ ZeusTransport::SendMessageInternal(TransportReceiver *src,
                        sizeof(uint32_t));
 
     char *buf = (char *)malloc(totalLen);
-    Zeus::sgarray sga;
-    sga.num_bufs = 1;
-    sga.bufs[0].buf = (Zeus::ioptr)&buf[0];
-    sga.bufs[0].len = totalLen;
+    dmtr_sgarray_t sga;
+    sga.sga_numsegs = 1;
+    sga.sga_segs[0].sgaseg_buf = (void *)&buf[0];
+    sga.sga_segs[0].sgaseg_len = totalLen;
     char *ptr = &buf[0];
 
     *((uint32_t *) ptr) = MAGIC;
@@ -361,10 +359,12 @@ ZeusTransport::SendMessageInternal(TransportReceiver *src,
     ptr += dataLen;
 
     Latency_Start(&push_msg);
-    Zeus::qtoken t = Zeus::push(qd, sga);
+    dmtr_qtoken_t t;
+    int ret = dmtr_push(&t, qd, &sga);
+    ASSERT(ret == 0);
     Latency_End(&push_msg);
 
-    Debug("Sent %ld byte %s message to server over Zeus",
+    Debug("Sent %ld byte %s message to server over Dm",
           totalLen, type.c_str());
     free(buf);
     Latency_End(&process_push);
@@ -372,59 +372,32 @@ ZeusTransport::SendMessageInternal(TransportReceiver *src,
 }
 
 void
-ZeusTransport::Run()
+DmTransport::Run()
 {
-    qtoken tokens[MAX_CONNECTIONS];
-    sgarray sgas[MAX_CONNECTIONS];
+    dmtr_qtoken_t tokens[MAX_CONNECTIONS];
     memset(tokens, 0, sizeof(tokens));           
     stopLoop = false;
     while (!stopLoop) {
         int i = 0;
-	qtoken qt = 0;
-
-	// check timer
-	if (replicaIdx == -1) {
-	    while (tokens[i] == 0) {
-		qt = pop(timerQD, sgas[i]);
-		if (qt == 0) {
-		    OnTimer((ZeusTransportTimerInfo *)sgas[i].bufs[0].buf);
-		} else if (qt == ZEUS_IO_ERR_NO) {
-		    Warning("Got IO Error");
-		    goto exit;
-		} else {
-		    tokens[i] = qt;
-		    Debug("Found new qt: %lx", qt);
-		}
-	    }
-	    i++;
-	} else {
-            // check accept
-            while (tokens[i] == 0) {
-                qt = pop(acceptQD, sgas[i]);
-                if (qt == 0) ZeusAcceptCallback();
-		else if (qt == ZEUS_IO_ERR_NO) {
-		    Warning("Got pop IO Error");
-		    goto exit;;
-		}
-                else tokens[i] = qt;
+        // check timer on clients
+        if (replicaIdx == -1) {
+            if (tokens[i] == 0) {
+                int ret = dmtr_pop(&tokens[i], timerQD);
+                assert(ret == 0);
             }
-            i++;
+        } else {
+            // check accept on servers
+            if (tokens[i] == 0) {
+                int ret = dmtr_pop(&tokens[i], acceptQD);
+                assert(ret == 0);
+            }
         }
-
+        i++;
         for (auto &it : receivers) {
             int qd = it.first;
-            while (tokens[i] == 0) {
-                qt = pop(qd, sgas[i]);
-                if (qt == ZEUS_IO_ERR_NO) {
-		    Warning("Got pop I/O Error");
-		    goto exit;;
-		} else if (qt == 0) {
-		    assert(sgas[i].num_bufs > 0);
-		    ZeusPopCallback(qd, receivers[qd], sgas[i]);
-		} else {
-		    tokens[i] = qt;
-		    Debug("Found new qt: %ld", qt);
-		}
+            if (tokens[i] == 0) {
+                int ret = dmtr_pop(&tokens[i], qd);
+                assert(ret == 0);
             }
             i++;
         }
@@ -433,25 +406,21 @@ ZeusTransport::Run()
         // i is now set to number of tokens
         // offset will return the token that is ready
         // qd will return qd of the queue that is ready
-	sgarray sga;
-	int offset = -1, qd = 0;
-	ssize_t res = Zeus::wait_any(tokens, i, offset, qd, sga);
-        if (res < 0) {
-	    Warning("Exiting loop: %s", strerror(res));
-	    goto exit;
-	}
-	ASSERT(offset >= 0);
+        dmtr_wait_completion_t wait_out;
+        if (dmtr_wait_any(&wait_out, tokens, i) != 0) goto exit;
+               
         // zero out the token for the next round
-        Debug("Found something: offset=%i, qd=%lx", offset, qd);
-        tokens[offset] = 0;
-        if (qd == acceptQD) ZeusAcceptCallback();
-        else if (qd == timerQD) {
-	    assert(sga.num_bufs != 0);
-            OnTimer((ZeusTransportTimerInfo *)sga.bufs[0].buf);
-	} else {
-	    assert(sga.num_bufs != 0);
-            ZeusPopCallback(qd, receivers[qd], sga);
-	}
+        Debug("Found something: offset=%i, qd=%lx",
+              wait_out.qt_idx_out, wait_out.qd_out);
+        tokens[wait_out.qt_idx_out] = 0;
+        if (wait_out.qd_out == acceptQD) DmAcceptCallback();
+        else if (wait_out.qd_out == timerQD) {
+            assert(wait_out.sga_out.sga_numsegs > 0);
+            OnTimer((DmTransportTimerInfo *)wait_out.sga_out.sga_segs[0].sgaseg_buf);
+        } else {
+            assert(wait_out.sga_out.sga_numsegs > 0);
+            DmPopCallback(wait_out.qd_out, receivers[wait_out.qd_out], wait_out.sga_out);
+        }
     }
 exit:
     Warning("Exited loop");
@@ -459,21 +428,21 @@ exit:
 }
 
 void
-ZeusTransport::Stop()
+DmTransport::Stop()
 {
     for (auto &it : receivers) {
 	int qd = it.first;
-	Zeus::close(qd);
+	dmtr_close(qd);
     }
     Warning("Stop loop  was called");
     stopLoop = true;
 }
 
 int
-ZeusTransport::Timer(uint64_t ms, timer_callback_t cb)
+DmTransport::Timer(uint64_t ms, timer_callback_t cb)
 {
     if (ms == 0) {
-        ZeusTransportTimerInfo *info = new ZeusTransportTimerInfo();
+        DmTransportTimerInfo *info = new DmTransportTimerInfo();
         ++lastTimerId;
         
         info->id = lastTimerId;
@@ -481,24 +450,22 @@ ZeusTransport::Timer(uint64_t ms, timer_callback_t cb)
     
         timers[info->id] = info;
         
-        sgarray sga;
-        sga.num_bufs = 1;
-        sga.bufs[0].buf = info;
-        sga.bufs[0].len = sizeof(ZeusTransportTimerInfo);
-        qtoken qt = push(timerQD, sga);
-        ASSERT(qt == 0);
-	if (qt != 0) {
-	    Zeus::wait(qt, sga);
-	}
+        dmtr_sgarray_t sga;
+        sga.sga_numsegs = 1;
+        sga.sga_segs[0].sgaseg_buf = (void *)info;
+        sga.sga_segs[0].sgaseg_len = sizeof(DmTransportTimerInfo);
+        dmtr_qtoken_t qt;
+        int ret = dmtr_push(&qt, timerQD, &sga);
+        assert(ret == 0);
         return info->id;
     }
     return 0;
 }
 
 bool
-ZeusTransport::CancelTimer(int id)
+DmTransport::CancelTimer(int id)
 {
-    ZeusTransportTimerInfo *info = timers[id];
+    DmTransportTimerInfo *info = timers[id];
 
     if (info == NULL) {
         return false;
@@ -511,7 +478,7 @@ ZeusTransport::CancelTimer(int id)
 }
 
 void
-ZeusTransport::CancelAllTimers()
+DmTransport::CancelAllTimers()
 {
     while (!timers.empty()) {
         auto kv = timers.begin();
@@ -520,7 +487,7 @@ ZeusTransport::CancelAllTimers()
 }
 
 void
-ZeusTransport::OnTimer(ZeusTransportTimerInfo *info)
+DmTransport::OnTimer(DmTransportTimerInfo *info)
 {
     timers.erase(info->id);
     info->cb();
@@ -528,42 +495,43 @@ ZeusTransport::OnTimer(ZeusTransportTimerInfo *info)
 }
 
 void
-ZeusTransport::ZeusAcceptCallback()
+DmTransport::DmAcceptCallback()
 {
     int newqd;
     struct sockaddr_in sin;
     socklen_t sinLength = sizeof(sin);
         
     // Accept a connection
-    if ((newqd = Zeus::accept(acceptQD,
-                              (struct sockaddr *)&sin,
-                              &sinLength)) < 0) {
-        PWarning("Failed to accept incoming Zeus connection");
+    if (dmtr_accept(&newqd,
+                    (struct sockaddr *)&sin,
+                    &sinLength,
+                    acceptQD) != 0) {
+        PWarning("Failed to accept incoming Dm connection");
         return;
     }
 
-    ZeusTransportAddress *client = new ZeusTransportAddress(sin);
-    zeusOutgoing.insert(make_pair(*client, newqd));
-    zeusIncoming.insert(make_pair(newqd, *client));
+    DmTransportAddress *client = new DmTransportAddress(sin);
+    dmOutgoing.insert(make_pair(*client, newqd));
+    dmIncoming.insert(make_pair(newqd, *client));
     receivers[newqd] = receiver;
     
-    Debug("Opened incoming Zeus connection from %s:%d",
+    Debug("Opened incoming Dm connection from %s:%d",
           inet_ntoa(sin.sin_addr), htons(sin.sin_port));
 }
 
 void
-    ZeusTransport::ZeusPopCallback(int qd,
-                                   TransportReceiver *receiver,
-                                   sgarray &sga)
-                                   
+DmTransport::DmPopCallback(int qd,
+                           TransportReceiver *receiver,
+                           dmtr_sgarray_t &sga)
+    
 {
     Debug("Pop Callback");
     Latency_Start(&process_pop);
-    auto addr = zeusIncoming.find(qd);
+    auto addr = dmIncoming.find(qd);
     
-    ASSERT(sga.num_bufs == 1);
-    uint8_t *ptr = (uint8_t *)sga.bufs[0].buf;
-    ASSERT(sga.bufs[0].len > 0);
+    ASSERT(sga.sga_numsegs == 1);
+    uint8_t *ptr = (uint8_t *)sga.sga_segs[0].sgaseg_buf;
+    ASSERT(sga.sga_segs[0].sgaseg_len > 0);
     uint32_t magic = *(uint32_t *)ptr;
     Debug("[%x] MAGIC=%x", qd, magic);
     ptr += sizeof(magic);
@@ -585,7 +553,7 @@ void
                              type,
                              data);
     Latency_End(&run_app);
-    free((uint8_t *)sga.bufs[0].buf - sizeof(uint64_t));
+    free((uint8_t *)sga.sga_segs[0].sgaseg_buf - sizeof(uint64_t));
     Latency_End(&process_pop);
 
     Debug("Done processing large %s message", type.c_str());        

@@ -5,7 +5,7 @@ SRCS += $(addprefix $(d), \
 	lookup3.cc message.cc memory.cc \
 	latency.cc configuration.cc transport.cc \
 	udptransport.cc tcptransport.cc simtransport.cc \
-        repltransport.cc zeustransport.cc \
+        repltransport.cc dmtransport.cc \
 	persistent_register.cc)
 
 
@@ -26,7 +26,7 @@ LIB-configuration := $(o)configuration.o $(LIB-message)
 
 LIB-transport := $(o)transport.o $(LIB-message) $(LIB-configuration)
 
-LIB-transport-all := $(o)udptransport.o $(o)tcptransport.o $(o)zeustransport.o $(LIB-transport)
+LIB-transport-all := $(o)udptransport.o $(o)tcptransport.o $(o)dmtransport.o $(LIB-transport)
 
 ifneq ($(TARGET_OS), Darwin)
 SRCS += $(addprefix $(d), \
@@ -43,7 +43,7 @@ LIB-udptransport := $(o)udptransport.o $(LIB-transport)
 
 LIB-tcptransport := $(o)tcptransport.o $(LIB-transport)
 
-LIB-zeustransport := $(o)zeustransport.o $(LIB-transport)
+LIB-dmtransport := $(o)dmtransport.o $(LIB-transport)
 
 LIB-persistent_register := $(o)persistent_register.o $(LIB-message)
 

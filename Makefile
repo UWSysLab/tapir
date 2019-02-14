@@ -6,10 +6,6 @@ CC = gcc
 CXX = g++
 LD = g++
 
-ifndef ZEUS_SRC_DIR
-	ZEUS_SRC_DIR = /biggerraid/users/iyzhang/datacenter-OS/
-endif
-
 CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized -O3 -DNDEBUG
 #CFLAGS := -g -Wall -pthread -iquote.obj/gen -Wno-uninitialized 
 CXXFLAGS := -g -std=c++0x
@@ -39,14 +35,10 @@ RDMA_CFLAGS := -lrdmacm -libverbs
 RDMA_LDFLAGS := -lrdmacm -libverbs
 CFLAGS += $(RDMA_CFLAGS)
 LDFLAGS += $(RDMA_LDFLAGS)
-ZEUS_CFLAGS := -I$(ZEUS_SRC_DIR)
-#ZEUS_LDFLAGS := -L$(ZEUS_SRC_DIR) -lzeus_posix -Wl,-rpath,$(ZEUS_SRC_DIR)
-ZEUS_LDFLAGS := -L$(ZEUS_SRC_DIR) -lhoard -lzeus_rdma -Wl,-rpath,$(ZEUS_SRC_DIR)
-#ZEUS_LDFLAGS := -L$(ZEUS_SRC_DIR) -lhoard -lzeus_posix -Wl,-rpath,$(ZEUS_SRC_DIR)
 
-CFLAGS += $(ZEUS_CFLAGS)
-CXXFLAGS += $(ZEUS_CFLAGS)
-LDFLAGS += $(ZEUS_LDFLAGS)
+CFLAGS += $(DMTR_CFLAGS)
+CXXFLAGS += $(DMTR_CFLAGS)
+LDFLAGS += $(DMTR_LDFLAGS)
 
 
 # Google test framework. This doesn't use pkgconfig

@@ -274,8 +274,8 @@ main(int argc, char **argv)
     } else if (strcasecmp(transporttype, "rdma") == 0) {
 	t = new RDMATransport(0.0, 0.0, 0);
     } else {
-	// default to zeus for now
-	t = new ZeusTransport(0.0, 0.0, 0);
+	// default to demeter for now
+	t = new DmTransport(0.0, 0.0, 0);
     }
 
     tapirstore::Server server(linearizable);

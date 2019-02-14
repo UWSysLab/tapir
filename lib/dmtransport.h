@@ -1,8 +1,8 @@
 // -*- mode: c++; c-file-style: "k&r"; c-basic-offset: 4 -*-
 /***********************************************************************
  *
- * zeustransport.h:
- *   message-passing network interface that uses ZEUS message delivery
+ * dmtransport.h:
+ *   message-passing network interface that uses DM message delivery
  *   and libasync
  *
  * Copyright 2013 Dan R. K. Ports  <drkp@cs.washington.edu>
@@ -30,13 +30,13 @@
  *
  **********************************************************************/
 
-#ifndef _LIB_ZEUSTRANSPORT_H_
-#define _LIB_ZEUSTRANSPORT_H_
+#ifndef _LIB_DMTRANSPORT_H_
+#define _LIB_DMTRANSPORT_H_
 
 #include "lib/configuration.h"
 #include "lib/transport.h"
 #include "lib/transportcommon.h"
-#include "include/io-queue.h"
+#include "dmtr/libos.h"
 #include "lib/latency.h"
 #include <event2/event.h>
 
@@ -49,29 +49,29 @@
 
 #define MAX_CONNECTIONS 1000
 
-class ZeusTransportAddress : public TransportAddress
+class DmTransportAddress : public TransportAddress
 {
 public:
-    ZeusTransportAddress * clone() const;
+    DmTransportAddress * clone() const;
 private:
-    ZeusTransportAddress(const sockaddr_in &addr);
+    DmTransportAddress(const sockaddr_in &addr);
 
     sockaddr_in addr;
-    friend class ZeusTransport;
-    friend bool operator==(const ZeusTransportAddress &a,
-                           const ZeusTransportAddress &b);
-    friend bool operator!=(const ZeusTransportAddress &a,
-                           const ZeusTransportAddress &b);
-    friend bool operator<(const ZeusTransportAddress &a,
-                          const ZeusTransportAddress &b);
+    friend class DmTransport;
+    friend bool operator==(const DmTransportAddress &a,
+                           const DmTransportAddress &b);
+    friend bool operator!=(const DmTransportAddress &a,
+                           const DmTransportAddress &b);
+    friend bool operator<(const DmTransportAddress &a,
+                          const DmTransportAddress &b);
 };
 
-class ZeusTransport : public TransportCommon<ZeusTransportAddress>
+class DmTransport : public TransportCommon<DmTransportAddress>
 {
 public:
-    ZeusTransport(double dropRate = 0.0, double reogrderRate = 0.0,
+    DmTransport(double dropRate = 0.0, double reogrderRate = 0.0,
                     int dscp = 0, bool handleSignals = true);
-    virtual ~ZeusTransport();
+    virtual ~DmTransport();
     void Register(TransportReceiver *receiver,
                   const transport::Configuration &config,
                   int replicaIdx);
@@ -87,7 +87,7 @@ private:
     int replicaIdx;
     TransportReceiver *receiver;
      
-    struct ZeusTransportTimerInfo
+    struct DmTransportTimerInfo
     {
         timer_callback_t cb;
         int id;
@@ -96,27 +96,27 @@ private:
     std::map<int, TransportReceiver*> receivers; // qd -> receiver
     std::map<TransportReceiver*, int> qds; // receiver -> qd
     int lastTimerId;
-    std::map<int, ZeusTransportTimerInfo *> timers;
-    std::map<ZeusTransportAddress, int> zeusOutgoing;
-    std::map<int, ZeusTransportAddress> zeusIncoming;
+    std::map<int, DmTransportTimerInfo *> timers;
+    std::map<DmTransportAddress, int> dmOutgoing;
+    std::map<int, DmTransportAddress> dmIncoming;
 
     bool SendMessageInternal(TransportReceiver *src,
-                             const ZeusTransportAddress &dst,
+                             const DmTransportAddress &dst,
                              const Message &m, bool multicast = false);
 
-    ZeusTransportAddress
+    DmTransportAddress
     LookupAddress(const transport::ReplicaAddress &addr);
-    ZeusTransportAddress
+    DmTransportAddress
     LookupAddress(const transport::Configuration &cfg,
                   int replicaIdx);
-    const ZeusTransportAddress *
+    const DmTransportAddress *
     LookupMulticastAddress(const transport::Configuration*config) { return NULL; };
 
-    void ConnectZeus(TransportReceiver *src, const ZeusTransportAddress &dst);
-    void OnTimer(ZeusTransportTimerInfo *info);
-    void TimerCallback(ZeusTransportTimerInfo *info);
-    void ZeusAcceptCallback();
-    void ZeusPopCallback(int qd, TransportReceiver *receiver, Zeus::sgarray &sga);
+    void ConnectDm(TransportReceiver *src, const DmTransportAddress &dst);
+    void OnTimer(DmTransportTimerInfo *info);
+    void TimerCallback(DmTransportTimerInfo *info);
+    void DmAcceptCallback();
+    void DmPopCallback(int qd, TransportReceiver *receiver, dmtr_sgarray_t &sga);
 };
 
-#endif  // _LIB_ZEUSTRANSPORT_H_
+#endif  // _LIB_DMTRANSPORT_H_
