@@ -37,7 +37,7 @@
 #include "lib/udptransport.h"
 #include "lib/rdmatransport.h"
 #include "lib/tcptransport.h"
-#include "lib/zeustransport.h"
+#include "lib/dmtransport.h"
 #include "replication/common/client.h"
 #include "store/common/frontend/client.h"
 #include "store/common/frontend/bufferclient.h"

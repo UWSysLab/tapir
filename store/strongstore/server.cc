@@ -358,7 +358,7 @@ main(int argc, char **argv)
 	t = new RDMATransport(0.0, 0.0, 0);
     } else {
 	// default to zeus for now
-	t = new ZeusTransport(0.0, 0.0, 0);
+	t = new DmTransport(0.0, 0.0, 0);
     }
 
     strongstore::Server server(mode, skew, error);

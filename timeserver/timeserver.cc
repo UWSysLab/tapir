@@ -103,8 +103,8 @@ main(int argc, char **argv)
     } else if (strcasecmp(transporttype, "rdma")) {
 	t = new RDMATransport(0.0, 0.0, 0);
     } else {
-	// default to zeus for now
-	t = new ZeusTransport(0.0, 0.0, 0);
+	// default to demeter for now
+	t = new DmTransport(0.0, 0.0, 0);
     }
     TimeStampServer server;
     replication::vr::VRReplica replica(config, index, t, 1, &server);

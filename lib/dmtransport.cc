@@ -35,6 +35,7 @@
 #include "lib/message.h"
 #include "lib/dmtransport.h"
 #include "dmtr/wait.h"
+#include "lib/latency.h"
 
 #include <google/protobuf/message.h>
 #include <event2/thread.h>

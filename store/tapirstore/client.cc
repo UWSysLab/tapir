@@ -57,7 +57,7 @@ using namespace std;
     } else if (transporttype == RDMA) {
 	transport = new RDMATransport(0.0, 0.0, 0);
     } else {
-	// default to zeus for now
+	// default to Demeter for now
 	transport = new DmTransport(0.0, 0.0, 0);
     }
 

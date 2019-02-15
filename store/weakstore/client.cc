@@ -55,7 +55,7 @@ using namespace proto;
 	transport = new RDMATransport(0.0, 0.0, 0);
     } else {
 	// default to zeus for now
-	transport = new ZeusTransport(0.0, 0.0, 0);
+	transport = new DmTransport(0.0, 0.0, 0);
     }
 
     nshards = nShards;

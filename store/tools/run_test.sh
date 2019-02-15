@@ -16,14 +16,14 @@ trap '{
 }' INT
 
 # Paths to source code and logfiles.
-srcdir="/biggerraid/users/iyzhang/datacenter-OS/apps/tapir"
-logdir="/biggerraid/users/iyzhang/datacenter-OS/logs"
+srcdir="/u/irene/proj/msr/msdos/src/apps/tapir"
+logdir="/u/irene/proj/msr/msdos/src/logs"
 
 # Machines on which replicas are running.
-replicas=("bongo" "capybara" "dikdik")
+replicas=("localhost" "localhost" "localhost")
 
 # Machines on which clients are running.
-clients=("anteater")
+clients=("localhost")
 
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
 store="weakstore"      # Which store (strongstore, weakstore, tapirstore)

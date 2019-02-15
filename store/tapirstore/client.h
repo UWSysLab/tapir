@@ -39,7 +39,7 @@
 #include "lib/udptransport.h"
 #include "lib/tcptransport.h"
 #include "lib/rdmatransport.h"
-#include "lib/zeustransport.h"
+#include "lib/dmtransport.h"
 #include "replication/ir/client.h"
 #include "store/common/timestamp.h"
 #include "store/common/truetime.h"
