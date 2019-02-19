@@ -170,6 +170,9 @@ BindToPort(int qd, const string &host, const string &port)
 DmTransport::DmTransport(double dropRate, double reorderRate,
 			   int dscp, bool handleSignals)
 {
+    char *argv[] = {};
+    dmtr_init(0, argv);
+
     lastTimerId = 0;
     dmtr_queue(&timerQD);
     ASSERT(timerQD != 0);
