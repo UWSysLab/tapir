@@ -235,7 +235,7 @@ DmTransport::ConnectDm(TransportReceiver *src, const DmTransportAddress &dst)
     // Tell the receiver its address
     struct sockaddr_in sin;
     socklen_t sinsize = sizeof(sin);
-    if (getsockname(qd, (sockaddr *) &sin, &sinsize) < 0) {
+    if (dmtr_getsockname(qd, (sockaddr *) &sin, &sinsize) < 0) {
         PPanic("Failed to get socket name");
     }
     DmTransportAddress *addr = new DmTransportAddress(sin);
@@ -289,7 +289,7 @@ DmTransport::Register(TransportReceiver *receiver,
     // Tell the receiver its address
     socklen_t sinsize = sizeof(sin);
     
-    if (getsockname(qd, (sockaddr *) &sin, &sinsize) < 0) {
+    if (dmtr_getsockname(qd, (sockaddr *) &sin, &sinsize) < 0) {
         PPanic("Failed to get socket name");
     }
     
