@@ -115,8 +115,9 @@ private:
     void ConnectDm(TransportReceiver *src, const DmTransportAddress &dst);
     void OnTimer(DmTransportTimerInfo *info);
     void TimerCallback(DmTransportTimerInfo *info);
-    void DmAcceptCallback();
+    void DmAcceptCallback(dmtr_accept_result ares);
     void DmPopCallback(int qd, TransportReceiver *receiver, dmtr_sgarray_t &sga);
+    void CloseConn(int qd);
 };
 
 #endif  // _LIB_DMTRANSPORT_H_

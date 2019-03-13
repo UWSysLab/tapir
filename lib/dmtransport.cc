@@ -376,54 +376,79 @@ DmTransport::SendMessageInternal(TransportReceiver *src,
 }
 
 void
+DmTransport::CloseConn(int qd)
+{
+    int status = dmtr_close(qd);
+    dmOutgoing.erase(dmIncoming[qd]);
+    dmIncoming.erase(qd);
+    receivers.erase(qd);
+}
+    
+
+
+void
 DmTransport::Run()
 {
-    dmtr_qtoken_t tokens[MAX_CONNECTIONS];
-    memset(tokens, 0, sizeof(tokens));           
+    std::vector<dmtr_qtoken_t> tokens;
+    dmtr_qtoken_t token;
+    int status;
     stopLoop = false;
+    // check timer on clients
+    if (replicaIdx == -1) {
+        status = dmtr_pop(&token, timerQD);
+    } else {
+        // check accept on servers
+        status = dmtr_accept(&token, acceptQD);
+    }
+    if (status != 0) {
+        return;
+    }
+    tokens.push_back(token);
     while (!stopLoop) {
-        int i = 0;
-        // check timer on clients
-        if (replicaIdx == -1) {
-            if (tokens[i] == 0) {
-                int ret = dmtr_pop(&tokens[i], timerQD);
-                assert(ret == 0);
-            }
-        } else {
-            // check accept on servers
-            if (tokens[i] == 0) {
-                int ret = dmtr_pop(&tokens[i], acceptQD);
-                assert(ret == 0);
-            }
-        }
-        i++;
-        for (auto &it : receivers) {
-            int qd = it.first;
-            if (tokens[i] == 0) {
-                int ret = dmtr_pop(&tokens[i], qd);
-                assert(ret == 0);
-            }
-            i++;
-        }
-        
         // wait for any of the pops to return
         // i is now set to number of tokens
         // offset will return the token that is ready
         // qd will return qd of the queue that is ready
-        dmtr_wait_completion_t wait_out;
-        if (dmtr_wait_any(&wait_out, tokens, i) != 0) goto exit;
-               
-        // zero out the token for the next round
-        Debug("Found something: offset=%i, qd=%lx",
-              wait_out.qt_idx_out, wait_out.qd_out);
-        tokens[wait_out.qt_idx_out] = 0;
-        if (wait_out.qd_out == acceptQD) DmAcceptCallback();
-        else if (wait_out.qd_out == timerQD) {
-            assert(wait_out.sga_out.sga_numsegs > 0);
-            OnTimer((DmTransportTimerInfo *)wait_out.sga_out.sga_segs[0].sgaseg_buf);
-        } else {
-            assert(wait_out.sga_out.sga_numsegs > 0);
-            DmPopCallback(wait_out.qd_out, receivers[wait_out.qd_out], wait_out.sga_out);
+        dmtr_qresult wait_out;
+        int ready_idx;
+        int status = dmtr_wait_any(&wait_out, &ready_idx, tokens.data(), tokens.size());
+
+        // if we got an EOK back from wait
+        if (status == 0) {
+            Debug("Found something: qd=%lx",
+                  wait_out.qr_qd);
+            switch (wait_out.qr_qd) {
+            default:
+                assert(wait_out.qr_value.sga.sga_numsegs > 0);
+                DmPopCallback(wait_out.qr_qd, receivers[wait_out.qr_qd], wait_out.qr_value.sga);
+                status = dmtr_pop(&token, wait_out.qr_qd);
+                break;            
+            case acceptQD:
+                DmAcceptCallback(wait_out.qr_value.ares);
+                // add to wait
+                if (dmtr_pop(&token, wait_out.qr_value.ares.qd) == 0)
+                    tokens.push_back(token);
+                else
+                    CloseConn(wait_out.qr_value.ares.qd);
+                
+                // set up again
+                status = dmtr_accept(&token, acceptQD);
+                break;
+            case timerQD:
+                assert(wait_out.qr_value.sga.sga_numsegs > 0);
+                OnTimer((DmTransportTimerInfo *)wait_out.qr_value.sga.sga_segs[0].sgaseg_buf);
+                status = dmtr_pop(&token, timerQD);
+                break;
+            }            
+        }
+        if (status == 0)
+            tokens[ready_idx] = token;
+        else {
+            if (wait_out.qr_qd == acceptQD || wait_out.qr_qd == timerQD)
+                goto exit;
+            assert(status == ECONNRESET || status == ECONNABORTED);
+            CloseConn(wait_out.qr_qd);
+            tokens.erase(wait_out.qr_qt);
         }
     }
 exit:
@@ -435,8 +460,8 @@ void
 DmTransport::Stop()
 {
     for (auto &it : receivers) {
-	int qd = it.first;
-	dmtr_close(qd);
+        int qd = it.first;
+        CloseConn(qd);
     }
     Warning("Stop loop  was called");
     stopLoop = true;
@@ -499,22 +524,10 @@ DmTransport::OnTimer(DmTransportTimerInfo *info)
 }
 
 void
-DmTransport::DmAcceptCallback()
+DmTransport::DmAcceptCallback(dmtr_accept_result ares)
 {
-    int newqd;
-    struct sockaddr_in sin;
-    socklen_t sinLength = sizeof(sin);
-        
-    // Accept a connection
-    if (dmtr_accept(&newqd,
-                    (struct sockaddr *)&sin,
-                    &sinLength,
-                    acceptQD) != 0) {
-        PWarning("Failed to accept incoming Dm connection");
-        return;
-    }
-
-    DmTransportAddress *client = new DmTransportAddress(sin);
+    int newqd = ares.qd;
+    DmTransportAddress *client = new DmTransportAddress(ares.addr);
     dmOutgoing.insert(make_pair(*client, newqd));
     dmIncoming.insert(make_pair(newqd, *client));
     receivers[newqd] = receiver;
@@ -530,6 +543,8 @@ DmTransport::DmPopCallback(int qd,
     
 {
     Debug("Pop Callback");
+
+    
     Latency_Start(&process_pop);
     auto addr = dmIncoming.find(qd);
     
