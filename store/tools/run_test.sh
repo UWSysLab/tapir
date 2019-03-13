@@ -16,8 +16,8 @@ trap '{
 }' INT
 
 # Paths to source code and logfiles.
-srcdir="/u/irene/proj/msr/msdos/src/apps/tapir"
-logdir="/u/irene/proj/msr/msdos/src/logs"
+srcdir="/home/irene/proj/msdos/src/apps/tapir"
+logdir="/home/irene/proj/msdos/src/logs"
 
 # Machines on which replicas are running.
 replicas=("localhost" "localhost" "localhost")
