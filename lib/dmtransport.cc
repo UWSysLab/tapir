@@ -77,6 +77,11 @@ DmTransportAddress::DmTransportAddress(const sockaddr_in &addr)
     memset((void *)addr.sin_zero, 0, sizeof(addr.sin_zero));
 }
 
+DmTransportAddress::DmTransportAddress()
+{
+    memset((void *)&addr, 0, sizeof(addr));
+}
+
 DmTransportAddress *
 DmTransportAddress::clone() const
 {
@@ -220,7 +225,7 @@ DmTransport::ConnectDm(TransportReceiver *src, const DmTransportAddress &dst)
         PPanic("Failed to create queue for outgoing Dm connection");
     }
 
-    this->receiver = src;
+    //this->receiver = src;
     int res;
     if (dmtr_connect(qd,
                      (struct sockaddr *)&(dst.addr),
@@ -247,6 +252,14 @@ DmTransport::ConnectDm(TransportReceiver *src, const DmTransportAddress &dst)
     
     Debug("Opened Dm connection to %s:%d",
 	  inet_ntoa(dst.addr.sin_addr), htons(dst.addr.sin_port));
+
+    dmtr_qtoken_t token;
+    // add new queue to wait
+    if (dmtr_pop(&token, qd) == 0)
+        tokens.push_back(token);
+    else
+        CloseConn(qd);
+
 }
 
 void
@@ -389,7 +402,6 @@ DmTransport::CloseConn(int qd)
 void
 DmTransport::Run()
 {
-    std::vector<dmtr_qtoken_t> tokens;
     dmtr_qtoken_t token;
     int status;
     stopLoop = false;
@@ -405,10 +417,6 @@ DmTransport::Run()
     }
     tokens.push_back(token);
     while (!stopLoop) {
-        // wait for any of the pops to return
-        // i is now set to number of tokens
-        // offset will return the token that is ready
-        // qd will return qd of the queue that is ready
         dmtr_qresult wait_out;
         int ready_idx;
         int status = dmtr_wait_any(&wait_out, &ready_idx, tokens.data(), tokens.size());
@@ -417,41 +425,34 @@ DmTransport::Run()
         if (status == 0) {
             Debug("Found something: qd=%lx",
                   wait_out.qr_qd);
-            switch (wait_out.qr_qd) {
-            default:
-                assert(wait_out.qr_value.sga.sga_numsegs > 0);
-                DmPopCallback(wait_out.qr_qd, receivers[wait_out.qr_qd], wait_out.qr_value.sga);
-                status = dmtr_pop(&token, wait_out.qr_qd);
-                break;            
-            case acceptQD:
-                DmAcceptCallback(wait_out.qr_value.ares);
-                // add to wait
-                if (dmtr_pop(&token, wait_out.qr_value.ares.qd) == 0)
-                    tokens.push_back(token);
-                else
-                    CloseConn(wait_out.qr_value.ares.qd);
-                
-                // set up again
-                status = dmtr_accept(&token, acceptQD);
-                break;
-            case timerQD:
+
+            // check timer on clients
+            if (replicaIdx == -1 && wait_out.qr_qd == timerQD) {
                 assert(wait_out.qr_value.sga.sga_numsegs > 0);
                 OnTimer((DmTransportTimerInfo *)wait_out.qr_value.sga.sga_segs[0].sgaseg_buf);
                 status = dmtr_pop(&token, timerQD);
-                break;
-            }            
+            } else if (wait_out.qr_qd == acceptQD) {
+                // check accept on servers
+                DmAcceptCallback(wait_out.qr_value.ares);
+                // call accept again
+                status = dmtr_accept(&token, acceptQD);
+            } else {
+                // process request
+                assert(wait_out.qr_value.sga.sga_numsegs > 0);
+                DmPopCallback(wait_out.qr_qd, receivers[wait_out.qr_qd], wait_out.qr_value.sga);
+                status = dmtr_pop(&token, wait_out.qr_qd);
+            }
         }
         if (status == 0)
             tokens[ready_idx] = token;
         else {
             if (wait_out.qr_qd == acceptQD || wait_out.qr_qd == timerQD)
-                goto exit;
+                break;
             assert(status == ECONNRESET || status == ECONNABORTED);
             CloseConn(wait_out.qr_qd);
-            tokens.erase(wait_out.qr_qt);
+            tokens.erase(tokens.begin()+ready_idx);
         }
     }
-exit:
     Warning("Exited loop");
     Latency_DumpAll();
 }
@@ -527,13 +528,21 @@ void
 DmTransport::DmAcceptCallback(dmtr_accept_result ares)
 {
     int newqd = ares.qd;
-    DmTransportAddress *client = new DmTransportAddress(ares.addr);
-    dmOutgoing.insert(make_pair(*client, newqd));
-    dmIncoming.insert(make_pair(newqd, *client));
+    dmtr_qtoken_t token;
+    DmTransportAddress client = DmTransportAddress(ares.addr); 
+    dmOutgoing[client] = newqd;
+    dmIncoming.insert(std::pair<int, DmTransportAddress>(newqd,client));
     receivers[newqd] = receiver;
+ 
+    // add new queue to wait
+    if (dmtr_pop(&token, newqd) == 0) {
+        tokens.push_back(token);
     
-    Debug("Opened incoming Dm connection from %s:%d",
-          inet_ntoa(sin.sin_addr), htons(sin.sin_port));
+        Debug("Opened incoming Dm connection from %s:%d",
+              inet_ntoa(ares.addr.sin_addr), htons(ares.addr.sin_port));
+    } else {
+        CloseConn(newqd);
+    }
 }
 
 void
@@ -572,7 +581,7 @@ DmTransport::DmPopCallback(int qd,
                              type,
                              data);
     Latency_End(&run_app);
-    free((uint8_t *)sga.sga_segs[0].sgaseg_buf - sizeof(uint64_t));
+    free(sga.sga_buf);
     Latency_End(&process_pop);
 
     Debug("Done processing large %s message", type.c_str());        

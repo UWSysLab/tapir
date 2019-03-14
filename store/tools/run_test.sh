@@ -26,8 +26,8 @@ replicas=("localhost" "localhost" "localhost")
 clients=("localhost")
 
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
-store="weakstore"      # Which store (strongstore, weakstore, tapirstore)
-mode="qw"            # Mode for storage system.
+store="strongstore"      # Which store (strongstore, weakstore, tapirstore)
+mode="occ"            # Mode for storage system.
 transport="dm"
 
 nshard=1     # number of shards

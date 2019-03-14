@@ -19,6 +19,6 @@ do
   server=$(cat $config | sed -n ${line}p | awk -F'[ :]' '{print $2}')
 #  command="ssh $server \"perf stat -d -- $cmd -c $config -i $i > $logdir/$shard.replica$i.log 2>&1 &\""
   command="ssh $server \"$cmd -c $config -i $i > $logdir/$shard.replica$i.log 2>&1 &\""
-  #echo $command
+  echo $command
   eval $command
 done

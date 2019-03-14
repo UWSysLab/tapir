@@ -53,6 +53,7 @@ class DmTransportAddress : public TransportAddress
 {
 public:
     DmTransportAddress * clone() const;
+    DmTransportAddress();
 private:
     DmTransportAddress(const sockaddr_in &addr);
 
@@ -94,8 +95,9 @@ private:
     };
 
     std::map<int, TransportReceiver*> receivers; // qd -> receiver
-    std::map<TransportReceiver*, int> qds; // receiver -> qd
+    //std::map<TransportReceiver*, int> qds; // receiver -> qd
     int lastTimerId;
+    std::vector<dmtr_qtoken_t> tokens;
     std::map<int, DmTransportTimerInfo *> timers;
     std::map<DmTransportAddress, int> dmOutgoing;
     std::map<int, DmTransportAddress> dmIncoming;

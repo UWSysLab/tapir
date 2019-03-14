@@ -15,7 +15,7 @@ let end=$begin+$copies
 for ((i=$begin; i<$end; i++))
 do
     command="$cmd > $logdir/client.$i.log 2>&1 &"
-  #  echo $command
+   echo $command
     eval $command
     #sleep 100
 done
