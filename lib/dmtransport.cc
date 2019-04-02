@@ -227,9 +227,9 @@ DmTransport::ConnectDm(TransportReceiver *src, const DmTransportAddress &dst)
 
     //this->receiver = src;
     int res;
-    if (dmtr_connect(qd,
-                     (struct sockaddr *)&(dst.addr),
-                     sizeof(dst.addr)) != 0) {
+    if ((res = dmtr_connect(qd,
+			    (struct sockaddr *)&(dst.addr),
+			    sizeof(dst.addr))) != 0) {
         Panic("Failed to connect %s:%d: %s",
               inet_ntoa(dst.addr.sin_addr),
               htons(dst.addr.sin_port),
@@ -442,7 +442,8 @@ DmTransport::Run()
                 DmPopCallback(wait_out.qr_qd, receivers[wait_out.qr_qd], wait_out.qr_value.sga);
                 status = dmtr_pop(&token, wait_out.qr_qd);
             }
-        }
+        } // else fall through, typically connection closed
+	
         if (status == 0)
             tokens[ready_idx] = token;
         else {

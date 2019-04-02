@@ -16,24 +16,24 @@ trap '{
 }' INT
 
 # Paths to source code and logfiles.
-srcdir="/home/irene/proj/msdos/src/apps/tapir"
-logdir="/home/irene/proj/msdos/src/logs"
+srcdir="/opt/demeter/src/apps/tapir"
+logdir="/opt/demeter/src/logs"
 
 # Machines on which replicas are running.
-replicas=("localhost" "localhost" "localhost")
+replicas=("demeter1" "demeter2" "demeter3")
 
 # Machines on which clients are running.
-clients=("localhost")
+clients=("demeter4")
 
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
-store="strongstore"      # Which store (strongstore, weakstore, tapirstore)
-mode="occ"            # Mode for storage system.
+store="weakstore"      # Which store (strongstore, weakstore, tapirstore)
+mode="qw"            # Mode for storage system.
 transport="dm"
 
 nshard=1     # number of shards
 nclient=1    # number of clients to run (per machine)
 nthread=1
-nkeys=100 # number of keys to use
+nkeys=10000 # number of keys to use
 rtime=10     # duration to run
 
 tlen=2       # transaction length
@@ -66,9 +66,9 @@ python key_generator.py $nkeys > keys
 
 
 # Start all replicas and timestamp servers
-echo "Starting TimeStampServer replicas.."
-$srcdir/store/tools/start_replica.sh tss $srcdir/store/tools/shard.tss.config \
-  "$srcdir/timeserver/timeserver -t $transport" $logdir
+# echo "Starting TimeStampServer replicas.."
+# $srcdir/store/tools/start_replica.sh tss $srcdir/store/tools/shard.tss.config \
+#   "$srcdir/timeserver/timeserver -t $transport" $logdir
 
 for ((i=0; i<$nshard; i++))
 do
@@ -95,6 +95,7 @@ do
   let count=$count+$nclient
 done
 
+sleep 300
 
 # Wait for all clients to exit
 echo "Waiting for client(s) to exit"
