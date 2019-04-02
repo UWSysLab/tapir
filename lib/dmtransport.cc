@@ -345,12 +345,15 @@ DmTransport::SendMessageInternal(TransportReceiver *src,
                        sizeof(totalLen) +
                        sizeof(uint32_t));
 
-    char *buf = (char *)malloc(totalLen);
+    
+    void *p = malloc(totalLen);
+    assert(p != NULL);
+    char *buf = reinterpret_cast<char *>(p);
     dmtr_sgarray_t sga;
     sga.sga_numsegs = 1;
-    sga.sga_segs[0].sgaseg_buf = (void *)&buf[0];
+    sga.sga_segs[0].sgaseg_buf = p;
     sga.sga_segs[0].sgaseg_len = totalLen;
-    char *ptr = &buf[0];
+    char *ptr = buf;
 
     *((uint32_t *) ptr) = MAGIC;
     ptr += sizeof(uint32_t);
@@ -379,6 +382,8 @@ DmTransport::SendMessageInternal(TransportReceiver *src,
     dmtr_qtoken_t t;
     int ret = dmtr_push(&t, qd, &sga);
     ASSERT(ret == 0);
+    ret = dmtr_wait(NULL, t);
+    assert(ret == 0);
     Latency_End(&push_msg);
 
     Debug("Sent %ld byte %s message to server over Dm",
@@ -425,11 +430,11 @@ DmTransport::Run()
         if (status == 0) {
             Debug("Found something: qd=%lx",
                   wait_out.qr_qd);
-
             // check timer on clients
             if (replicaIdx == -1 && wait_out.qr_qd == timerQD) {
-                assert(wait_out.qr_value.sga.sga_numsegs > 0);
-                OnTimer((DmTransportTimerInfo *)wait_out.qr_value.sga.sga_segs[0].sgaseg_buf);
+		dmtr_sgarray_t &sga = wait_out.qr_value.sga;
+                assert(sga.sga_numsegs == 0);
+                OnTimer(reinterpret_cast<DmTransportTimerInfo *>(sga.sga_buf));
                 status = dmtr_pop(&token, timerQD);
             } else if (wait_out.qr_qd == acceptQD) {
                 // check accept on servers
@@ -438,9 +443,10 @@ DmTransport::Run()
                 status = dmtr_accept(&token, acceptQD);
             } else {
                 // process request
-                assert(wait_out.qr_value.sga.sga_numsegs > 0);
-                DmPopCallback(wait_out.qr_qd, receivers[wait_out.qr_qd], wait_out.qr_value.sga);
-                status = dmtr_pop(&token, wait_out.qr_qd);
+		dmtr_sgarray_t &sga = wait_out.qr_value.sga;
+                assert(sga.sga_numsegs > 0);
+                DmPopCallback(wait_out.qr_qd, receivers[wait_out.qr_qd], sga);
+		status = dmtr_pop(&token, wait_out.qr_qd);
             }
         } // else fall through, typically connection closed
 	
@@ -481,14 +487,17 @@ DmTransport::Timer(uint64_t ms, timer_callback_t cb)
     
         timers[info->id] = info;
         
-        dmtr_sgarray_t sga;
+        dmtr_sgarray_t sga = {};
+	sga.sga_buf = reinterpret_cast<void *>(info);
         sga.sga_numsegs = 1;
-        sga.sga_segs[0].sgaseg_buf = (void *)info;
-        sga.sga_segs[0].sgaseg_len = sizeof(DmTransportTimerInfo);
+	sga.sga_segs[0].sgaseg_buf = reinterpret_cast<void *>(info);
+	sga.sga_segs[0].sgaseg_len = sizeof(DmTransportTimerInfo);
         dmtr_qtoken_t qt;
         int ret = dmtr_push(&qt, timerQD, &sga);
-        assert(ret == 0);
-        return info->id;
+	assert(ret == 0);
+	ret = dmtr_wait(NULL, qt);
+	assert(ret == 0);
+	return info->id;
     }
     return 0;
 }
