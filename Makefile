@@ -47,7 +47,7 @@ ifeq ($(TARGETOS), Darwin)
 endif
 
 # Additional flags
-PARANOID = 1
+PARANOID = 0
 ifneq ($(PARANOID),0)
 override CFLAGS += -DPARANOID=1
 $(info WARNING: Paranoid mode enabled)
