@@ -16,7 +16,7 @@ trap '{
 }' INT
 
 # Paths to source code and logfiles.
-srcdir="/opt/demeter/src/apps/tapir"
+srcdir="/opt/demeter/src/apps/tapir-posix"
 logdir="/opt/demeter/src/logs"
 
 # Machines on which replicas are running.
@@ -37,7 +37,7 @@ nkeys=10000 # number of keys to use
 rtime=10     # duration to run
 
 tlen=2       # transaction length
-wper=0       # writes percentage
+wper=50       # writes percentage
 err=0        # error
 skew=0       # skew
 zalpha=-1    # zipf alpha (-1 to disable zipf and enable uniform)
