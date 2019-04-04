@@ -373,7 +373,7 @@ DmTransport::SendMessageInternal(TransportReceiver *src,
     *((size_t *) ptr) = dataLen;
     ptr += sizeof(size_t);
 
-    ASSERT((size_t)(ptr-buf) < totalLen);
+    ASSERT((size_t)(ptr-buf) <= totalLen);
     ASSERT((size_t)(ptr+dataLen-buf) == totalLen);
     memcpy(ptr, data.c_str(), dataLen);
     ptr += dataLen;
