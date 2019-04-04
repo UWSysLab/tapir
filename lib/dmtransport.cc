@@ -433,11 +433,7 @@ DmTransport::Run()
             // check timer on clients
             if (replicaIdx == -1 && wait_out.qr_qd == timerQD) {
 		dmtr_sgarray_t &sga = wait_out.qr_value.sga;
-<<<<<<< HEAD
-                assert(sga.sga_numsegs == 0);
-=======
                 assert(sga.sga_numsegs == 1);
->>>>>>> io-queue
                 OnTimer(reinterpret_cast<DmTransportTimerInfo *>(sga.sga_buf));
                 status = dmtr_pop(&token, timerQD);
             } else if (wait_out.qr_qd == acceptQD) {

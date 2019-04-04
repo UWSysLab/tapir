@@ -81,7 +81,6 @@ done
 # Wait a bit for all replicas to start up
 sleep 2
 
-
 # Run the clients
 echo "Running the client(s)"
 count=0
@@ -95,7 +94,7 @@ do
   let count=$count+$nclient
 done
 
-sleep 300
+sleep 10
 
 # Wait for all clients to exit
 echo "Waiting for client(s) to exit"
