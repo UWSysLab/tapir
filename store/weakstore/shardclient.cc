@@ -117,8 +117,10 @@ ShardClient::Put(uint64_t id,
     // Send messages
     transport->Timer(0, [=]() {
             // always send to leader for now
-            if (transport->SendMessageToAll(this, msg)) {
-                // set the timeout
+            if (transport->SendMessageToReplica(this, 0, msg) &&
+		transport->SendMessageToReplica(this, 1, msg) &&
+		transport->SendMessageToReplica(this, 2, msg)) {
+		// set the timeout
                 if (waiting != NULL) {
                     timeout->SetTimeout(waiting->GetTimeout());
                     timeout->Start();
