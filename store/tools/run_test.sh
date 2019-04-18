@@ -20,10 +20,10 @@ srcdir="/opt/demeter/src/apps/tapir-posix"
 logdir="/opt/demeter/src/logs"
 
 # Machines on which replicas are running.
-replicas=("demeter1" "demeter2" "demeter3")
+replicas=("demeter2" "demeter3" "demeter4")
 
 # Machines on which clients are running.
-clients=("demeter4")
+clients=("demeter1")
 
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
 store="weakstore"      # Which store (strongstore, weakstore, tapirstore)
@@ -33,8 +33,8 @@ transport="dm"
 nshard=1     # number of shards
 nclient=1    # number of clients to run (per machine)
 nthread=1
-nkeys=10000 # number of keys to use
-rtime=10     # duration to run
+nkeys=100000 # number of keys to use
+rtime=90     # duration to run
 
 tlen=2       # transaction length
 wper=50       # writes percentage
