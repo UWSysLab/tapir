@@ -28,7 +28,7 @@ clients=("demeter1")
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
 store="weakstore"      # Which store (strongstore, weakstore, tapirstore)
 mode="qw"            # Mode for storage system.
-transport="dm"
+transport="tcp"
 
 nshard=1     # number of shards
 nclient=1    # number of clients to run (per machine)
