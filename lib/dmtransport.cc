@@ -379,6 +379,8 @@ DmTransport::SendMessageInternal(TransportReceiver *src,
     dmtr_qtoken_t t;
     int ret = dmtr_push(&t, qd, &sga);
     ASSERT(ret == 0);
+    ret = dmtr_wait(NULL, t);
+    ASSERT(ret == 0);
     Latency_End(&push_msg);
 
     Debug("Sent %ld byte %s message to server over Dm",
@@ -487,7 +489,9 @@ DmTransport::Timer(uint64_t ms, timer_callback_t cb)
         sga.sga_segs[0].sgaseg_len = sizeof(DmTransportTimerInfo);
         dmtr_qtoken_t qt;
         int ret = dmtr_push(&qt, timerQD, &sga);
-        assert(ret == 0);
+        ASSERT(ret == 0);
+	ret = dmtr_wait(NULL, qt);
+	ASSERT(ret == 0);
         return info->id;
     }
     return 0;
