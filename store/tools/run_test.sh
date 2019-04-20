@@ -23,12 +23,12 @@ logdir="/opt/demeter/src/logs"
 replicas=("demeter2" "demeter3" "demeter4")
 
 # Machines on which clients are running.
-clients=("demeter1")
+clients=("demeter5")
 
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
 store="weakstore"      # Which store (strongstore, weakstore, tapirstore)
 mode="qw"            # Mode for storage system.
-transport="tcp"
+transport="rdma"
 
 nshard=1     # number of shards
 nclient=1    # number of clients to run (per machine)

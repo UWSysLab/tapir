@@ -640,7 +640,7 @@ TCPTransport::TCPReadableCallback(struct bufferevent *bev, void *arg)
         
         size_t msgLen = *((size_t *)ptr);
         ptr += sizeof(size_t);
-        ASSERT((size_t)(ptr-buf) < totalSize);
+        ASSERT((size_t)(ptr-buf) <= totalSize);
         
         ASSERT((size_t)(ptr+msgLen-buf) <= totalSize);
         string msg(ptr, msgLen);
