@@ -36,10 +36,9 @@ RDMA_LDFLAGS := -lrdmacm -libverbs
 CFLAGS += $(RDMA_CFLAGS)
 LDFLAGS += $(RDMA_LDFLAGS)
 
-CFLAGS += $(DMTR_CFLAGS)
-CXXFLAGS += $(DMTR_CFLAGS)
-LDFLAGS += $(DMTR_LDFLAGS)
-
+CFLAGS += -I$(DMTR_INCLUDE)
+CXXFLAGS += -I$(DMTR_INCLUDE)
+LDFLAGS += -L$(dir $(DEMETER_LIBOS_SO)) -Wl,-rpath,$(dir $(DEMETER_LIBOS_SO)) -L$(dir $(DEMETER_LATENCY_A)) -L$(dir $(DEMETER_COMMON_A)) -L$(dir $(MALLOC)) -Wl,-rpath,$(dir $(MALLOC))
 
 # Google test framework. This doesn't use pkgconfig
 ifeq ($(TARGETOS), Darwin)

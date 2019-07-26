@@ -16,14 +16,22 @@ trap '{
 }' INT
 
 # Paths to source code and logfiles.
+<<<<<<< HEAD
 srcdir="/opt/demeter/src/apps/tapir-posix"
+=======
+srcdir="/opt/demeter/src/apps/tapir-rdma"
+>>>>>>> origin/dmtr-rdma
 logdir="/opt/demeter/src/logs"
 
 # Machines on which replicas are running.
 replicas=("demeter2" "demeter3" "demeter4")
 
 # Machines on which clients are running.
+<<<<<<< HEAD
 clients=("demeter5")
+=======
+clients=("demeter1")
+>>>>>>> origin/dmtr-rdma
 
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
 store="weakstore"      # Which store (strongstore, weakstore, tapirstore)
