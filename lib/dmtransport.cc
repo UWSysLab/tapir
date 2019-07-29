@@ -488,23 +488,17 @@ DmTransport::Timer(uint64_t ms, timer_callback_t cb)
         timers[info->id] = info;
         
         dmtr_sgarray_t sga = {};
-	sga.sga_buf = reinterpret_cast<void *>(info);
+        sga.sga_buf = reinterpret_cast<void *>(info);
         sga.sga_numsegs = 1;
-	sga.sga_segs[0].sgaseg_buf = reinterpret_cast<void *>(info);
-	sga.sga_segs[0].sgaseg_len = sizeof(DmTransportTimerInfo);
+        sga.sga_segs[0].sgaseg_buf = reinterpret_cast<void *>(info);
+        sga.sga_segs[0].sgaseg_len = sizeof(DmTransportTimerInfo);
         dmtr_qtoken_t qt;
         int ret = dmtr_push(&qt, timerQD, &sga);
-<<<<<<< HEAD
-	assert(ret == 0);
-	ret = dmtr_wait(NULL, qt);
-	assert(ret == 0);
-	return info->id;
-=======
-        ASSERT(ret == 0);
-	ret = dmtr_wait(NULL, qt);
-	ASSERT(ret == 0);
+
+        assert(ret == 0);
+        ret = dmtr_wait(NULL, qt);
+        assert(ret == 0);
         return info->id;
->>>>>>> origin/dmtr-rdma
     }
     return 0;
 }

@@ -36,9 +36,10 @@ RDMA_LDFLAGS := -lrdmacm -libverbs
 CFLAGS += $(RDMA_CFLAGS)
 LDFLAGS += $(RDMA_LDFLAGS)
 
-CFLAGS += -I$(DMTR_INCLUDE)
-CXXFLAGS += -I$(DMTR_INCLUDE)
-LDFLAGS += -L$(dir $(DEMETER_LIBOS_SO)) -Wl,-rpath,$(dir $(DEMETER_LIBOS_SO)) -L$(dir $(DEMETER_LATENCY_A)) -L$(dir $(DEMETER_COMMON_A)) -L$(dir $(MALLOC)) -Wl,-rpath,$(dir $(MALLOC))
+DMTR_CFLAGS := -I$(DEMETER_INCLUDE)
+DMTR_LDFLAGS := -L$(dir $(DEMETER_LIBOS_SO)) -Wl,-rpath,$(dir $(DEMETER_LIBOS_SO)) -L$(dir $(DEMETER_LATENCY_A)) -L$(dir $(DEMETER_COMMON_A)) -L$(dir $(MALLOC)) -Wl,-rpath,$(dir $(MALLOC)) -l:$(notdir $(DEMETER_LIBOS_SO)) -l:$(notdir $(DEMETER_LATENCY_A)) -l:$(notdir $(DEMETER_COMMON_A)) -lboost_chrono -lboost_system -lstdc++
+CFLAGS += $(DMTR_CFLAGS)
+LDFLAGS += $(DMTR_LDFLAGS)
 
 # Google test framework. This doesn't use pkgconfig
 ifeq ($(TARGETOS), Darwin)
