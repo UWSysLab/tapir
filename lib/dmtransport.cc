@@ -227,9 +227,11 @@ DmTransport::ConnectDm(TransportReceiver *src, const DmTransportAddress &dst)
 
     //this->receiver = src;
     int res;
-    if ((res = dmtr_connect(qd,
+    dmtr_qtoken_t t;
+    if ((res = dmtr_connect(&t, qd,
 			    (struct sockaddr *)&(dst.addr),
-			    sizeof(dst.addr))) != 0) {
+			    sizeof(dst.addr))) != 0 ||
+        (res = dmtr_wait(NULL, t)) != 0) {
         Panic("Failed to connect %s:%d: %s",
               inet_ntoa(dst.addr.sin_addr),
               htons(dst.addr.sin_port),
