@@ -16,27 +16,18 @@ trap '{
 }' INT
 
 # Paths to source code and logfiles.
-<<<<<<< HEAD
-srcdir="/opt/demeter/src/apps/tapir-posix"
-=======
-srcdir="/opt/demeter/src/apps/tapir-rdma"
->>>>>>> origin/dmtr-rdma
-logdir="/opt/demeter/src/logs"
+srcdir="/h/irene/proj/demikernel/submodules/tapir-posix/"
+logdir="/h/irene/proj/demikernel/logs"
 
 # Machines on which replicas are running.
-replicas=("demeter2" "demeter3" "demeter4")
+replicas=("prometheus2" "prometheus3" "prometheus4")
 
 # Machines on which clients are running.
-<<<<<<< HEAD
-clients=("demeter5")
-=======
-clients=("demeter1")
->>>>>>> origin/dmtr-rdma
-
+clients=("prometheus1")
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
-store="weakstore"      # Which store (strongstore, weakstore, tapirstore)
-mode="qw"            # Mode for storage system.
-transport="rdma"
+store="strongstore"      # Which store (strongstore, weakstore, tapirstore)
+mode="occ"            # Mode for storage system.
+transport="dm"
 
 nshard=1     # number of shards
 nclient=1    # number of clients to run (per machine)

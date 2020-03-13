@@ -686,7 +686,8 @@ VRReplica::HandleCommit(const TransportAddress &remote,
     }
 
     if (AmLeader()) {
-        RPanic("Unexpected COMMIT: I'm the leader of this view");
+        //RPanic("Unexpected COMMIT: I'm the leader of this view");
+	return;
     }
 
     viewChangeTimeout->Reset();
