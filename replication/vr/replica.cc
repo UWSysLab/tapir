@@ -543,7 +543,9 @@ VRReplica::HandlePrepare(const TransportAddress &remote,
     }
 
     if (AmLeader()) {
-        RPanic("Unexpected PREPARE: I'm the leader of this view");
+        //RPanic("Unexpected PREPARE: I'm the leader of this view");
+        RDebug("Ignoring PREPARE because I am the leader");
+        return;
     }
 
     ASSERT(msg.batchstart() <= msg.opnum());

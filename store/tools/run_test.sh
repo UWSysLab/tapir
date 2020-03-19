@@ -26,7 +26,7 @@ replicas=("prometheus2" "prometheus3" "prometheus4")
 clients=("prometheus1")
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
 store="strongstore"      # Which store (strongstore, weakstore, tapirstore)
-mode="occ"            # Mode for storage system.
+mode="lock"            # Mode for storage system.
 transport="dm"
 
 nshard=1     # number of shards
