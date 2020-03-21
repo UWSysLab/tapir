@@ -91,7 +91,7 @@ DmTransportAddress::clone() const
 
 bool operator==(const DmTransportAddress &a, const DmTransportAddress &b)
 {
-    return (memcmp(&a.addr, &b.addr, sizeof(a.addr)) == 0);
+    return (a.addr.sin_addr.s_addr == b.addr.sin_addr.s_addr);
 }
 
 bool operator!=(const DmTransportAddress &a, const DmTransportAddress &b)
@@ -251,7 +251,10 @@ DmTransport::ConnectDm(TransportReceiver *src, const DmTransportAddress &dst)
     dmOutgoing.insert(make_pair(dst, qd));
     dmIncoming.insert(make_pair(qd, dst));
     receivers[qd] = src;
-    
+
+    Debug("My sockname %s:%d",
+	  inet_ntoa(sin.sin_addr), htons(sin.sin_port));
+
     Debug("Opened Dm connection to %s:%d",
 	  inet_ntoa(dst.addr.sin_addr), htons(dst.addr.sin_port));
 
