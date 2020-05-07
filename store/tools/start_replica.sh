@@ -18,7 +18,7 @@ do
   let line=$i+2 
   server=$(cat $config | sed -n ${line}p | awk -F'[ :]' '{print $2}')
 #  command="ssh $server \"perf stat -d -- $cmd -c $config -i $i > $logdir/$shard.replica$i.log 2>&1 &\""
-  command="ssh $server \"sudo -S nice -n -19 chrt -f 50 taskset 0x4 $cmd -c $config -i $i > $logdir/$shard.replica$i.log 2>&1 &\""
+  command="ssh $server \"sudo -S nice -n -19 chrt -rr 50 taskset 0x4 $cmd -c $config -i $i > $logdir/$shard.replica$i.log 2>&1 &\""
 #  echo $command
   eval $command
 done

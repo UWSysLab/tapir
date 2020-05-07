@@ -15,7 +15,7 @@ let end=$begin+$copies
 for ((i=$begin; i<$end; i++))
 do
 	#    command="DEBUG=all $cmd > $logdir/client.$i.log 2>&1 &"
-    command="sudo -S nice -n -19 chrt -f 50 taskset 0x20 $cmd > $logdir/client.$i.log 2>&1 &"
+    command="sudo -S nice -n -19 chrt -rr 50 $cmd > $logdir/client.$i.log 2>&1 &"
 #   echo $command
     eval $command
     #sleep 100

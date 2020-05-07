@@ -4,14 +4,14 @@ trap '{
   echo "\nKilling all clients.. Please wait..";
   for host in ${clients[@]}
   do
-    ssh $host "killall -9 $client";
-    ssh $host "killall -9 $client";
+    ssh $host "sudo killall -9 $client";
+    ssh $host "sudo killall -9 $client";
   done
 
   echo "\nKilling all replics.. Please wait..";
   for host in ${servers[@]}
   do
-    ssh $host "killall -9 server";
+    ssh $host "sudo killall -9 server";
   done
 }' INT
 
@@ -27,7 +27,7 @@ clients=("prometheus1")
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
 store="weakstore"      # Which store (strongstore, weakstore, tapirstore)
 mode="qw"            # Mode for storage system.
-transport="tcp"
+transport="rdma"
 
 nshard=1     # number of shards
 nclient=1    # number of clients to run (per machine)
