@@ -203,7 +203,8 @@ main(int argc, char **argv)
 						      new weakstore::Store());
     if (keyPath) {
         string key;
-	std::ifstream in;
+        std::ifstream in;
+        string value(700,'x');
         in.open(keyPath);
         if (!in) {
             fprintf(stderr, "Could not read keys from: %s\n", keyPath);
@@ -211,7 +212,7 @@ main(int argc, char **argv)
         }
         for (int i = 0; i < 100000; i++) {
             getline(in, key);
-            server->Load(key, key);
+            server->Load(key, value);
         }
         in.close();
     }

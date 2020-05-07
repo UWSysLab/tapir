@@ -25,9 +25,9 @@ replicas=("prometheus2" "prometheus3" "prometheus4")
 # Machines on which clients are running.
 clients=("prometheus1")
 client="benchClient"    # Which client (benchClient, retwisClient, etc)
-store="strongstore"      # Which store (strongstore, weakstore, tapirstore)
-mode="lock"            # Mode for storage system.
-transport="dm"
+store="weakstore"      # Which store (strongstore, weakstore, tapirstore)
+mode="qw"            # Mode for storage system.
+transport="tcp"
 
 nshard=1     # number of shards
 nclient=1    # number of clients to run (per machine)
@@ -99,7 +99,7 @@ sleep 10
 echo "Waiting for client(s) to exit"
 for host in ${clients[@]}
 do
-  ssh $host "$srcdir/store/tools/wait_client.sh $client"
+  ssh $host "sudo -S $srcdir/store/tools/wait_client.sh $client"
 done
 
 
