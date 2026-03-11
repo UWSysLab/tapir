@@ -12,6 +12,7 @@
 #include <sys/time.h>
 #include <map>
 #include <string>
+#include <cstdint>
 
 /* Trace details of an individual type of request. */
 typedef struct Request_Trace
